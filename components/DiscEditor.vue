@@ -233,10 +233,12 @@ const onVolumeChange = (key: string, volumeNo: number | null) => {
   const nodesToUpdate = [key, ...getAllChildrenKeys(key)]
 
   // 批量更新节点数据
+  const newMap = new Map(nodeData.value)
   nodesToUpdate.forEach(k => {
-    const currentData = nodeData.value.get(k) || {}
-    nodeData.value.set(k, { ...currentData, volume_no: vol })
+    const currentData = newMap.get(k) || {}
+    newMap.set(k, { ...currentData, volume_no: vol })
   })
+  nodeData.value = newMap
 
   // 更新反向索引
   nodesToUpdate.forEach(k => {
@@ -351,14 +353,16 @@ const open = async (torrentHash: string, name: string = '', syncFiles = false) =
       // 树构建完成后，加载已保存的 BD 信息
       if (torrentId.value) {
         try {
-          const { data } = await useFetch(`/api/torrents/bd-info`, { query: { torrent_id: torrentId.value } })
+          // 使用 /api/volumes?torrent_id=xxx 获取该 torrent 的所有卷
+          const { data } = await useFetch(`/api/volumes`, { query: { torrent_id: torrentId.value } })
           if (data.value?.success) {
             const volumes = JSON.parse(data.value.data)
             console.log('[DiscEditor] loaded volumes:', volumes)
+            console.log('[DiscEditor] fileToKey before load:', Object.fromEntries(fileToKey.value))
             if (volumes?.length > 0) {
               volumes.forEach((vol: any) => {
                 // 恢复卷类型
-                if (vol.volume_type) volumeType.value = vol.volume_type
+                if (vol.type) volumeType.value = vol.type
                 // 恢复卷表单
                 const volNo = vol.volume_no
                 if (volNo !== undefined) {
@@ -376,6 +380,8 @@ const open = async (torrentHash: string, name: string = '', syncFiles = false) =
                 }
               })
               console.log('[DiscEditor] after load, selectedVolumes:', selectedVolumes.value)
+              console.log('[DiscEditor] after load, nodeData size:', nodeData.value.size)
+              console.log('[DiscEditor] after load, volumeToKeys:', Object.fromEntries(Array.from(volumeToKeys.value.entries()).map(([k, v]) => [k, Array.from(v)])))
             }
           }
         } catch (error) {
@@ -401,9 +407,11 @@ const setVolumeByFileId = (fileId: string, volumeNo: number) => {
   const vol = volumeNo
   const oldVol = nodeData.value.get(key)?.volume_no
 
-  // 更新当前节点
+  // 更新当前节点 - 重新赋值整个 Map 以触发响应式更新
   const currentData = nodeData.value.get(key) || {}
-  nodeData.value.set(key, { ...currentData, volume_no: vol })
+  const newMap = new Map(nodeData.value)
+  newMap.set(key, { ...currentData, volume_no: vol })
+  nodeData.value = newMap
   console.log('[DiscEditor] updated node:', key, 'volume:', vol)
 
   // 更新反向索引
