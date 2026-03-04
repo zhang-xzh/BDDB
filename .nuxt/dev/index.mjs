@@ -31,10 +31,7 @@ import { SourceMapConsumer } from 'file://C:/APP/BDDB/node_modules/source-map/so
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { getContext } from 'file://C:/APP/BDDB/node_modules/unctx/dist/index.mjs';
 import { captureRawStackTrace, parseRawStackTrace } from 'file://C:/APP/BDDB/node_modules/errx/dist/index.js';
-import Database from 'file://C:/APP/BDDB/node_modules/better-sqlite3/lib/index.js';
-import { drizzle } from 'file://C:/APP/BDDB/node_modules/drizzle-orm/better-sqlite3/index.js';
-import { sqliteTable, integer, text, real } from 'file://C:/APP/BDDB/node_modules/drizzle-orm/sqlite-core/index.js';
-import { eq, asc, desc, count, and, like, sql } from 'file://C:/APP/BDDB/node_modules/drizzle-orm/index.js';
+import Datastore from 'file://C:/APP/BDDB/node_modules/@seald-io/nedb/index.js';
 import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/APP/BDDB/node_modules/pathe/dist/index.mjs';
@@ -700,9 +697,9 @@ new Proxy(/* @__PURE__ */ Object.create(null), {
   }
 });
 
-const config$1 = useRuntimeConfig();
+const config = useRuntimeConfig();
 const _routeRulesMatcher = toRouteMatcher(
-  createRouter({ routes: config$1.nitro.routeRules })
+  createRouter({ routes: config.nitro.routeRules })
 );
 function createRouteRulesHandler(ctx) {
   return eventHandler((event) => {
@@ -2135,279 +2132,141 @@ function onConsoleLog(callback) {
 	consola$1.wrapConsole();
 }
 
-const torrents = sqliteTable("torrents", {
-  hash: text("hash").primaryKey(),
-  name: text("name").notNull(),
-  size: integer("size").default(0),
-  progress: real("progress").default(0),
-  state: text("state").default(""),
-  num_seeds: integer("num_seeds").default(0),
-  num_leechs: integer("num_leechs").default(0),
-  added_on: integer("added_on").default(0),
-  completion_on: integer("completion_on").default(0),
-  save_path: text("save_path").default(""),
-  uploaded: real("uploaded").default(0),
-  downloaded: real("downloaded").default(0),
-  is_deleted: integer("is_deleted", { mode: "boolean" }).default(false),
-  torrent_type: text("torrent_type").default("single"),
-  created_at: integer("created_at").default(0),
-  updated_at: integer("updated_at").default(0)
-});
-const files = sqliteTable("files", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  torrent_hash: text("torrent_hash").notNull().references(() => torrents.hash, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  size: integer("size").default(0),
-  progress: real("progress").default(0),
-  file_index: integer("file_index").default(0),
-  created_at: integer("created_at").default(0),
-  updated_at: integer("updated_at").default(0)
-});
-const box_members = sqliteTable("box_members", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  box_hash: text("box_hash").notNull().references(() => torrents.hash, { onDelete: "cascade" }),
-  member_hash: text("member_hash").notNull().references(() => torrents.hash, { onDelete: "cascade" }),
-  sort_order: integer("sort_order").default(0),
-  created_at: integer("created_at").default(0)
-});
-const discs = sqliteTable("discs", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  torrent_hash: text("torrent_hash").notNull().references(() => torrents.hash, { onDelete: "cascade" }),
-  root_path: text("root_path").notNull(),
-  disc_type: text("disc_type").default("volume"),
-  catalog_no: text("catalog_no").default(""),
-  catalog_maker: text("catalog_maker").default(""),
-  maker: text("maker").default(""),
-  release_date: text("release_date").default(""),
-  version_type: text("version_type").default(""),
-  bonus_status: text("bonus_status").default(""),
-  suruga_id: text("suruga_id").default(""),
-  volume_no: integer("volume_no").default(0),
-  disc_no: integer("disc_no").default(0),
-  note: text("note").default(""),
-  created_at: integer("created_at").default(0),
-  updated_at: integer("updated_at").default(0)
-});
-const bd_info = sqliteTable("bd_info", {
-  torrent_hash: text("torrent_hash").primaryKey().references(() => torrents.hash, { onDelete: "cascade" }),
-  catalog_no: text("catalog_no").default(""),
-  catalog_maker: text("catalog_maker").default(""),
-  maker: text("maker").default(""),
-  release_date: text("release_date").default(""),
-  model_no: text("model_no").default(""),
-  version_type: text("version_type").default(""),
-  bonus_status: text("bonus_status").default(""),
-  suruga_id: text("suruga_id").default(""),
-  volume_type: text("volume_type").default(""),
-  volume_no: integer("volume_no").default(0),
-  note: text("note").default(""),
-  created_at: integer("created_at").default(0),
-  updated_at: integer("updated_at").default(0)
-});
-const config = sqliteTable("config", {
-  key: text("key").primaryKey(),
-  value: text("value"),
-  updated_at: integer("updated_at").default(0)
-});
-
-const schema = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  bd_info: bd_info,
-  box_members: box_members,
-  config: config,
-  discs: discs,
-  files: files,
-  torrents: torrents
-}, Symbol.toStringTag, { value: 'Module' }));
-
-const DATABASE_PATH = join(process.cwd(), "bddb.sqlite");
-let db$1 = null;
-let drizzleDb = null;
-function getDb() {
-  if (!db$1) {
-    db$1 = new Database(DATABASE_PATH);
-    db$1.pragma("journal_mode = WAL");
+const DATA_PATH = join(process.cwd(), "data");
+const databases = {};
+function getDb(collection) {
+  if (!databases[collection]) {
+    databases[collection] = new Datastore({
+      filename: join(DATA_PATH, `${collection}.nedb`),
+      autoload: true
+    });
+    databases[collection].setAutocompactionInterval(1e3);
   }
-  return db$1;
-}
-function getDrizzleDb() {
-  if (!drizzleDb) {
-    drizzleDb = drizzle(getDb(), { schema });
-  }
-  return drizzleDb;
+  return databases[collection];
 }
 
-const db = getDrizzleDb();
-const rawDb = getDb();
+const now = () => Math.floor(Date.now() / 1e3);
 function initDb() {
-  rawDb.exec(`
-    CREATE INDEX IF NOT EXISTS idx_torrents_state ON torrents(state)
-  `);
-  rawDb.exec(`
-    CREATE INDEX IF NOT EXISTS idx_torrents_deleted ON torrents(is_deleted)
-  `);
-  rawDb.exec(`
-    CREATE INDEX IF NOT EXISTS idx_files_hash ON files(torrent_hash)
-  `);
-  rawDb.exec(`
-    CREATE INDEX IF NOT EXISTS idx_box_members_box ON box_members(box_hash)
-  `);
-  console.log("Database indexes initialized");
+  const torrentsDb = getDb("torrents");
+  torrentsDb.ensureIndex({ fieldName: "hash", unique: true }, () => {
+  });
+  torrentsDb.ensureIndex({ fieldName: "is_deleted" }, () => {
+  });
+  const volumesDb = getDb("volumes");
+  volumesDb.ensureIndex({ fieldName: "torrent_hash" }, () => {
+  });
+  volumesDb.ensureIndex({ fieldName: "box_id" }, () => {
+  });
+  console.log("NeDB initialized");
 }
 function torrentExists(hash) {
-  const result = db.select().from(torrents).where(eq(torrents.hash, hash)).get();
-  return result !== void 0;
+  return new Promise((resolve, reject) => {
+    getDb("torrents").findOne({ hash, is_deleted: false }, (err, doc) => {
+      if (err) reject(err);
+      else resolve(!!doc);
+    });
+  });
 }
-function addTorrent(data) {
-  const now = Math.floor(Date.now() / 1e3);
-  db.insert(torrents).values({
-    ...data,
-    updated_at: now
-  }).onConflictDoUpdate({
-    target: torrents.hash,
-    set: {
-      ...data,
-      updated_at: now
-    }
-  }).run();
+async function addTorrent(data) {
+  const doc = { ...data, synced_at: now() };
+  return new Promise((resolve, reject) => {
+    getDb("torrents").findOne({ hash: data.hash }, (err, existing) => {
+      if (err) return reject(err);
+      existing ? getDb("torrents").update({ hash: data.hash }, { $set: doc }, {}, (err2) => err2 ? reject(err2) : resolve()) : getDb("torrents").insert(doc, (err2) => err2 ? reject(err2) : resolve());
+    });
+  });
 }
 function updateTorrentStatus(hash, data) {
-  const now = Math.floor(Date.now() / 1e3);
-  db.update(torrents).set({
-    ...data,
-    updated_at: now
-  }).where(eq(torrents.hash, hash)).run();
+  return new Promise((resolve, reject) => {
+    getDb("torrents").update({ hash }, { $set: { ...data, synced_at: now() } }, {}, (err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
 }
 function softDeleteTorrent(hash) {
-  const now = Math.floor(Date.now() / 1e3);
-  db.update(torrents).set({ is_deleted: true, updated_at: now }).where(eq(torrents.hash, hash)).run();
+  return new Promise((resolve, reject) => {
+    getDb("torrents").update({ hash }, { $set: { is_deleted: true, synced_at: now() } }, {}, (err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+}
+function getTorrent(hash) {
+  return new Promise((resolve, reject) => {
+    getDb("torrents").findOne({ hash }, (err, doc) => {
+      if (err) reject(err);
+      else resolve(doc);
+    });
+  });
 }
 function getAllTorrents(includeDeleted = false) {
-  if (includeDeleted) {
-    return db.select().from(torrents).orderBy(desc(torrents.added_on)).all();
-  }
-  return db.select().from(torrents).where(eq(torrents.is_deleted, false)).orderBy(desc(torrents.added_on)).all();
-}
-function setTorrentType(hash, torrent_type) {
-  const now = Math.floor(Date.now() / 1e3);
-  db.update(torrents).set({ torrent_type, updated_at: now }).where(eq(torrents.hash, hash)).run();
-}
-function addFiles(hash, filesData) {
-  const now = Math.floor(Date.now() / 1e3);
-  const insertData = filesData.map((f, index) => {
-    var _a, _b;
-    return {
-      torrent_hash: hash,
-      name: f.name,
-      size: (_a = f.size) != null ? _a : 0,
-      progress: (_b = f.progress) != null ? _b : 0,
-      file_index: index,
-      updated_at: now
-    };
+  return new Promise((resolve, reject) => {
+    const query = includeDeleted ? {} : { is_deleted: false };
+    getDb("torrents").find(query).sort({ added_on: -1 }).exec((err, docs) => {
+      if (err) reject(err);
+      else resolve(docs);
+    });
   });
-  for (const data of insertData) {
-    db.insert(files).values(data).onConflictDoUpdate({
-      target: [files.torrent_hash, files.name],
-      set: data
-    }).run();
-  }
 }
-function getFiles(hash) {
-  return db.select().from(files).where(eq(files.torrent_hash, hash)).orderBy(asc(files.file_index)).all();
+function addVolume(data) {
+  return new Promise((resolve, reject) => {
+    getDb("volumes").insert({ ...data, created_at: now(), updated_at: now() }, (err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
 }
-function getDiscsByTorrent(hash) {
-  return db.select().from(discs).where(eq(discs.torrent_hash, hash)).orderBy(asc(discs.volume_no), asc(discs.disc_no)).all();
+function deleteVolumesByTorrent(hash) {
+  return new Promise((resolve, reject) => {
+    getDb("volumes").remove({ torrent_hash: hash }, { multi: true }, (err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
 }
-function getDiscById(discId) {
-  return db.select().from(discs).where(eq(discs.id, discId)).get() || null;
+function getVolumesByTorrent(hash) {
+  return new Promise((resolve, reject) => {
+    getDb("volumes").find({ torrent_hash: hash }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
+      if (err) reject(err);
+      else resolve(docs);
+    });
+  });
 }
-function deleteDisc(discId) {
-  db.delete(discs).where(eq(discs.id, discId)).run();
+function getAllVolumes() {
+  return new Promise((resolve, reject) => {
+    getDb("volumes").find({}).sort({ created_at: -1 }).exec((err, docs) => {
+      if (err) reject(err);
+      else resolve(docs);
+    });
+  });
 }
-function getAllDiscs() {
-  return db.select().from(discs).orderBy(desc(discs.created_at)).all();
+function getVolumesByBoxId(boxId) {
+  return new Promise((resolve, reject) => {
+    getDb("volumes").find({ box_id: boxId }).sort({ sort_order: 1, volume_no: 1 }).exec((err, docs) => {
+      if (err) reject(err);
+      else resolve(docs);
+    });
+  });
 }
-function deleteDiscsByTorrent(hash) {
-  db.delete(discs).where(eq(discs.torrent_hash, hash)).run();
-}
-function saveBdInfo(hash, bdData) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v;
-  const now = Math.floor(Date.now() / 1e3);
-  db.insert(bd_info).values({
-    torrent_hash: hash,
-    catalog_no: (_a = bdData.catalog_no) != null ? _a : "",
-    catalog_maker: (_b = bdData.catalog_maker) != null ? _b : "",
-    maker: (_c = bdData.maker) != null ? _c : "",
-    release_date: (_d = bdData.release_date) != null ? _d : "",
-    model_no: (_e = bdData.model_no) != null ? _e : "",
-    version_type: (_f = bdData.version_type) != null ? _f : "",
-    bonus_status: (_g = bdData.bonus_status) != null ? _g : "",
-    suruga_id: (_h = bdData.suruga_id) != null ? _h : "",
-    volume_type: (_i = bdData.volume_type) != null ? _i : "",
-    volume_no: (_j = bdData.volume_no) != null ? _j : 0,
-    note: (_k = bdData.note) != null ? _k : "",
-    updated_at: now
-  }).onConflictDoUpdate({
-    target: bd_info.torrent_hash,
-    set: {
-      catalog_no: (_l = bdData.catalog_no) != null ? _l : "",
-      catalog_maker: (_m = bdData.catalog_maker) != null ? _m : "",
-      maker: (_n = bdData.maker) != null ? _n : "",
-      release_date: (_o = bdData.release_date) != null ? _o : "",
-      model_no: (_p = bdData.model_no) != null ? _p : "",
-      version_type: (_q = bdData.version_type) != null ? _q : "",
-      bonus_status: (_r = bdData.bonus_status) != null ? _r : "",
-      suruga_id: (_s = bdData.suruga_id) != null ? _s : "",
-      volume_type: (_t = bdData.volume_type) != null ? _t : "",
-      volume_no: (_u = bdData.volume_no) != null ? _u : 0,
-      note: (_v = bdData.note) != null ? _v : "",
-      updated_at: now
-    }
-  }).run();
-}
-function getBdInfo(hash) {
-  return db.select().from(bd_info).where(eq(bd_info.torrent_hash, hash)).get() || null;
-}
-function saveConfig(key, value) {
-  const now = Math.floor(Date.now() / 1e3);
-  db.insert(config).values({ key, value, updated_at: now }).onConflictDoUpdate({
-    target: config.key,
-    set: { value, updated_at: now }
-  }).run();
-}
-function getAllConfig() {
-  const rows = db.select().from(config).all();
-  return Object.fromEntries(rows.map((row) => [row.key, row.value]));
-}
-function getStats() {
-  var _a, _b, _c, _d, _e;
-  const total = db.select({ count: count() }).from(torrents).where(eq(torrents.is_deleted, false)).get();
-  const downloading = db.select({ count: count() }).from(torrents).where(
-    and(
-      eq(torrents.state, "downloading"),
-      eq(torrents.is_deleted, false)
-    )
-  ).get();
-  const seeding = db.select({ count: count() }).from(torrents).where(
-    and(
-      eq(torrents.state, "uploading"),
-      eq(torrents.is_deleted, false)
-    )
-  ).get();
-  const paused = db.select({ count: count() }).from(torrents).where(
-    and(
-      like(torrents.state, "%paused%"),
-      eq(torrents.is_deleted, false)
-    )
-  ).get();
-  const totalSize = db.select({ total: sql`COALESCE(SUM(size), 0)` }).from(torrents).where(eq(torrents.is_deleted, false)).get();
-  return {
-    total: (_a = total == null ? void 0 : total.count) != null ? _a : 0,
-    downloading: (_b = downloading == null ? void 0 : downloading.count) != null ? _b : 0,
-    seeding: (_c = seeding == null ? void 0 : seeding.count) != null ? _c : 0,
-    paused: (_d = paused == null ? void 0 : paused.count) != null ? _d : 0,
-    total_size: (_e = totalSize == null ? void 0 : totalSize.total) != null ? _e : 0
+async function saveVolume(torrentHash, data) {
+  const doc = {
+    torrent_hash: torrentHash,
+    box_id: data.box_id || "",
+    type: data.type || "volume",
+    volume_no: data.volume_no || 0,
+    sort_order: data.sort_order || 0,
+    catalog_no: data.catalog_no || "",
+    suruga_id: data.suruga_id || "",
+    note: data.note || "",
+    updated_at: now()
   };
+  return new Promise((resolve, reject) => {
+    getDb("volumes").findOne({ torrent_hash: torrentHash }, (err, existing) => {
+      if (err) return reject(err);
+      existing ? getDb("volumes").update({ torrent_hash: torrentHash }, { $set: doc }, {}, (err2) => err2 ? reject(err2) : resolve()) : getDb("volumes").insert({ ...doc, created_at: now() }, (err2) => err2 ? reject(err2) : resolve());
+    });
+  });
 }
 
 const _jkQ6FLLN4oExYidzx__JfMhqpMTDIBTD3Z9IW_m7oFs = defineNitroPlugin(() => {
@@ -2870,13 +2729,6 @@ async function getIslandContext(event) {
 	return ctx;
 }
 
-const _lazy_iHa9jz = () => Promise.resolve().then(function () { return index_get$3; });
-const _lazy_Fijx7z = () => Promise.resolve().then(function () { return index_post$3; });
-const _lazy_i41Q5i = () => Promise.resolve().then(function () { return _id__delete$1; });
-const _lazy_JWg_Ow = () => Promise.resolve().then(function () { return _id__get$1; });
-const _lazy_T_1LzG = () => Promise.resolve().then(function () { return _id__put$1; });
-const _lazy_mcTr7L = () => Promise.resolve().then(function () { return index_get$1; });
-const _lazy_DdudP9 = () => Promise.resolve().then(function () { return index_post$1; });
 const _lazy_e9oMGf = () => Promise.resolve().then(function () { return delete_post$1; });
 const _lazy_RHU9yM = () => Promise.resolve().then(function () { return files_get$3; });
 const _lazy_tGkfwI = () => Promise.resolve().then(function () { return info_get$1; });
@@ -2885,18 +2737,12 @@ const _lazy_y1cNzJ = () => Promise.resolve().then(function () { return sync_post
 const _lazy_tzU9Pc = () => Promise.resolve().then(function () { return bdInfo_get$1; });
 const _lazy_OOpztX = () => Promise.resolve().then(function () { return bdInfo_post$1; });
 const _lazy_tKr0Do = () => Promise.resolve().then(function () { return files_get$1; });
-const _lazy_qjTGnC = () => Promise.resolve().then(function () { return type_post$1; });
+const _lazy_UxiCwG = () => Promise.resolve().then(function () { return index_get$1; });
+const _lazy_DUW4ey = () => Promise.resolve().then(function () { return index_post$1; });
 const _lazy_vPV4vc = () => Promise.resolve().then(function () { return renderer$1; });
 
 const handlers = [
   { route: '', handler: _KEecAP, lazy: false, middleware: true, method: undefined },
-  { route: '/api/config', handler: _lazy_iHa9jz, lazy: true, middleware: false, method: "get" },
-  { route: '/api/config', handler: _lazy_Fijx7z, lazy: true, middleware: false, method: "post" },
-  { route: '/api/discs/:id', handler: _lazy_i41Q5i, lazy: true, middleware: false, method: "delete" },
-  { route: '/api/discs/:id', handler: _lazy_JWg_Ow, lazy: true, middleware: false, method: "get" },
-  { route: '/api/discs/:id', handler: _lazy_T_1LzG, lazy: true, middleware: false, method: "put" },
-  { route: '/api/discs', handler: _lazy_mcTr7L, lazy: true, middleware: false, method: "get" },
-  { route: '/api/discs', handler: _lazy_DdudP9, lazy: true, middleware: false, method: "post" },
   { route: '/api/qb/torrents/delete', handler: _lazy_e9oMGf, lazy: true, middleware: false, method: "post" },
   { route: '/api/qb/torrents/files', handler: _lazy_RHU9yM, lazy: true, middleware: false, method: "get" },
   { route: '/api/qb/torrents/info', handler: _lazy_tGkfwI, lazy: true, middleware: false, method: "get" },
@@ -2905,7 +2751,8 @@ const handlers = [
   { route: '/api/torrents/bd-info', handler: _lazy_tzU9Pc, lazy: true, middleware: false, method: "get" },
   { route: '/api/torrents/bd-info', handler: _lazy_OOpztX, lazy: true, middleware: false, method: "post" },
   { route: '/api/torrents/files', handler: _lazy_tKr0Do, lazy: true, middleware: false, method: "get" },
-  { route: '/api/torrents/type', handler: _lazy_qjTGnC, lazy: true, middleware: false, method: "post" },
+  { route: '/api/volumes', handler: _lazy_UxiCwG, lazy: true, middleware: false, method: "get" },
+  { route: '/api/volumes', handler: _lazy_DUW4ey, lazy: true, middleware: false, method: "post" },
   { route: '/__nuxt_error', handler: _lazy_vPV4vc, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_island/**', handler: _SxA8c9, lazy: false, middleware: false, method: undefined },
   { route: '/**', handler: _lazy_vPV4vc, lazy: true, middleware: false, method: undefined }
@@ -3252,279 +3099,11 @@ const styles$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   default: styles
 }, Symbol.toStringTag, { value: 'Module' }));
 
-const index_get$2 = defineEventHandler(async () => {
-  try {
-    const config = getAllConfig();
-    return {
-      success: true,
-      data: JSON.stringify(config)
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-});
-
-const index_get$3 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: index_get$2
-}, Symbol.toStringTag, { value: 'Module' }));
-
-const index_post$2 = defineEventHandler(async (event) => {
-  const body = await readBody(event);
-  try {
-    if (body && typeof body === "object") {
-      for (const [key, value] of Object.entries(body)) {
-        saveConfig(key, String(value));
-      }
-    }
-    return {
-      success: true,
-      data: "ok"
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-});
-
-const index_post$3 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: index_post$2
-}, Symbol.toStringTag, { value: 'Module' }));
-
-const _id__delete = defineEventHandler(async (event) => {
-  var _a;
-  const id = (_a = event.context.params) == null ? void 0 : _a.id;
-  if (!id) {
-    return {
-      success: false,
-      error: "\u7F3A\u5C11 id \u53C2\u6570"
-    };
-  }
-  try {
-    deleteDisc(parseInt(id));
-    return {
-      success: true,
-      data: "ok"
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-});
-
-const _id__delete$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: _id__delete
-}, Symbol.toStringTag, { value: 'Module' }));
-
-const _id__get = defineEventHandler(async (event) => {
-  var _a;
-  const id = (_a = event.context.params) == null ? void 0 : _a.id;
-  if (!id) {
-    return {
-      success: false,
-      error: "\u7F3A\u5C11 id \u53C2\u6570"
-    };
-  }
-  try {
-    const disc = getDiscById(parseInt(id));
-    if (disc) {
-      return {
-        success: true,
-        data: JSON.stringify(disc)
-      };
-    }
-    return {
-      success: false,
-      error: "\u5149\u76D8\u4E0D\u5B58\u5728"
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-});
-
-const _id__get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: _id__get
-}, Symbol.toStringTag, { value: 'Module' }));
-
-const _id__put = defineEventHandler(async (event) => {
-  var _a;
-  const id = (_a = event.context.params) == null ? void 0 : _a.id;
-  const body = await readBody(event);
-  if (!id) {
-    return {
-      success: false,
-      error: "\u7F3A\u5C11 id \u53C2\u6570"
-    };
-  }
-  try {
-    const db = getDrizzleDb();
-    const disc = getDiscById(parseInt(id));
-    if (!disc) {
-      return {
-        success: false,
-        error: "\u8BB0\u5F55\u4E0D\u5B58\u5728"
-      };
-    }
-    const torrentHash = body.torrent_hash || disc.torrent_hash;
-    const now = Math.floor(Date.now() / 1e3);
-    deleteDiscsByTorrent(torrentHash);
-    if (body.volume_forms && typeof body.volume_forms === "object") {
-      const volumeNos = Object.keys(body.volume_forms).map(Number).sort((a, b) => a - b);
-      const insertData = volumeNos.map((volNo) => {
-        const form = body.volume_forms[volNo];
-        return {
-          torrent_hash: torrentHash,
-          root_path: "",
-          disc_type: body.disc_type || "volume",
-          catalog_no: (form == null ? void 0 : form.catalog_no) || "",
-          catalog_maker: (form == null ? void 0 : form.catalog_maker) || "",
-          maker: (form == null ? void 0 : form.maker) || "",
-          release_date: (form == null ? void 0 : form.release_date) || "",
-          version_type: (form == null ? void 0 : form.version_type) || "",
-          bonus_status: (form == null ? void 0 : form.bonus_status) || "",
-          suruga_id: (form == null ? void 0 : form.suruga_id) || "",
-          volume_no: volNo,
-          disc_no: 1,
-          note: (form == null ? void 0 : form.note) || "",
-          updated_at: now
-        };
-      });
-      db.insert(discs).values(insertData).run();
-    }
-    return {
-      success: true,
-      data: "ok"
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-});
-
-const _id__put$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: _id__put
-}, Symbol.toStringTag, { value: 'Module' }));
-
-const index_get = defineEventHandler(async (event) => {
-  const query = getQuery$1(event);
-  const torrentHash = query.torrent_hash;
-  try {
-    let discs;
-    if (torrentHash) {
-      discs = getDiscsByTorrent(torrentHash);
-    } else {
-      discs = getAllDiscs();
-    }
-    return {
-      success: true,
-      data: JSON.stringify(discs)
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-});
-
-const index_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: index_get
-}, Symbol.toStringTag, { value: 'Module' }));
-
-const index_post = defineEventHandler(async (event) => {
-  try {
-    const body = await readBody(event);
-    const {
-      torrent_hash,
-      disc_type,
-      volume_forms
-    } = body;
-    if (!torrent_hash) {
-      return {
-        success: false,
-        error: "\u7F3A\u5C11 torrent_hash \u53C2\u6570"
-      };
-    }
-    const db = getDrizzleDb();
-    const now = Math.floor(Date.now() / 1e3);
-    if (volume_forms && typeof volume_forms === "object") {
-      const volumeNos = Object.keys(volume_forms).map(Number).sort((a, b) => a - b);
-      const insertData = volumeNos.map((volNo) => {
-        const form = volume_forms[volNo];
-        return {
-          torrent_hash,
-          root_path: "",
-          disc_type: disc_type || "volume",
-          catalog_no: (form == null ? void 0 : form.catalog_no) || "",
-          catalog_maker: (form == null ? void 0 : form.catalog_maker) || "",
-          maker: (form == null ? void 0 : form.maker) || "",
-          release_date: (form == null ? void 0 : form.release_date) || "",
-          version_type: (form == null ? void 0 : form.version_type) || "",
-          bonus_status: (form == null ? void 0 : form.bonus_status) || "",
-          suruga_id: (form == null ? void 0 : form.suruga_id) || "",
-          volume_no: volNo,
-          disc_no: 1,
-          note: (form == null ? void 0 : form.note) || "",
-          updated_at: now
-        };
-      });
-      db.insert(discs).values(insertData).run();
-    }
-    return {
-      success: true,
-      message: "\u521B\u5EFA\u6210\u529F"
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-});
-
-const index_post$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: index_post
-}, Symbol.toStringTag, { value: 'Module' }));
-
 const delete_post = defineEventHandler(async (event) => {
-  const query = getQuery$1(event);
-  const hash = query.hash;
-  if (!hash) {
-    return {
-      success: false,
-      error: "\u7F3A\u5C11 hash \u53C2\u6570"
-    };
-  }
-  try {
-    softDeleteTorrent(hash);
-    return {
-      success: true,
-      data: "deleted"
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
+  const hash = getQuery$1(event).hash;
+  if (!hash) return { success: false, error: "Missing hash" };
+  await softDeleteTorrent(hash);
+  return { success: true, data: "deleted" };
 });
 
 const delete_post$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
@@ -3533,26 +3112,11 @@ const delete_post$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.definePrope
 }, Symbol.toStringTag, { value: 'Module' }));
 
 const files_get$2 = defineEventHandler(async (event) => {
-  const query = getQuery$1(event);
-  const hash = query.hash;
-  if (!hash) {
-    return {
-      success: false,
-      error: "\u7F3A\u5C11 hash \u53C2\u6570"
-    };
-  }
-  try {
-    const files = getFiles(hash);
-    return {
-      success: true,
-      data: JSON.stringify(files)
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
+  const hash = getQuery$1(event).hash;
+  if (!hash) return { success: false, error: "Missing hash" };
+  const torrent = await getTorrent(hash);
+  if (!torrent) return { success: false, error: "Not found" };
+  return { success: true, data: JSON.stringify(torrent.files || []) };
 });
 
 const files_get$3 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
@@ -3561,41 +3125,25 @@ const files_get$3 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.definePropert
 }, Symbol.toStringTag, { value: 'Module' }));
 
 const info_get = defineEventHandler(async (event) => {
-  const query = getQuery$1(event);
-  const state = query.state;
-  const type = query.type;
-  const search = query.search;
-  try {
-    let torrents = getAllTorrents();
-    if (state) {
-      torrents = torrents.filter((t) => {
-        var _a;
-        if (state === "paused") return (_a = t.state) == null ? void 0 : _a.includes("paused");
-        if (state === "completed") return t.progress === 100;
-        return t.state === state;
-      });
-    }
-    if (type) {
-      torrents = torrents.filter((t) => t.torrent_type === type);
-    }
-    if (search) {
-      const searchLower = search.toLowerCase();
-      torrents = torrents.filter((t) => t.name.toLowerCase().includes(searchLower));
-    }
-    torrents = torrents.map((t) => ({
-      ...t,
-      file_count: getFiles(t.hash).length
-    }));
-    return {
-      success: true,
-      data: JSON.stringify(torrents)
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
+  const { state, search } = getQuery$1(event);
+  let torrents = await getAllTorrents();
+  if (state) {
+    const s = state;
+    torrents = torrents.filter((t) => {
+      var _a;
+      if (s === "paused") return (_a = t.state) == null ? void 0 : _a.includes("paused");
+      if (s === "completed") return t.progress === 100;
+      return t.state === s;
+    });
   }
+  if (search) {
+    const k = search.toLowerCase();
+    torrents = torrents.filter((t) => t.name.toLowerCase().includes(k));
+  }
+  return { success: true, data: JSON.stringify(torrents.map((t) => {
+    var _a;
+    return { ...t, file_count: ((_a = t.files) == null ? void 0 : _a.length) || 0 };
+  })) };
 });
 
 const info_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
@@ -3604,18 +3152,15 @@ const info_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty
 }, Symbol.toStringTag, { value: 'Module' }));
 
 const stats_get = defineEventHandler(async () => {
-  try {
-    const stats = getStats();
-    return {
-      success: true,
-      data: JSON.stringify(stats)
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
+  const torrents = await getAllTorrents();
+  const stats = {
+    total: torrents.length,
+    downloading: torrents.filter((t) => t.state === "downloading").length,
+    seeding: torrents.filter((t) => t.state === "uploading").length,
+    paused: torrents.filter((t) => t.state.includes("paused")).length,
+    total_size: torrents.reduce((acc, t) => acc + (t.size || 0), 0)
+  };
+  return { success: true, data: JSON.stringify(stats) };
 });
 
 const stats_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
@@ -3627,12 +3172,10 @@ let qbClient = null;
 function getQbClient() {
   if (!qbClient) {
     const host = process.env.QB_HOST || "localhost:18000";
-    const username = process.env.QB_USER || "";
-    const password = process.env.QB_PASS || "";
     qbClient = new QBittorrent({
       baseUrl: host.startsWith("http") ? host : `http://${host}`,
-      username,
-      password
+      username: process.env.QB_USER || "",
+      password: process.env.QB_PASS || ""
     });
   }
   return qbClient;
@@ -3641,15 +3184,13 @@ async function syncTorrentsFromQb() {
   const client = getQbClient();
   try {
     const torrents = await client.listTorrents();
-    let newCount = 0;
-    let updateCount = 0;
+    let newCount = 0, updateCount = 0;
     for (const t of torrents) {
       const data = {
         hash: t.hash,
         name: t.name,
         size: t.size,
         progress: t.progress * 100,
-        // 转为百分比
         state: t.state,
         num_seeds: t.num_seeds,
         num_leechs: t.num_leechs,
@@ -3659,53 +3200,30 @@ async function syncTorrentsFromQb() {
         uploaded: t.uploaded,
         downloaded: t.downloaded
       };
-      if (!torrentExists(t.hash)) {
-        addTorrent(data);
+      const exists = await torrentExists(t.hash);
+      if (!exists) {
         try {
           const files = await client.torrentFiles(t.hash);
-          addFiles(t.hash, files.map((f) => ({
-            name: f.name,
-            size: f.size,
-            progress: f.progress * 100
-          })));
-        } catch (error) {
-          console.error(`\u83B7\u53D6\u6587\u4EF6\u5931\u8D25 ${t.hash}:`, error);
+          await addTorrent({ ...data, files, is_deleted: false });
+        } catch {
+          await addTorrent({ ...data, files: [], is_deleted: false });
         }
         newCount++;
       } else {
-        updateTorrentStatus(t.hash, data);
+        await updateTorrentStatus(t.hash, data);
         updateCount++;
       }
     }
-    console.log(`Sync completed: new=${newCount}, updated=${updateCount}`);
-    saveConfig("last_sync", String(Math.floor(Date.now() / 1e3)));
+    console.log(`Sync: new=${newCount}, updated=${updateCount}`);
     return { success: true, newCount, updateCount };
   } catch (error) {
-    console.error("Sync failed:", error);
     return { success: false, error: error.message };
   }
 }
 
 const sync_post = defineEventHandler(async () => {
-  try {
-    const result = await syncTorrentsFromQb();
-    if (result.success) {
-      return {
-        success: true,
-        data: "syncing"
-      };
-    } else {
-      return {
-        success: false,
-        error: result.error
-      };
-    }
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
+  const result = await syncTorrentsFromQb();
+  return result.success ? { success: true, data: "synced" } : { success: false, error: result.error };
 });
 
 const sync_post$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
@@ -3714,26 +3232,10 @@ const sync_post$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.definePropert
 }, Symbol.toStringTag, { value: 'Module' }));
 
 const bdInfo_get = defineEventHandler(async (event) => {
-  const query = getQuery$1(event);
-  const hash = query.hash;
-  if (!hash) {
-    return {
-      success: false,
-      error: "\u7F3A\u5C11 hash \u53C2\u6570"
-    };
-  }
-  try {
-    const info = getBdInfo(hash);
-    return {
-      success: true,
-      data: JSON.stringify(info || {})
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
+  const hash = getQuery$1(event).hash;
+  if (!hash) return { success: false, error: "Missing hash" };
+  const volumes = await getVolumesByTorrent(hash);
+  return { success: true, data: JSON.stringify(volumes) };
 });
 
 const bdInfo_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
@@ -3742,27 +3244,11 @@ const bdInfo_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProper
 }, Symbol.toStringTag, { value: 'Module' }));
 
 const bdInfo_post = defineEventHandler(async (event) => {
-  const query = getQuery$1(event);
-  const hash = query.hash;
+  const hash = getQuery$1(event).hash;
+  if (!hash) return { success: false, error: "Missing hash" };
   const body = await readBody(event);
-  if (!hash) {
-    return {
-      success: false,
-      error: "\u7F3A\u5C11 hash \u53C2\u6570"
-    };
-  }
-  try {
-    saveBdInfo(hash, body || {});
-    return {
-      success: true,
-      data: "ok"
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
+  await saveVolume(hash, body || {});
+  return { success: true, data: "ok" };
 });
 
 const bdInfo_post$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
@@ -3771,26 +3257,11 @@ const bdInfo_post$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.definePrope
 }, Symbol.toStringTag, { value: 'Module' }));
 
 const files_get = defineEventHandler(async (event) => {
-  const query = getQuery$1(event);
-  const hash = query.hash;
-  if (!hash) {
-    return {
-      success: false,
-      error: "\u7F3A\u5C11 hash \u53C2\u6570"
-    };
-  }
-  try {
-    const files = getFiles(hash);
-    return {
-      success: true,
-      data: JSON.stringify(files)
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
+  const hash = getQuery$1(event).hash;
+  if (!hash) return { success: false, error: "Missing hash" };
+  const torrent = await getTorrent(hash);
+  if (!torrent) return { success: false, error: "Not found" };
+  return { success: true, data: JSON.stringify(torrent.files || []) };
 });
 
 const files_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
@@ -3798,33 +3269,33 @@ const files_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.definePropert
   default: files_get
 }, Symbol.toStringTag, { value: 'Module' }));
 
-const type_post = defineEventHandler(async (event) => {
-  const query = getQuery$1(event);
-  const hash = query.hash;
-  const type = query.type;
-  if (!hash || !type) {
-    return {
-      success: false,
-      error: "\u7F3A\u5C11\u53C2\u6570"
-    };
-  }
-  try {
-    setTorrentType(hash, type);
-    return {
-      success: true,
-      data: "ok"
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
+const index_get = defineEventHandler(async (event) => {
+  const { torrent_hash, box_id } = getQuery$1(event);
+  const volumes = torrent_hash ? await getVolumesByTorrent(torrent_hash) : box_id ? await getVolumesByBoxId(box_id) : await getAllVolumes();
+  return { success: true, data: JSON.stringify(volumes) };
 });
 
-const type_post$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+const index_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   __proto__: null,
-  default: type_post
+  default: index_get
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const index_post = defineEventHandler(async (event) => {
+  const body = await readBody(event);
+  const { torrent_hash, volumes } = body;
+  if (!torrent_hash) return { success: false, error: "Missing torrent_hash" };
+  if (volumes && Array.isArray(volumes)) {
+    await deleteVolumesByTorrent(torrent_hash);
+    for (const v of volumes) {
+      await addVolume({ ...v, torrent_hash });
+    }
+  }
+  return { success: true, data: "ok" };
+});
+
+const index_post$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  __proto__: null,
+  default: index_post
 }, Symbol.toStringTag, { value: 'Module' }));
 
 function renderPayloadResponse(ssrContext) {
