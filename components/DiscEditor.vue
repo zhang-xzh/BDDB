@@ -15,24 +15,13 @@
       </a-radio-group>
 
       <a-card size="small" v-if="uniqueVolumes.length > 0">
-        <a-space :size="12" wrap>
-          <a-form
-            v-for="vol in uniqueVolumes"
-            :key="vol"
-            layout="inline"
-            :model="volumeForms[vol]"
-          >
-            <a-form-item label="卷号">
-              <span>{{ vol }}</span>
-            </a-form-item>
-            <a-form-item label="分卷标题">
-              <a-input v-model:value="volumeForms[vol].volume_name" placeholder="分卷标题" style="width: 200px" />
-            </a-form-item>
-            <a-form-item label="型番">
-              <a-input v-model:value="volumeForms[vol].catalog_no" placeholder="ANZX-1234" style="width: 150px" />
-            </a-form-item>
-          </a-form>
-        </a-space>
+        <div style="display: flex; flex-wrap: wrap; gap: 16px">
+          <div v-for="vol in uniqueVolumes" :key="vol" style="display: flex; align-items: center; gap: 8px">
+            <span style="font-weight: 500">第{{ vol }}卷</span>
+            <a-input v-model:value="volumeForms[vol].catalog_no" placeholder="型番" style="width: 140px" />
+            <a-input v-model:value="volumeForms[vol].volume_name" placeholder="标题" style="width: 180px" />
+          </div>
+        </div>
       </a-card>
 
       <a-card size="small" v-if="files.length > 0" :body-style="{ padding: '12px' }">
@@ -47,7 +36,7 @@
             <div class="tree-node">
               <a-typography-text class="node-title" :ellipsis="{ tooltip: title }">{{ title }}</a-typography-text>
               <a-select
-                v-if="!isLeaf || isBDMVOrVideoTS(key)"
+                v-if="!isLeaf || isBDMVOrVideoTS(key) || isLeaf"
                 :value="getNodeData(key, 'volume_no')"
                 @change="(val) => onNodeChange(key, 'volume_no', val)"
                 style="width: 100px"
@@ -106,10 +95,17 @@ const modalWidth = computed(() => {
 
 const uniqueVolumes = computed(() => {
   const volumes = new Set<number>()
-  Object.values(nodeData.value).forEach(data => {
+  Object.values(nodeData.value).forEach((data: DiscFormData) => {
     if (data.volume_no) volumes.add(data.volume_no)
   })
-  return Array.from(volumes).sort((a, b) => a - b)
+  const result = Array.from(volumes).sort((a, b) => a - b)
+  // 确保每个卷号都有对应的表单数据
+  result.forEach(vol => {
+    if (!volumeForms.value[vol]) {
+      volumeForms.value[vol] = { volume_name: '', catalog_no: '' }
+    }
+  })
+  return result
 })
 
 const isBDMVOrVideoTS = (key: string): boolean => {
@@ -117,14 +113,11 @@ const isBDMVOrVideoTS = (key: string): boolean => {
 }
 
 const onTypeChange = () => {
-  selectedVolumes.value = volume_type.value === 'volume' ? [1] : [1]
-  selectedVolumes.value.forEach(vol => {
-    if (!volumeForms.value[vol]) volumeForms.value[vol] = { volume_name: '', catalog_no: '' }
-  })
+  selectedVolumes.value = [1]
 }
 
 const resetForms = () => {
-  volumeForms.value = {}
+  volumeForms.value = { 1: { volume_name: '', catalog_no: '' } }
   nodeData.value = {}
   selectedVolumes.value = []
 }
@@ -149,16 +142,15 @@ const open = async (torrentHash: string, name: string = '', syncFiles = false) =
     const { data } = await useFetch(`/api/torrents/bd-info`, { query: { hash: torrentHash } })
     if (data.value?.success) {
       const bdInfo = JSON.parse(data.value.data)
-      if (bdInfo) {
-        volume_type.value = bdInfo.volume_type || 'volume'
-        const volNo = bdInfo.volume_no || 1
-        if (!volumeForms.value[volNo]) {
-          volumeForms.value[volNo] = {
-            volume_name: bdInfo.volume_name || '',
-            catalog_no: bdInfo.catalog_no || ''
-          }
+      if (bdInfo?.volume_type) {
+        volume_type.value = bdInfo.volume_type
+      }
+      if (bdInfo?.volume_no) {
+        const volNo = bdInfo.volume_no
+        volumeForms.value[volNo] = {
+          volume_name: bdInfo.volume_name || '',
+          catalog_no: bdInfo.catalog_no || ''
         }
-        onTypeChange()
       }
     }
   } catch (error) {
@@ -209,9 +201,6 @@ const onNodeChange = (key: string, field: string, value: any) => {
     if (!nodeData.value[childKey]) nodeData.value[childKey] = {}
     (nodeData.value[childKey] as any)[field] = value === undefined ? null : value
   })
-  if (field === 'volume_no' && value && !volumeForms.value[value]) {
-    volumeForms.value[value] = { volume_name: '', catalog_no: '' }
-  }
 }
 
 const getNodeData = (key: string, field: string) => nodeData.value[key]?.[field as keyof DiscFormData]
@@ -220,16 +209,19 @@ const handleSubmit = async () => {
   saving.value = true
   try {
     if (props.torrentHash) {
-      const firstVolNo = Object.keys(volumeForms.value)[0]
-      const firstVolData = volumeForms.value[firstVolNo] || {}
-      const { data } = await useFetch(`/api/torrents/bd-info`, {
+      const volumes = uniqueVolumes.value.length > 0 ? uniqueVolumes.value : [1]
+      const { data } = await useFetch(`/api/volumes`, {
         method: 'POST',
-        query: { hash: props.torrentHash },
         body: {
-          volume_name: firstVolData.volume_name || '',
-          catalog_no: firstVolData.catalog_no || '',
-          volume_type: volume_type.value,
-          volume_no: firstVolData.volume_no || 0,
+          torrent_hash: props.torrentHash,
+          volumes: volumes.map(volNo => ({
+            box_id: '',
+            type: volume_type.value,
+            volume_no: volNo,
+            sort_order: volNo,
+            volume_name: volumeForms.value[volNo]?.volume_name || '',
+            catalog_no: volumeForms.value[volNo]?.catalog_no || '',
+          })),
         },
       })
       if (data.value?.success) {
