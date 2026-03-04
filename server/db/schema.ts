@@ -14,6 +14,7 @@ export interface Volume {
   type: 'volume' | 'box'
   volume_no: number
   sort_order: number
+  volume_name?: string
   catalog_no: string
   suruga_id: string
   note: string

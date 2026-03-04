@@ -21,3 +21,9 @@
 - Composition API
 - Compact code, minimal comments
 - TDD
+
+## UI Rules
+- **Ant Design Vue components first** - use built-in components before custom CSS
+- **Minimal CSS** - prefer component props and slots over custom styles
+- Use `a-space`, `a-card`, `a-form` for layouts
+- Use `a-typography-text` with `ellipsis` for text truncation

@@ -160,6 +160,7 @@ export async function saveVolume(torrentHash: string, data: Partial<Volume>): Pr
     type: data.type || 'volume',
     volume_no: data.volume_no || 0,
     sort_order: data.sort_order || 0,
+    volume_name: data.volume_name || '',
     catalog_no: data.catalog_no || '',
     suruga_id: data.suruga_id || '',
     note: data.note || '',

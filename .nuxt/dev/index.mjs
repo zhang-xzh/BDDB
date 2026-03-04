@@ -2256,6 +2256,7 @@ async function saveVolume(torrentHash, data) {
     type: data.type || "volume",
     volume_no: data.volume_no || 0,
     sort_order: data.sort_order || 0,
+    volume_name: data.volume_name || "",
     catalog_no: data.catalog_no || "",
     suruga_id: data.suruga_id || "",
     note: data.note || "",
@@ -2281,7 +2282,22 @@ _JHsvEiTDHhjNBlpMZmBeAMzuH2E4tkFiE3nqNUpj78,
 _jkQ6FLLN4oExYidzx__JfMhqpMTDIBTD3Z9IW_m7oFs
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1d1f0-gnfwPzO8E8OHnbIlGpA/pJwd66U\"",
+    "mtime": "2026-03-04T10:33:25.880Z",
+    "size": 119280,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"74328-CLDFkGBQ5t4X6CKqQt4WVdPmnOA\"",
+    "mtime": "2026-03-04T10:33:25.880Z",
+    "size": 475944,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));

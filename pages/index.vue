@@ -236,12 +236,12 @@ const showTorrentDetail = (record: Torrent) => {
 
 // 编辑光盘
 const editDisc = (record: Torrent) => {
-  discEditorRef.value?.open(record.hash, false)  // 默认不同步，使用数据库数据
+  discEditorRef.value?.open(record.hash, record.name, false)
 }
 
 // 同步光盘文件（从 qBittorrent 获取最新文件列表）
 const syncDiscFiles = (record: Torrent) => {
-  discEditorRef.value?.open(record.hash, true)  // 同步模式，从 qBittorrent 获取最新数据
+  discEditorRef.value?.open(record.hash, record.name, true)
 }
 
 // 光盘保存成功回调
