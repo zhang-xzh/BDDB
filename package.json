@@ -1,0 +1,28 @@
+{
+  "name": "bddb-nuxt",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@ant-design/icons-vue": "^7.0.1",
+    "@ctrl/qbittorrent": "^9.11.2",
+    "ant-design-vue": "^4.2.6",
+    "better-sqlite3": "^12.6.2",
+    "dayjs": "^1.11.13",
+    "nuxt": "^4.3.1",
+    "vue": "^3.5.13",
+    "vue-router": "^5.0.3"
+  },
+  "devDependencies": {
+    "@nuxt/devtools": "^3.2.2",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.3.3",
+    "typescript": "^5.8.2"
+  }
+}

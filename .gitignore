@@ -1,0 +1,130 @@
+# ========================================================================
+# 通用 .gitignore 模板 (涵盖 OS, IDE, 常见语言与安全)
+# ========================================================================
+
+### --- 操作系统特定文件 (OS Junk) ---
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+.fuse_hidden
+*.swp
+*~
+.trash
+
+
+### --- 常见编辑器与 IDE (IDEs & Editors) ---
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains (IntelliJ, WebStorm, PyCharm, etc.)
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+Session.vim
+.netrwhist
+
+
+### --- 编程语言相关 (Languages & Runtimes) ---
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.eslintcache
+.next/
+dist/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+.pytest_cache/
+
+# Java / Kotlin
+*.class
+*.log
+*.jar
+*.war
+*.ear
+target/
+.gradle/
+build/
+
+# C / C++ / Rust
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.exe
+*.out
+*.app
+target/  # Rust
+
+
+### --- 日志、缓存与临时文件 (Logs & Temps) ---
+*.log
+logs/
+*.bak
+*.tmp
+*.temp
+*.cache
+.sass-cache/
+
+
+### --- 敏感信息与环境变量 (Secrets - 重要!) ---
+# 永远不要提交包含 API Key 或密码的文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# 密钥文件
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+
+
+### --- 数据库与本地存储 ---
+*.sqlite
+*.db
+.data/
