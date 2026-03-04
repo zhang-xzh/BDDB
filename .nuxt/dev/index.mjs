@@ -2152,10 +2152,19 @@ function initDb() {
   });
   torrentsDb.ensureIndex({ fieldName: "is_deleted" }, () => {
   });
-  const volumesDb = getDb("volumes");
-  volumesDb.ensureIndex({ fieldName: "torrent_hash" }, () => {
+  const filesDb = getDb("files");
+  filesDb.ensureIndex({ fieldName: "torrent_id" }, () => {
   });
-  volumesDb.ensureIndex({ fieldName: "box_id" }, () => {
+  filesDb.ensureIndex({ fieldName: "is_deleted" }, () => {
+  });
+  const volumesDb = getDb("volumes");
+  volumesDb.ensureIndex({ fieldName: "torrent_id" }, () => {
+  });
+  volumesDb.ensureIndex({ fieldName: "files" }, () => {
+  });
+  volumesDb.ensureIndex({ fieldName: "is_deleted" }, () => {
+  });
+  volumesDb.ensureIndex({ fieldName: "volume_no" }, () => {
   });
   console.log("NeDB initialized");
 }
@@ -2209,25 +2218,17 @@ function getAllTorrents(includeDeleted = false) {
     });
   });
 }
-function addVolume(data) {
+function getVolumesByTorrent(torrentId) {
   return new Promise((resolve, reject) => {
-    getDb("volumes").insert({ ...data, created_at: now(), updated_at: now() }, (err) => {
+    getDb("volumes").find({ torrent_id: torrentId, is_deleted: false }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
       if (err) reject(err);
-      else resolve();
+      else resolve(docs);
     });
   });
 }
-function deleteVolumesByTorrent(hash) {
+function getVolumesByFile(fileId) {
   return new Promise((resolve, reject) => {
-    getDb("volumes").remove({ torrent_hash: hash }, { multi: true }, (err) => {
-      if (err) reject(err);
-      else resolve();
-    });
-  });
-}
-function getVolumesByTorrent(hash) {
-  return new Promise((resolve, reject) => {
-    getDb("volumes").find({ torrent_hash: hash }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
+    getDb("volumes").find({ files: fileId, is_deleted: false }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
       if (err) reject(err);
       else resolve(docs);
     });
@@ -2241,18 +2242,10 @@ function getAllVolumes() {
     });
   });
 }
-function getVolumesByBoxId(boxId) {
-  return new Promise((resolve, reject) => {
-    getDb("volumes").find({ box_id: boxId }).sort({ sort_order: 1, volume_no: 1 }).exec((err, docs) => {
-      if (err) reject(err);
-      else resolve(docs);
-    });
-  });
-}
-async function saveVolume(torrentHash, data) {
+async function saveVolume(torrentId, files, data) {
   const doc = {
-    torrent_hash: torrentHash,
-    box_id: data.box_id || "",
+    torrent_id: torrentId,
+    files,
     type: data.type || "volume",
     volume_no: data.volume_no || 0,
     sort_order: data.sort_order || 0,
@@ -2263,10 +2256,48 @@ async function saveVolume(torrentHash, data) {
     updated_at: now()
   };
   return new Promise((resolve, reject) => {
-    getDb("volumes").findOne({ torrent_hash: torrentHash }, (err, existing) => {
+    getDb("volumes").findOne({ torrent_id: torrentId, volume_no: data.volume_no }, (err, existing) => {
       if (err) return reject(err);
-      existing ? getDb("volumes").update({ torrent_hash: torrentHash }, { $set: doc }, {}, (err2) => err2 ? reject(err2) : resolve()) : getDb("volumes").insert({ ...doc, created_at: now() }, (err2) => err2 ? reject(err2) : resolve());
+      existing ? getDb("volumes").update({ torrent_id: torrentId, volume_no: data.volume_no }, { $set: doc }, {}, (err2) => err2 ? reject(err2) : resolve()) : getDb("volumes").insert({ ...doc, created_at: now() }, (err2) => err2 ? reject(err2) : resolve());
     });
+  });
+}
+function saveTorrentFiles(torrentId, files) {
+  return new Promise((resolve, reject) => {
+    const db = getDb("files");
+    const nowTs = now();
+    const docs = files.map((f) => {
+      var _a, _b;
+      return {
+        ...f,
+        torrent_id: torrentId,
+        is_deleted: (_a = f.is_deleted) != null ? _a : false,
+        synced_at: (_b = f.synced_at) != null ? _b : nowTs
+      };
+    });
+    db.remove({ torrent_id: torrentId }, { multi: true }, (err) => {
+      if (err) return reject(err);
+      if (docs.length === 0) return resolve();
+      db.insert(docs, (err2) => err2 ? reject(err2) : resolve());
+    });
+  });
+}
+function getTorrentFiles(torrentId) {
+  return new Promise((resolve, reject) => {
+    getDb("files").find({ torrent_id: torrentId, is_deleted: false }).sort({ name: 1 }).exec((err, docs) => {
+      if (err) reject(err);
+      else resolve(docs);
+    });
+  });
+}
+function softDeleteTorrentFiles(torrentId) {
+  return new Promise((resolve, reject) => {
+    getDb("files").update(
+      { torrent_id: torrentId },
+      { $set: { is_deleted: true, synced_at: now() } },
+      { multi: true },
+      (err) => err ? reject(err) : resolve()
+    );
   });
 }
 
@@ -2282,22 +2313,7 @@ _JHsvEiTDHhjNBlpMZmBeAMzuH2E4tkFiE3nqNUpj78,
 _jkQ6FLLN4oExYidzx__JfMhqpMTDIBTD3Z9IW_m7oFs
 ];
 
-const assets = {
-  "/index.mjs": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"1d1f0-gnfwPzO8E8OHnbIlGpA/pJwd66U\"",
-    "mtime": "2026-03-04T10:33:25.880Z",
-    "size": 119280,
-    "path": "index.mjs"
-  },
-  "/index.mjs.map": {
-    "type": "application/json",
-    "etag": "\"74328-CLDFkGBQ5t4X6CKqQt4WVdPmnOA\"",
-    "mtime": "2026-03-04T10:33:25.880Z",
-    "size": 475944,
-    "path": "index.mjs.map"
-  }
-};
+const assets = {};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -3119,69 +3135,13 @@ const delete_post = defineEventHandler(async (event) => {
   const hash = getQuery$1(event).hash;
   if (!hash) return { success: false, error: "Missing hash" };
   await softDeleteTorrent(hash);
+  await softDeleteTorrentFiles(hash);
   return { success: true, data: "deleted" };
 });
 
 const delete_post$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   __proto__: null,
   default: delete_post
-}, Symbol.toStringTag, { value: 'Module' }));
-
-const files_get$2 = defineEventHandler(async (event) => {
-  const hash = getQuery$1(event).hash;
-  if (!hash) return { success: false, error: "Missing hash" };
-  const torrent = await getTorrent(hash);
-  if (!torrent) return { success: false, error: "Not found" };
-  return { success: true, data: JSON.stringify(torrent.files || []) };
-});
-
-const files_get$3 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: files_get$2
-}, Symbol.toStringTag, { value: 'Module' }));
-
-const info_get = defineEventHandler(async (event) => {
-  const { state, search } = getQuery$1(event);
-  let torrents = await getAllTorrents();
-  if (state) {
-    const s = state;
-    torrents = torrents.filter((t) => {
-      var _a;
-      if (s === "paused") return (_a = t.state) == null ? void 0 : _a.includes("paused");
-      if (s === "completed") return t.progress === 100;
-      return t.state === s;
-    });
-  }
-  if (search) {
-    const k = search.toLowerCase();
-    torrents = torrents.filter((t) => t.name.toLowerCase().includes(k));
-  }
-  return { success: true, data: JSON.stringify(torrents.map((t) => {
-    var _a;
-    return { ...t, file_count: ((_a = t.files) == null ? void 0 : _a.length) || 0 };
-  })) };
-});
-
-const info_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: info_get
-}, Symbol.toStringTag, { value: 'Module' }));
-
-const stats_get = defineEventHandler(async () => {
-  const torrents = await getAllTorrents();
-  const stats = {
-    total: torrents.length,
-    downloading: torrents.filter((t) => t.state === "downloading").length,
-    seeding: torrents.filter((t) => t.state === "uploading").length,
-    paused: torrents.filter((t) => t.state.includes("paused")).length,
-    total_size: torrents.reduce((acc, t) => acc + (t.size || 0), 0)
-  };
-  return { success: true, data: JSON.stringify(stats) };
-});
-
-const stats_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: stats_get
 }, Symbol.toStringTag, { value: 'Module' }));
 
 let qbClient = null;
@@ -3219,10 +3179,18 @@ async function syncTorrentsFromQb() {
       const exists = await torrentExists(t.hash);
       if (!exists) {
         try {
-          const files = await client.torrentFiles(t.hash);
-          await addTorrent({ ...data, files, is_deleted: false });
+          const qbFiles = await client.torrentFiles(t.hash);
+          const files = qbFiles.map((f) => ({
+            ...f,
+            is_deleted: false
+          }));
+          await addTorrent({ ...data, is_deleted: false });
+          const torrent = await getTorrent(t.hash);
+          await saveTorrentFiles(torrent._id, files);
         } catch {
-          await addTorrent({ ...data, files: [], is_deleted: false });
+          await addTorrent({ ...data, is_deleted: false });
+          const torrent = await getTorrent(t.hash);
+          await saveTorrentFiles(torrent._id, []);
         }
         newCount++;
       } else {
@@ -3237,6 +3205,79 @@ async function syncTorrentsFromQb() {
   }
 }
 
+const files_get$2 = defineEventHandler(async (event) => {
+  var _a;
+  const hash = getQuery$1(event).hash;
+  if (!hash) return { success: false, error: "Missing hash" };
+  const torrent = await getTorrent(hash);
+  if (!torrent) return { success: false, error: "Torrent not found" };
+  const qb = getQbClient();
+  const qbFiles = await qb.getTorrentsFiles([hash]);
+  const files = ((_a = qbFiles[0]) == null ? void 0 : _a.files) || [];
+  await saveTorrentFiles(torrent._id, files.map((f) => ({
+    name: f.name,
+    size: f.size,
+    index: f.index,
+    piece_range: f.pieceRange,
+    progress: f.progress,
+    priority: f.priority,
+    availability: f.availability
+  })));
+  const dbFiles = await getTorrentFiles(torrent._id);
+  return { success: true, data: JSON.stringify(dbFiles) };
+});
+
+const files_get$3 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  __proto__: null,
+  default: files_get$2
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const info_get = defineEventHandler(async (event) => {
+  const { state, search, hash } = getQuery$1(event);
+  if (hash) {
+    const torrent = await getTorrent(hash);
+    if (!torrent) return { success: false, error: "Not found" };
+    return { success: true, data: JSON.stringify([torrent]) };
+  }
+  let torrents = await getAllTorrents();
+  if (state) {
+    const s = state;
+    torrents = torrents.filter((t) => {
+      var _a;
+      if (s === "paused") return (_a = t.state) == null ? void 0 : _a.includes("paused");
+      if (s === "completed") return t.progress === 100;
+      return t.state === s;
+    });
+  }
+  if (search) {
+    const k = search.toLowerCase();
+    torrents = torrents.filter((t) => t.name.toLowerCase().includes(k));
+  }
+  return { success: true, data: JSON.stringify(torrents) };
+});
+
+const info_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  __proto__: null,
+  default: info_get
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const stats_get = defineEventHandler(async () => {
+  const torrents = await getAllTorrents();
+  const stats = {
+    total: torrents.length,
+    downloading: torrents.filter((t) => t.state === "downloading").length,
+    seeding: torrents.filter((t) => t.state === "uploading").length,
+    paused: torrents.filter((t) => t.state.includes("paused")).length,
+    total_size: torrents.reduce((acc, t) => acc + (t.size || 0), 0)
+  };
+  return { success: true, data: JSON.stringify(stats) };
+});
+
+const stats_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  __proto__: null,
+  default: stats_get
+}, Symbol.toStringTag, { value: 'Module' }));
+
 const sync_post = defineEventHandler(async () => {
   const result = await syncTorrentsFromQb();
   return result.success ? { success: true, data: "synced" } : { success: false, error: result.error };
@@ -3248,9 +3289,9 @@ const sync_post$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.definePropert
 }, Symbol.toStringTag, { value: 'Module' }));
 
 const bdInfo_get = defineEventHandler(async (event) => {
-  const hash = getQuery$1(event).hash;
-  if (!hash) return { success: false, error: "Missing hash" };
-  const volumes = await getVolumesByTorrent(hash);
+  const { torrent_id, torrent_file_id } = getQuery$1(event);
+  if (!torrent_file_id) return { success: false, error: "Missing torrent_file_id" };
+  const volumes = await getVolumesByFile(torrent_file_id);
   return { success: true, data: JSON.stringify(volumes) };
 });
 
@@ -3260,10 +3301,11 @@ const bdInfo_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProper
 }, Symbol.toStringTag, { value: 'Module' }));
 
 const bdInfo_post = defineEventHandler(async (event) => {
-  const hash = getQuery$1(event).hash;
-  if (!hash) return { success: false, error: "Missing hash" };
+  const { torrent_id } = getQuery$1(event);
   const body = await readBody(event);
-  await saveVolume(hash, body || {});
+  const { files, ...volumeData } = body;
+  if (!torrent_id || !files || !Array.isArray(files)) return { success: false, error: "Missing torrent_id or files" };
+  await saveVolume(torrent_id, files, volumeData);
   return { success: true, data: "ok" };
 });
 
@@ -3276,8 +3318,9 @@ const files_get = defineEventHandler(async (event) => {
   const hash = getQuery$1(event).hash;
   if (!hash) return { success: false, error: "Missing hash" };
   const torrent = await getTorrent(hash);
-  if (!torrent) return { success: false, error: "Not found" };
-  return { success: true, data: JSON.stringify(torrent.files || []) };
+  if (!torrent) return { success: false, error: "Torrent not found" };
+  const files = await getTorrentFiles(torrent._id);
+  return { success: true, data: JSON.stringify(files) };
 });
 
 const files_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
@@ -3286,8 +3329,8 @@ const files_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.definePropert
 }, Symbol.toStringTag, { value: 'Module' }));
 
 const index_get = defineEventHandler(async (event) => {
-  const { torrent_hash, box_id } = getQuery$1(event);
-  const volumes = torrent_hash ? await getVolumesByTorrent(torrent_hash) : box_id ? await getVolumesByBoxId(box_id) : await getAllVolumes();
+  const { torrent_id, torrent_file_id } = getQuery$1(event);
+  const volumes = torrent_id ? await getVolumesByTorrent(torrent_id) : torrent_file_id ? await getVolumesByFile(torrent_file_id) : await getAllVolumes();
   return { success: true, data: JSON.stringify(volumes) };
 });
 
@@ -3298,13 +3341,11 @@ const index_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.definePropert
 
 const index_post = defineEventHandler(async (event) => {
   const body = await readBody(event);
-  const { torrent_hash, volumes } = body;
-  if (!torrent_hash) return { success: false, error: "Missing torrent_hash" };
-  if (volumes && Array.isArray(volumes)) {
-    await deleteVolumesByTorrent(torrent_hash);
-    for (const v of volumes) {
-      await addVolume({ ...v, torrent_hash });
-    }
+  const { torrent_id, files, volumes } = body;
+  if (!torrent_id || !files || !Array.isArray(files)) return { success: false, error: "Missing torrent_id or files" };
+  if (!volumes || !Array.isArray(volumes)) return { success: false, error: "Missing volumes" };
+  for (const v of volumes) {
+    await saveVolume(torrent_id, files, v);
   }
   return { success: true, data: "ok" };
 });

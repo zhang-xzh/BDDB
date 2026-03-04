@@ -1,6 +1,6 @@
 import { defineEventHandler, getQuery } from 'h3'
-import { getTorrent, saveTorrentFiles } from '#server/db/repository'
-import { createQbClient } from '#server/qb'
+import { getTorrent, saveTorrentFiles, getTorrentFiles } from '#server/db/repository'
+import { getQbClient } from '#server/qb'
 
 export default defineEventHandler(async (event) => {
   const hash = getQuery(event).hash as string
@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
   const torrent = await getTorrent(hash)
   if (!torrent) return { success: false, error: 'Torrent not found' }
   
-  const qb = createQbClient()
+  const qb = getQbClient()
   const qbFiles = await qb.getTorrentsFiles([hash])
   const files = qbFiles[0]?.files || []
   
