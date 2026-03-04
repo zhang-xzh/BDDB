@@ -2,9 +2,10 @@ import { defineEventHandler, getQuery, readBody } from 'h3'
 import { saveVolume } from '#server/db/repository'
 
 export default defineEventHandler(async (event) => {
-  const hash = getQuery(event).hash as string
-  if (!hash) return { success: false, error: 'Missing hash' }
+  const { torrent_id } = getQuery(event) as { torrent_id?: string }
   const body = await readBody(event)
-  await saveVolume(hash, body || {})
+  const { files, ...volumeData } = body
+  if (!torrent_id || !files || !Array.isArray(files)) return { success: false, error: 'Missing torrent_id or files' }
+  await saveVolume(torrent_id, files, volumeData)
   return { success: true, data: 'ok' }
 })

@@ -1,6 +1,6 @@
 import { QBittorrent, type Torrent as QbTorrent, type TorrentFile as QbTorrentFile } from '@ctrl/qbittorrent'
-import { addTorrent, updateTorrentStatus, torrentExists } from '#server/db/repository'
-import type { Torrent } from '#server/db/schema'
+import { addTorrent, updateTorrentStatus, torrentExists, saveTorrentFiles, getTorrent } from '#server/db/repository'
+import type { Torrent, TorrentFile } from '#server/db/schema'
 
 let qbClient: QBittorrent | null = null
 
@@ -34,10 +34,18 @@ export async function syncTorrentsFromQb() {
       const exists = await torrentExists(t.hash)
       if (!exists) {
         try {
-          const files = await client.torrentFiles(t.hash)
-          await addTorrent({ ...data, files, is_deleted: false } as Torrent)
+          const qbFiles = await client.torrentFiles(t.hash)
+          const files: Partial<TorrentFile>[] = qbFiles.map(f => ({
+            ...f,
+            is_deleted: false,
+          }))
+          await addTorrent({ ...data, is_deleted: false } as Torrent)
+          const torrent = await getTorrent(t.hash)
+          await saveTorrentFiles(torrent!._id!, files)
         } catch {
-          await addTorrent({ ...data, files: [], is_deleted: false } as Torrent)
+          await addTorrent({ ...data, is_deleted: false } as Torrent)
+          const torrent = await getTorrent(t.hash)
+          await saveTorrentFiles(torrent!._id!, [])
         }
         newCount++
       } else {

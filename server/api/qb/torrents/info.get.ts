@@ -1,8 +1,16 @@
 import { defineEventHandler, getQuery } from 'h3'
-import { getAllTorrents } from '#server/db/repository'
+import { getAllTorrents, getTorrent } from '#server/db/repository'
 
 export default defineEventHandler(async (event) => {
-  const { state, search } = getQuery(event)
+  const { state, search, hash } = getQuery(event)
+  
+  // 如果指定了 hash，返回单个 torrent
+  if (hash) {
+    const torrent = await getTorrent(hash as string)
+    if (!torrent) return { success: false, error: 'Not found' }
+    return { success: true, data: JSON.stringify([torrent]) }
+  }
+  
   let torrents = await getAllTorrents()
 
   if (state) {
@@ -18,5 +26,5 @@ export default defineEventHandler(async (event) => {
     torrents = torrents.filter(t => t.name.toLowerCase().includes(k))
   }
 
-  return { success: true, data: JSON.stringify(torrents.map(t => ({ ...t, file_count: t.files?.length || 0 }))) }
+  return { success: true, data: JSON.stringify(torrents) }
 })

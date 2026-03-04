@@ -59,6 +59,8 @@ yarn-error.log*
 .pnpm-debug.log*
 .eslintcache
 .next/
+.nuxt/
+.output/
 dist/
 
 # Python

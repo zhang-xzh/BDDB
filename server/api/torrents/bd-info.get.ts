@@ -1,9 +1,9 @@
 import { defineEventHandler, getQuery } from 'h3'
-import { getVolumesByTorrent } from '#server/db/repository'
+import { getVolumesByFile } from '#server/db/repository'
 
 export default defineEventHandler(async (event) => {
-  const hash = getQuery(event).hash as string
-  if (!hash) return { success: false, error: 'Missing hash' }
-  const volumes = await getVolumesByTorrent(hash)
+  const { torrent_id, torrent_file_id } = getQuery(event) as { torrent_id?: string, torrent_file_id?: string }
+  if (!torrent_file_id) return { success: false, error: 'Missing torrent_file_id' }
+  const volumes = await getVolumesByFile(torrent_file_id)
   return { success: true, data: JSON.stringify(volumes) }
 })

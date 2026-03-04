@@ -39,9 +39,15 @@ C:\APP\BDDB\
 
 ```
 data/
-├── torrents.nedb  # qBittorrent data + files array + is_deleted
-└── volumes.nedb   # Disc metadata (catalog_no, suruga_id, volume_no, etc.)
+├── torrents.nedb  # Torrent metadata (_id, hash, name, size, state, etc.)
+├── files.nedb     # Torrent files (torrent_id, name, size, index, piece_range, etc.)
+└── volumes.nedb   # Disc metadata (torrent_id, files[], volume_no, catalog_no, etc.)
 ```
+
+### Data Relations
+- `Torrent._id` → `TorrentFile.torrent_id` (one-to-many)
+- `Torrent._id` → `Volume.torrent_id` (one-to-many)
+- `TorrentFile._id` → `Volume.files[]` (many-to-many via array reference)
 
 ## Commands
 
@@ -67,13 +73,13 @@ QB_PASS=password
 - `GET /api/qb/torrents/stats` - Statistics
 - `POST /api/qb/torrents/sync` - Sync from qBittorrent
 - `POST /api/qb/torrents/delete?hash=` - Soft delete
-- `GET /api/qb/torrents/files?hash=` - Get files
+- `GET /api/qb/torrents/files?hash=` - Get files from qBittorrent and save to DB
 - `GET /api/torrents/files?hash=` - Get files from DB
 
 ### Volumes
-- `GET /api/volumes?torrent_hash=&box_id=` - List volumes
-- `POST /api/volumes` - Add volumes
-- `GET /api/torrents/bd-info?hash=` - Get BD info
+- `GET /api/volumes?torrent_id=&box_id=` - List volumes
+- `POST /api/volumes` - Add/update volumes
+- `GET /api/torrents/bd-info?torrent_file_id=` - Get BD info by file ID
 - `POST /api/torrents/bd-info?hash=` - Save BD info
 
 ### Response Format
@@ -101,7 +107,18 @@ import { Torrent as QbTorrent } from '@ctrl/qbittorrent'
 
 interface Torrent extends QbTorrent {
   _id?: string
-  files: TorrentFile[]
+  is_deleted: boolean
+  synced_at: number
+}
+```
+
+### TorrentFile (extends @ctrl/qbittorrent)
+```typescript
+import { TorrentFile as QbTorrentFile } from '@ctrl/qbittorrent'
+
+interface TorrentFile extends QbTorrentFile {
+  _id?: string
+  torrent_id: string  // Reference to Torrent._id
   is_deleted: boolean
   synced_at: number
 }
@@ -110,9 +127,17 @@ interface Torrent extends QbTorrent {
 ### Volume
 ```typescript
 {
-  torrent_hash, box_id, type, volume_no, sort_order,
-  catalog_no, suruga_id, note,
-  title?, release_date?, maker?, version_type?, bonus_status?,
-  created_at, updated_at
+  _id?: string
+  torrent_id: string    // Reference to Torrent._id
+  files: string[]       // Array of TorrentFile._id
+  type: 'volume' | 'box'
+  volume_no: number
+  sort_order: number
+  volume_name?: string
+  catalog_no: string
+  suruga_id: string
+  note: string
+  created_at: number
+  updated_at: number
 }
 ```

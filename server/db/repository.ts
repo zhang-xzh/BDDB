@@ -1,5 +1,5 @@
 import { getDb } from './index'
-import type { Torrent, Volume, QueryCondition } from './schema'
+import type { Torrent, TorrentFile, Volume, QueryCondition } from './schema'
 
 const now = () => Math.floor(Date.now() / 1000)
 
@@ -7,9 +7,14 @@ export function initDb() {
   const torrentsDb = getDb('torrents')
   torrentsDb.ensureIndex({ fieldName: 'hash', unique: true }, () => {})
   torrentsDb.ensureIndex({ fieldName: 'is_deleted' }, () => {})
+  const filesDb = getDb('files')
+  filesDb.ensureIndex({ fieldName: 'torrent_id' }, () => {})
+  filesDb.ensureIndex({ fieldName: 'is_deleted' }, () => {})
   const volumesDb = getDb('volumes')
-  volumesDb.ensureIndex({ fieldName: 'torrent_hash' }, () => {})
-  volumesDb.ensureIndex({ fieldName: 'box_id' }, () => {})
+  volumesDb.ensureIndex({ fieldName: 'torrent_id' }, () => {})
+  volumesDb.ensureIndex({ fieldName: 'files' }, () => {})
+  volumesDb.ensureIndex({ fieldName: 'is_deleted' }, () => {})
+  volumesDb.ensureIndex({ fieldName: 'volume_no' }, () => {})
   console.log('NeDB initialized')
 }
 
@@ -108,18 +113,27 @@ export function deleteVolume(id: string): Promise<void> {
   })
 }
 
-export function deleteVolumesByTorrent(hash: string): Promise<void> {
+export function deleteVolumesByTorrent(torrentId: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    getDb('volumes').remove({ torrent_hash: hash }, { multi: true }, (err) => {
+    getDb('volumes').remove({ torrent_id: torrentId }, { multi: true }, (err) => {
       if (err) reject(err)
       else resolve()
     })
   })
 }
 
-export function getVolumesByTorrent(hash: string): Promise<Volume[]> {
+export function getVolumesByTorrent(torrentId: string): Promise<Volume[]> {
   return new Promise((resolve, reject) => {
-    getDb('volumes').find({ torrent_hash: hash }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
+    getDb('volumes').find({ torrent_id: torrentId, is_deleted: false }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
+      if (err) reject(err)
+      else resolve(docs as Volume[])
+    })
+  })
+}
+
+export function getVolumesByFile(fileId: string): Promise<Volume[]> {
+  return new Promise((resolve, reject) => {
+    getDb('volumes').find({ files: fileId, is_deleted: false }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
       if (err) reject(err)
       else resolve(docs as Volume[])
     })
@@ -144,19 +158,14 @@ export function getAllVolumes(): Promise<Volume[]> {
   })
 }
 
-export function getVolumesByBoxId(boxId: string): Promise<Volume[]> {
-  return new Promise((resolve, reject) => {
-    getDb('volumes').find({ box_id: boxId }).sort({ sort_order: 1, volume_no: 1 }).exec((err, docs) => {
-      if (err) reject(err)
-      else resolve(docs as Volume[])
-    })
-  })
+export function getVolumesByBoxId(): Promise<Volume[]> {
+  return Promise.resolve([])
 }
 
-export async function saveVolume(torrentHash: string, data: Partial<Volume>): Promise<void> {
+export async function saveVolume(torrentId: string, files: string[], data: Partial<Volume>): Promise<void> {
   const doc = {
-    torrent_hash: torrentHash,
-    box_id: data.box_id || '',
+    torrent_id: torrentId,
+    files: files,
     type: data.type || 'volume',
     volume_no: data.volume_no || 0,
     sort_order: data.sort_order || 0,
@@ -167,11 +176,68 @@ export async function saveVolume(torrentHash: string, data: Partial<Volume>): Pr
     updated_at: now(),
   }
   return new Promise((resolve, reject) => {
-    getDb('volumes').findOne({ torrent_hash: torrentHash }, (err, existing) => {
+    getDb('volumes').findOne({ torrent_id: torrentId, volume_no: data.volume_no }, (err, existing) => {
       if (err) return reject(err)
       const op = existing
-        ? getDb('volumes').update({ torrent_hash: torrentHash }, { $set: doc }, {}, (err) => err ? reject(err) : resolve())
+        ? getDb('volumes').update({ torrent_id: torrentId, volume_no: data.volume_no }, { $set: doc }, {}, (err) => err ? reject(err) : resolve())
         : getDb('volumes').insert({ ...doc, created_at: now() }, (err) => err ? reject(err) : resolve())
     })
+  })
+}
+
+export function clearAllData(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const dbs = ['torrents', 'files', 'volumes']
+    let completed = 0
+    dbs.forEach(dbName => {
+      const db = getDb(dbName)
+      db.remove({}, { multi: true }, (err) => {
+        if (err) return reject(err)
+        completed++
+        if (completed === dbs.length) resolve()
+      })
+    })
+  })
+}
+
+// TorrentFile CRUD
+export function saveTorrentFiles(torrentId: string, files: Partial<TorrentFile>[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const db = getDb('files')
+    const nowTs = now()
+    const docs = files.map(f => ({
+      ...f,
+      torrent_id: torrentId,
+      is_deleted: f.is_deleted ?? false,
+      synced_at: f.synced_at ?? nowTs,
+    }))
+
+    // 先删除旧文件，再插入新文件
+    db.remove({ torrent_id: torrentId }, { multi: true }, (err) => {
+      if (err) return reject(err)
+      if (docs.length === 0) return resolve()
+      db.insert(docs, (err) => err ? reject(err) : resolve())
+    })
+  })
+}
+
+export function getTorrentFiles(torrentId: string): Promise<TorrentFile[]> {
+  return new Promise((resolve, reject) => {
+    getDb('files').find({ torrent_id: torrentId, is_deleted: false })
+      .sort({ name: 1 }).exec((err, docs) => {
+        if (err) reject(err)
+        else resolve(docs as TorrentFile[])
+      })
+  })
+}
+
+export function softDeleteTorrentFiles(torrentId: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    getDb('files').update(
+      { torrent_id: torrentId },
+      { $set: { is_deleted: true, synced_at: now() } },
+      { multi: true },
+      (err) => err ? reject(err) : resolve()
+    )
   })
 }

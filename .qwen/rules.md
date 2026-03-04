@@ -27,3 +27,11 @@
 - **Minimal CSS** - prefer component props and slots over custom styles
 - Use `a-space`, `a-card`, `a-form` for layouts
 - Use `a-typography-text` with `ellipsis` for text truncation
+
+## Performance Rules
+- **Use any complex algorithms to optimize performance**
+- **Introduce specialized libraries when needed** (e.g., lodash, fast-deep-equal, immutable)
+- **No need to consider human readability** - treat code as machine-generated
+- Pre-compute and cache data structures (e.g., path maps, lookup tables)
+- Use BFS/DFS instead of array filtering for tree traversal
+- Avoid O(n²) operations on large datasets
