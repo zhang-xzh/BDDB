@@ -124,7 +124,7 @@ export function deleteVolumesByTorrent(torrentId: string): Promise<void> {
 
 export function getVolumesByTorrent(torrentId: string): Promise<Volume[]> {
   return new Promise((resolve, reject) => {
-    getDb('volumes').find({ torrent_id: torrentId, is_deleted: false }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
+    getDb('volumes').find({ torrent_id: torrentId, $or: [{ is_deleted: false }, { is_deleted: { $exists: false } }] }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
       if (err) reject(err)
       else resolve(docs as Volume[])
     })
@@ -133,7 +133,7 @@ export function getVolumesByTorrent(torrentId: string): Promise<Volume[]> {
 
 export function getVolumesByFile(fileId: string): Promise<Volume[]> {
   return new Promise((resolve, reject) => {
-    getDb('volumes').find({ files: fileId, is_deleted: false }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
+    getDb('volumes').find({ files: fileId, $or: [{ is_deleted: false }, { is_deleted: { $exists: false } }] }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
       if (err) reject(err)
       else resolve(docs as Volume[])
     })
@@ -173,6 +173,7 @@ export async function saveVolume(torrentId: string, files: string[], data: Parti
     catalog_no: data.catalog_no || '',
     suruga_id: data.suruga_id || '',
     note: data.note || '',
+    is_deleted: false,
     updated_at: now(),
   }
   return new Promise((resolve, reject) => {
@@ -223,7 +224,7 @@ export function saveTorrentFiles(torrentId: string, files: Partial<TorrentFile>[
 
 export function getTorrentFiles(torrentId: string): Promise<TorrentFile[]> {
   return new Promise((resolve, reject) => {
-    getDb('files').find({ torrent_id: torrentId, is_deleted: false })
+    getDb('files').find({ torrent_id: torrentId, $or: [{ is_deleted: false }, { is_deleted: { $exists: false } }] })
       .sort({ name: 1 }).exec((err, docs) => {
         if (err) reject(err)
         else resolve(docs as TorrentFile[])

@@ -2220,7 +2220,7 @@ function getAllTorrents(includeDeleted = false) {
 }
 function getVolumesByTorrent(torrentId) {
   return new Promise((resolve, reject) => {
-    getDb("volumes").find({ torrent_id: torrentId, is_deleted: false }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
+    getDb("volumes").find({ torrent_id: torrentId, $or: [{ is_deleted: false }, { is_deleted: { $exists: false } }] }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
       if (err) reject(err);
       else resolve(docs);
     });
@@ -2228,7 +2228,7 @@ function getVolumesByTorrent(torrentId) {
 }
 function getVolumesByFile(fileId) {
   return new Promise((resolve, reject) => {
-    getDb("volumes").find({ files: fileId, is_deleted: false }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
+    getDb("volumes").find({ files: fileId, $or: [{ is_deleted: false }, { is_deleted: { $exists: false } }] }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
       if (err) reject(err);
       else resolve(docs);
     });
@@ -2253,6 +2253,7 @@ async function saveVolume(torrentId, files, data) {
     catalog_no: data.catalog_no || "",
     suruga_id: data.suruga_id || "",
     note: data.note || "",
+    is_deleted: false,
     updated_at: now()
   };
   return new Promise((resolve, reject) => {
@@ -2284,7 +2285,7 @@ function saveTorrentFiles(torrentId, files) {
 }
 function getTorrentFiles(torrentId) {
   return new Promise((resolve, reject) => {
-    getDb("files").find({ torrent_id: torrentId, is_deleted: false }).sort({ name: 1 }).exec((err, docs) => {
+    getDb("files").find({ torrent_id: torrentId, $or: [{ is_deleted: false }, { is_deleted: { $exists: false } }] }).sort({ name: 1 }).exec((err, docs) => {
       if (err) reject(err);
       else resolve(docs);
     });

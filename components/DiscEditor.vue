@@ -44,7 +44,7 @@
             <div class="tree-node">
               <a-typography-text class="node-title" :ellipsis="{ tooltip: title }" :content="title" />
               <a-select
-                :value="nodeData.get(key)?.volume_no"
+                :value="getNodeVolume(key)"
                 @change="(val) => onVolumeChange(key, val)"
                 style="width: 100px"
                 size="small"
@@ -66,6 +66,7 @@
 <script setup lang="ts">
 import { message } from 'ant-design-vue'
 import type { DataNode } from 'ant-design-vue/es/tree'
+import { triggerRef } from 'vue'
 
 interface FileItem {
   _id?: string
@@ -115,8 +116,8 @@ const files = ref<FileItem[]>([])
 
 // 树数据
 const treeData = ref<DataNode[]>([])
-// 节点数据
-const nodeData = ref<Map<string, NodeData>>(new Map())
+// 节点数据 - 使用 shallowRef + 手动触发更新
+const nodeData = shallowRef<Map<string, NodeData>>(new Map())
 // 扁平树结构
 const flatTree = ref<FlatTree>({ map: new Map(), order: [], leaves: [] })
 // 默认展开的键
@@ -125,6 +126,11 @@ const defaultExpandedKeys = ref<string[]>([])
 const volumeToKeys = ref<Map<number, Set<string>>>(new Map())
 // 文件 ID 到节点 key 的映射
 const fileToKey = ref<Map<string, string>>(new Map())
+
+// 辅助函数：获取节点的卷号（用于模板）
+const getNodeVolume = (key: string) => {
+  return nodeData.value.get(key)?.volume_no
+}
 
 // 计算已选择的卷号
 const selectedVolumes = computed(() => {
@@ -201,6 +207,7 @@ const buildTree = () => {
   // 批量更新
   flatTree.value = { map: flatMap, order, leaves }
   nodeData.value = nodeDataMap
+  triggerRef(nodeData)  // 强制触发响应式更新
   fileToKey.value = fileToKeyMap
   treeData.value = treeDataResult
 
@@ -239,6 +246,7 @@ const onVolumeChange = (key: string, volumeNo: number | null) => {
     newMap.set(k, { ...currentData, volume_no: vol })
   })
   nodeData.value = newMap
+  triggerRef(nodeData)  // 强制触发响应式更新
 
   // 更新反向索引
   nodesToUpdate.forEach(k => {
@@ -310,6 +318,9 @@ const resetData = () => {
 
 // 打开弹窗
 const open = async (torrentHash: string, name: string = '', syncFiles = false) => {
+  visible.value = true
+  torrentName.value = name
+
   // 重置状态
   volumeForms.value = {}
   treeData.value = []
@@ -319,15 +330,14 @@ const open = async (torrentHash: string, name: string = '', syncFiles = false) =
   volumeToKeys.value = new Map()
   fileToKey.value = new Map()
   files.value = []
+  torrentId.value = ''
+  volumeType.value = 'volume'
 
-  visible.value = true
-  torrentName.value = name
-
-  // 获取 torrent 信息
+  // 获取 torrent 信息 - 使用 $fetch 避免缓存
   try {
-    const { data } = await useFetch(`/api/qb/torrents/info`, { query: { hash: torrentHash } })
-    if (data.value?.success) {
-      const torrents = JSON.parse(data.value.data)
+    const result: any = await $fetch(`/api/qb/torrents/info?hash=${torrentHash}`)
+    if (result?.success) {
+      const torrents = JSON.parse(result.data)
       const torrent = torrents?.[0]
       if (torrent) {
         torrentId.value = torrent._id
@@ -338,12 +348,12 @@ const open = async (torrentHash: string, name: string = '', syncFiles = false) =
     console.error('获取 torrent 信息失败:', error)
   }
 
-  // 获取文件列表
+  // 获取文件列表 - 使用 $fetch 确保每次都重新查询
   try {
     const apiPath = syncFiles ? `/api/qb/torrents/files` : `/api/torrents/files`
-    const { data } = await useFetch(apiPath, { query: { hash: torrentHash } })
-    if (data.value?.success) {
-      files.value = JSON.parse(data.value.data)
+    const result: any = await $fetch(`${apiPath}?hash=${torrentHash}`)
+    if (result?.success) {
+      files.value = JSON.parse(result.data)
       console.log('[DiscEditor] files loaded:', files.value.length)
       // 文件加载完成后构建树
       await nextTick()
@@ -354,9 +364,9 @@ const open = async (torrentHash: string, name: string = '', syncFiles = false) =
       if (torrentId.value) {
         try {
           // 使用 /api/volumes?torrent_id=xxx 获取该 torrent 的所有卷
-          const { data } = await useFetch(`/api/volumes`, { query: { torrent_id: torrentId.value } })
-          if (data.value?.success) {
-            const volumes = JSON.parse(data.value.data)
+          const result: any = await $fetch(`/api/volumes?torrent_id=${torrentId.value}`)
+          if (result?.success) {
+            const volumes = JSON.parse(result.data)
             console.log('[DiscEditor] loaded volumes:', volumes)
             console.log('[DiscEditor] fileToKey before load:', Object.fromEntries(fileToKey.value))
             if (volumes?.length > 0) {
@@ -407,12 +417,13 @@ const setVolumeByFileId = (fileId: string, volumeNo: number) => {
   const vol = volumeNo
   const oldVol = nodeData.value.get(key)?.volume_no
 
-  // 更新当前节点 - 重新赋值整个 Map 以触发响应式更新
-  const currentData = nodeData.value.get(key) || {}
+  // 更新当前节点 - 重新创建 Map 以触发 shallowRef 更新
   const newMap = new Map(nodeData.value)
+  const currentData = newMap.get(key) || {}
   newMap.set(key, { ...currentData, volume_no: vol })
-  nodeData.value = newMap
-  console.log('[DiscEditor] updated node:', key, 'volume:', vol)
+  nodeData.value = newMap  // 重新赋值触发 shallowRef 更新
+  triggerRef(nodeData)  // 强制触发响应式更新
+  console.log('[DiscEditor] updated node:', key, 'volume:', vol, 'newMap size:', newMap.size)
 
   // 更新反向索引
   if (vol !== undefined) {
