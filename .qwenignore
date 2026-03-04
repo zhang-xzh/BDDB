@@ -1,0 +1,21 @@
+# Qwen Code Ignore Rules
+
+# Build outputs
+.nuxt/
+.node/
+dist/
+.data/
+
+# Dependencies
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+data/*.nedb

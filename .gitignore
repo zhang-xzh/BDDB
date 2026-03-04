@@ -126,5 +126,9 @@ logs/
 
 ### --- 数据库与本地存储 ---
 *.sqlite
+*.sqlite-shm
+*.sqlite-wal
 *.db
 .data/
+data/
+*.nedb

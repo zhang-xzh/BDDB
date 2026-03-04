@@ -8,16 +8,15 @@ import { escapeHtml } from 'file://C:/APP/BDDB/node_modules/@vue/shared/dist/sha
 import { QBittorrent } from 'file://C:/APP/BDDB/node_modules/@ctrl/qbittorrent/dist/src/index.js';
 import { createRenderer, getRequestDependencies, getPreloadLinks, getPrefetchLinks } from 'file://C:/APP/BDDB/node_modules/vue-bundle-renderer/dist/runtime.mjs';
 import { parseURL, withoutBase, joinURL, getQuery, withQuery, withTrailingSlash, decodePath, withLeadingSlash, withoutTrailingSlash, joinRelativeURL } from 'file://C:/APP/BDDB/node_modules/ufo/dist/index.mjs';
+import destr, { destr as destr$1 } from 'file://C:/APP/BDDB/node_modules/destr/dist/index.mjs';
 import { renderToString } from 'file://C:/APP/BDDB/node_modules/vue/server-renderer/index.mjs';
 import { klona } from 'file://C:/APP/BDDB/node_modules/klona/dist/index.mjs';
 import defu, { defuFn } from 'file://C:/APP/BDDB/node_modules/defu/dist/defu.mjs';
-import destr, { destr as destr$1 } from 'file://C:/APP/BDDB/node_modules/destr/dist/index.mjs';
 import { snakeCase } from 'file://C:/APP/BDDB/node_modules/scule/dist/index.mjs';
 import { createHead as createHead$1, propsToString, renderSSRHead } from 'file://C:/APP/BDDB/node_modules/unhead/dist/server.mjs';
 import { stringify, uneval } from 'file://C:/APP/BDDB/node_modules/devalue/index.js';
 import { isVNode, isRef, toValue } from 'file://C:/APP/BDDB/node_modules/vue/index.mjs';
-import { DeprecationsPlugin, PromisesPlugin, TemplateParamsPlugin, AliasSortingPlugin } from 'file://C:/APP/BDDB/node_modules/unhead/dist/plugins.mjs';
-import { createHooks } from 'hookable';
+import { createHooks } from 'file://C:/APP/BDDB/node_modules/nitropack/node_modules/hookable/dist/index.mjs';
 import { createFetch, Headers as Headers$1 } from 'file://C:/APP/BDDB/node_modules/ofetch/dist/node.mjs';
 import { fetchNodeRequestHandler, callNodeRequestHandler } from 'file://C:/APP/BDDB/node_modules/node-mock-http/dist/index.mjs';
 import { createStorage, prefixStorage } from 'file://C:/APP/BDDB/node_modules/unstorage/dist/index.mjs';
@@ -33,6 +32,9 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { getContext } from 'file://C:/APP/BDDB/node_modules/unctx/dist/index.mjs';
 import { captureRawStackTrace, parseRawStackTrace } from 'file://C:/APP/BDDB/node_modules/errx/dist/index.js';
 import Database from 'file://C:/APP/BDDB/node_modules/better-sqlite3/lib/index.js';
+import { drizzle } from 'file://C:/APP/BDDB/node_modules/drizzle-orm/better-sqlite3/index.js';
+import { sqliteTable, integer, text, real } from 'file://C:/APP/BDDB/node_modules/drizzle-orm/sqlite-core/index.js';
+import { eq, asc, desc, count, and, like, sql } from 'file://C:/APP/BDDB/node_modules/drizzle-orm/index.js';
 import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/APP/BDDB/node_modules/pathe/dist/index.mjs';
@@ -698,9 +700,9 @@ new Proxy(/* @__PURE__ */ Object.create(null), {
   }
 });
 
-const config = useRuntimeConfig();
+const config$1 = useRuntimeConfig();
 const _routeRulesMatcher = toRouteMatcher(
-  createRouter({ routes: config.nitro.routeRules })
+  createRouter({ routes: config$1.nitro.routeRules })
 );
 function createRouteRulesHandler(ctx) {
   return eventHandler((event) => {
@@ -2043,6 +2045,10 @@ const appTeleportTag = "div";
 
 const appTeleportAttrs = {"id":"teleports"};
 
+const appSpaLoaderTag = "div";
+
+const appSpaLoaderAttrs = {"id":"__nuxt-loader"};
+
 const appId = "nuxt-app";
 
 const devReducers = {
@@ -2129,406 +2135,280 @@ function onConsoleLog(callback) {
 	consola$1.wrapConsole();
 }
 
+const torrents = sqliteTable("torrents", {
+  hash: text("hash").primaryKey(),
+  name: text("name").notNull(),
+  size: integer("size").default(0),
+  progress: real("progress").default(0),
+  state: text("state").default(""),
+  num_seeds: integer("num_seeds").default(0),
+  num_leechs: integer("num_leechs").default(0),
+  added_on: integer("added_on").default(0),
+  completion_on: integer("completion_on").default(0),
+  save_path: text("save_path").default(""),
+  uploaded: real("uploaded").default(0),
+  downloaded: real("downloaded").default(0),
+  is_deleted: integer("is_deleted", { mode: "boolean" }).default(false),
+  torrent_type: text("torrent_type").default("single"),
+  created_at: integer("created_at").default(0),
+  updated_at: integer("updated_at").default(0)
+});
+const files = sqliteTable("files", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  torrent_hash: text("torrent_hash").notNull().references(() => torrents.hash, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  size: integer("size").default(0),
+  progress: real("progress").default(0),
+  file_index: integer("file_index").default(0),
+  created_at: integer("created_at").default(0),
+  updated_at: integer("updated_at").default(0)
+});
+const box_members = sqliteTable("box_members", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  box_hash: text("box_hash").notNull().references(() => torrents.hash, { onDelete: "cascade" }),
+  member_hash: text("member_hash").notNull().references(() => torrents.hash, { onDelete: "cascade" }),
+  sort_order: integer("sort_order").default(0),
+  created_at: integer("created_at").default(0)
+});
+const discs = sqliteTable("discs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  torrent_hash: text("torrent_hash").notNull().references(() => torrents.hash, { onDelete: "cascade" }),
+  root_path: text("root_path").notNull(),
+  disc_type: text("disc_type").default("volume"),
+  catalog_no: text("catalog_no").default(""),
+  catalog_maker: text("catalog_maker").default(""),
+  maker: text("maker").default(""),
+  release_date: text("release_date").default(""),
+  version_type: text("version_type").default(""),
+  bonus_status: text("bonus_status").default(""),
+  suruga_id: text("suruga_id").default(""),
+  volume_no: integer("volume_no").default(0),
+  disc_no: integer("disc_no").default(0),
+  note: text("note").default(""),
+  created_at: integer("created_at").default(0),
+  updated_at: integer("updated_at").default(0)
+});
+const bd_info = sqliteTable("bd_info", {
+  torrent_hash: text("torrent_hash").primaryKey().references(() => torrents.hash, { onDelete: "cascade" }),
+  catalog_no: text("catalog_no").default(""),
+  catalog_maker: text("catalog_maker").default(""),
+  maker: text("maker").default(""),
+  release_date: text("release_date").default(""),
+  model_no: text("model_no").default(""),
+  version_type: text("version_type").default(""),
+  bonus_status: text("bonus_status").default(""),
+  suruga_id: text("suruga_id").default(""),
+  volume_type: text("volume_type").default(""),
+  volume_no: integer("volume_no").default(0),
+  note: text("note").default(""),
+  created_at: integer("created_at").default(0),
+  updated_at: integer("updated_at").default(0)
+});
+const config = sqliteTable("config", {
+  key: text("key").primaryKey(),
+  value: text("value"),
+  updated_at: integer("updated_at").default(0)
+});
+
+const schema = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  __proto__: null,
+  bd_info: bd_info,
+  box_members: box_members,
+  config: config,
+  discs: discs,
+  files: files,
+  torrents: torrents
+}, Symbol.toStringTag, { value: 'Module' }));
+
 const DATABASE_PATH = join(process.cwd(), "bddb.sqlite");
-let db = null;
+let db$1 = null;
+let drizzleDb = null;
 function getDb() {
-  if (!db) {
-    db = new Database(DATABASE_PATH);
-    db.pragma("journal_mode = WAL");
+  if (!db$1) {
+    db$1 = new Database(DATABASE_PATH);
+    db$1.pragma("journal_mode = WAL");
   }
-  return db;
+  return db$1;
 }
+function getDrizzleDb() {
+  if (!drizzleDb) {
+    drizzleDb = drizzle(getDb(), { schema });
+  }
+  return drizzleDb;
+}
+
+const db = getDrizzleDb();
+const rawDb = getDb();
 function initDb() {
-  const database = getDb();
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS torrents (
-      hash TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      size INTEGER DEFAULT 0,
-      progress REAL DEFAULT 0,
-      state TEXT DEFAULT '',
-      num_seeds INTEGER DEFAULT 0,
-      num_leechs INTEGER DEFAULT 0,
-      added_on INTEGER DEFAULT 0,
-      completion_on INTEGER DEFAULT 0,
-      save_path TEXT DEFAULT '',
-      uploaded REAL DEFAULT 0,
-      downloaded REAL DEFAULT 0,
-      is_deleted INTEGER DEFAULT 0,
-      torrent_type TEXT DEFAULT 'single',
-      created_at INTEGER DEFAULT (strftime('%s', 'now')),
-      updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-    )
-  `);
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS files (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      torrent_hash TEXT NOT NULL,
-      name TEXT NOT NULL,
-      size INTEGER DEFAULT 0,
-      progress REAL DEFAULT 0,
-      file_index INTEGER DEFAULT 0,
-      created_at INTEGER DEFAULT (strftime('%s', 'now')),
-      updated_at INTEGER DEFAULT (strftime('%s', 'now')),
-      FOREIGN KEY (torrent_hash) REFERENCES torrents(hash) ON DELETE CASCADE,
-      UNIQUE(torrent_hash, name)
-    )
-  `);
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS box_members (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      box_hash TEXT NOT NULL,
-      member_hash TEXT NOT NULL,
-      sort_order INTEGER DEFAULT 0,
-      created_at INTEGER DEFAULT (strftime('%s', 'now')),
-      FOREIGN KEY (box_hash) REFERENCES torrents(hash) ON DELETE CASCADE,
-      FOREIGN KEY (member_hash) REFERENCES torrents(hash) ON DELETE CASCADE,
-      UNIQUE(box_hash, member_hash)
-    )
-  `);
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS discs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      torrent_hash TEXT NOT NULL,
-      root_path TEXT NOT NULL,
-      disc_type TEXT DEFAULT 'volume',
-      catalog_no TEXT DEFAULT '',
-      catalog_maker TEXT DEFAULT '',
-      maker TEXT DEFAULT '',
-      release_date TEXT DEFAULT '',
-      version_type TEXT DEFAULT '',
-      bonus_status TEXT DEFAULT '',
-      suruga_id TEXT DEFAULT '',
-      volume_no INTEGER DEFAULT 0,
-      disc_no INTEGER DEFAULT 0,
-      note TEXT DEFAULT '',
-      created_at INTEGER DEFAULT (strftime('%s', 'now')),
-      updated_at INTEGER DEFAULT (strftime('%s', 'now')),
-      FOREIGN KEY (torrent_hash) REFERENCES torrents(hash) ON DELETE CASCADE
-    )
-  `);
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS bd_info (
-      torrent_hash TEXT PRIMARY KEY,
-      catalog_no TEXT DEFAULT '',
-      catalog_maker TEXT DEFAULT '',
-      maker TEXT DEFAULT '',
-      release_date TEXT DEFAULT '',
-      model_no TEXT DEFAULT '',
-      version_type TEXT DEFAULT '',
-      bonus_status TEXT DEFAULT '',
-      suruga_id TEXT DEFAULT '',
-      note TEXT DEFAULT '',
-      created_at INTEGER DEFAULT (strftime('%s', 'now')),
-      updated_at INTEGER DEFAULT (strftime('%s', 'now')),
-      FOREIGN KEY (torrent_hash) REFERENCES torrents(hash) ON DELETE CASCADE
-    )
-  `);
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS config (
-      key TEXT PRIMARY KEY,
-      value TEXT,
-      updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-    )
-  `);
-  database.exec(`
+  rawDb.exec(`
     CREATE INDEX IF NOT EXISTS idx_torrents_state ON torrents(state)
   `);
-  database.exec(`
+  rawDb.exec(`
     CREATE INDEX IF NOT EXISTS idx_torrents_deleted ON torrents(is_deleted)
   `);
-  database.exec(`
+  rawDb.exec(`
     CREATE INDEX IF NOT EXISTS idx_files_hash ON files(torrent_hash)
   `);
-  database.exec(`
+  rawDb.exec(`
     CREATE INDEX IF NOT EXISTS idx_box_members_box ON box_members(box_hash)
   `);
-  console.log("Database initialized");
+  console.log("Database indexes initialized");
 }
 function torrentExists(hash) {
-  const db2 = getDb();
-  const stmt = db2.prepare("SELECT 1 FROM torrents WHERE hash = ?");
-  const result = stmt.get(hash);
+  const result = db.select().from(torrents).where(eq(torrents.hash, hash)).get();
   return result !== void 0;
 }
 function addTorrent(data) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
-  const db2 = getDb();
   const now = Math.floor(Date.now() / 1e3);
-  const stmt = db2.prepare(`
-    INSERT OR REPLACE INTO torrents
-    (hash, name, size, progress, state, num_seeds, num_leechs, added_on,
-     completion_on, save_path, uploaded, downloaded, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  stmt.run(
-    data.hash,
-    data.name,
-    (_a = data.size) != null ? _a : 0,
-    (_b = data.progress) != null ? _b : 0,
-    (_c = data.state) != null ? _c : "",
-    (_d = data.num_seeds) != null ? _d : 0,
-    (_e = data.num_leechs) != null ? _e : 0,
-    (_f = data.added_on) != null ? _f : 0,
-    (_g = data.completion_on) != null ? _g : 0,
-    (_h = data.save_path) != null ? _h : "",
-    (_i = data.uploaded) != null ? _i : 0,
-    (_j = data.downloaded) != null ? _j : 0,
-    now
-  );
+  db.insert(torrents).values({
+    ...data,
+    updated_at: now
+  }).onConflictDoUpdate({
+    target: torrents.hash,
+    set: {
+      ...data,
+      updated_at: now
+    }
+  }).run();
 }
 function updateTorrentStatus(hash, data) {
-  var _a, _b, _c, _d, _e, _f;
-  const db2 = getDb();
   const now = Math.floor(Date.now() / 1e3);
-  const stmt = db2.prepare(`
-    UPDATE torrents SET
-    progress = ?, state = ?, num_seeds = ?, num_leechs = ?,
-    uploaded = ?, downloaded = ?, updated_at = ?
-    WHERE hash = ?
-  `);
-  stmt.run(
-    (_a = data.progress) != null ? _a : 0,
-    (_b = data.state) != null ? _b : "",
-    (_c = data.num_seeds) != null ? _c : 0,
-    (_d = data.num_leechs) != null ? _d : 0,
-    (_e = data.uploaded) != null ? _e : 0,
-    (_f = data.downloaded) != null ? _f : 0,
-    now,
-    hash
-  );
+  db.update(torrents).set({
+    ...data,
+    updated_at: now
+  }).where(eq(torrents.hash, hash)).run();
 }
 function softDeleteTorrent(hash) {
-  const db2 = getDb();
   const now = Math.floor(Date.now() / 1e3);
-  const stmt = db2.prepare("UPDATE torrents SET is_deleted = 1, updated_at = ? WHERE hash = ?");
-  stmt.run(now, hash);
-}
-function getTorrent(hash) {
-  const db2 = getDb();
-  const stmt = db2.prepare("SELECT * FROM torrents WHERE hash = ?");
-  return stmt.get(hash);
+  db.update(torrents).set({ is_deleted: true, updated_at: now }).where(eq(torrents.hash, hash)).run();
 }
 function getAllTorrents(includeDeleted = false) {
-  const db2 = getDb();
-  const query = includeDeleted ? "SELECT * FROM torrents ORDER BY added_on DESC" : "SELECT * FROM torrents WHERE is_deleted = 0 ORDER BY added_on DESC";
-  const stmt = db2.prepare(query);
-  return stmt.all();
+  if (includeDeleted) {
+    return db.select().from(torrents).orderBy(desc(torrents.added_on)).all();
+  }
+  return db.select().from(torrents).where(eq(torrents.is_deleted, false)).orderBy(desc(torrents.added_on)).all();
 }
-function setTorrentType(hash, torrentType) {
-  const db2 = getDb();
+function setTorrentType(hash, torrent_type) {
   const now = Math.floor(Date.now() / 1e3);
-  const stmt = db2.prepare("UPDATE torrents SET torrent_type = ?, updated_at = ? WHERE hash = ?");
-  stmt.run(torrentType, now, hash);
+  db.update(torrents).set({ torrent_type, updated_at: now }).where(eq(torrents.hash, hash)).run();
 }
-function addFiles(hash, files) {
-  const db2 = getDb();
+function addFiles(hash, filesData) {
   const now = Math.floor(Date.now() / 1e3);
-  const stmt = db2.prepare(`
-    INSERT OR REPLACE INTO files
-    (torrent_hash, name, size, progress, file_index, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-  const insertMany = db2.transaction((files2) => {
-    var _a, _b, _c;
-    for (let i = 0; i < files2.length; i++) {
-      const f = files2[i];
-      stmt.run(hash, (_a = f.name) != null ? _a : "", (_b = f.size) != null ? _b : 0, (_c = f.progress) != null ? _c : 0, i, now);
-    }
+  const insertData = filesData.map((f, index) => {
+    var _a, _b;
+    return {
+      torrent_hash: hash,
+      name: f.name,
+      size: (_a = f.size) != null ? _a : 0,
+      progress: (_b = f.progress) != null ? _b : 0,
+      file_index: index,
+      updated_at: now
+    };
   });
-  insertMany(files);
+  for (const data of insertData) {
+    db.insert(files).values(data).onConflictDoUpdate({
+      target: [files.torrent_hash, files.name],
+      set: data
+    }).run();
+  }
 }
 function getFiles(hash) {
-  const db2 = getDb();
-  const stmt = db2.prepare("SELECT * FROM files WHERE torrent_hash = ? ORDER BY file_index");
-  return stmt.all(hash);
-}
-function addBoxMember(boxHash, memberHash, sortOrder = 0) {
-  const db2 = getDb();
-  const stmt = db2.prepare(`
-    INSERT OR IGNORE INTO box_members (box_hash, member_hash, sort_order)
-    VALUES (?, ?, ?)
-  `);
-  stmt.run(boxHash, memberHash, sortOrder);
-}
-function removeBoxMember(boxHash, memberHash) {
-  const db2 = getDb();
-  const stmt = db2.prepare("DELETE FROM box_members WHERE box_hash = ? AND member_hash = ?");
-  stmt.run(boxHash, memberHash);
-}
-function getBoxMembers(boxHash) {
-  const db2 = getDb();
-  const stmt = db2.prepare("SELECT member_hash FROM box_members WHERE box_hash = ? ORDER BY sort_order");
-  const rows = stmt.all(boxHash);
-  return rows.map((row) => row.member_hash);
-}
-function addDisc(discData) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
-  const db2 = getDb();
-  const now = Math.floor(Date.now() / 1e3);
-  const stmt = db2.prepare(`
-    INSERT INTO discs
-    (torrent_hash, root_path, disc_type, catalog_no, catalog_maker,
-     maker, release_date, version_type, bonus_status, suruga_id,
-     volume_no, disc_no, note, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  stmt.run(
-    discData.torrent_hash,
-    discData.root_path,
-    (_a = discData.disc_type) != null ? _a : "volume",
-    (_b = discData.catalog_no) != null ? _b : "",
-    (_c = discData.catalog_maker) != null ? _c : "",
-    (_d = discData.maker) != null ? _d : "",
-    (_e = discData.release_date) != null ? _e : "",
-    (_f = discData.version_type) != null ? _f : "",
-    (_g = discData.bonus_status) != null ? _g : "",
-    (_h = discData.suruga_id) != null ? _h : "",
-    (_i = discData.volume_no) != null ? _i : 0,
-    (_j = discData.disc_no) != null ? _j : 0,
-    (_k = discData.note) != null ? _k : "",
-    now
-  );
+  return db.select().from(files).where(eq(files.torrent_hash, hash)).orderBy(asc(files.file_index)).all();
 }
 function getDiscsByTorrent(hash) {
-  const db2 = getDb();
-  const stmt = db2.prepare("SELECT * FROM discs WHERE torrent_hash = ? ORDER BY volume_no, disc_no");
-  return stmt.all(hash);
+  return db.select().from(discs).where(eq(discs.torrent_hash, hash)).orderBy(asc(discs.volume_no), asc(discs.disc_no)).all();
 }
 function getDiscById(discId) {
-  const db2 = getDb();
-  const stmt = db2.prepare("SELECT * FROM discs WHERE id = ?");
-  return stmt.get(discId);
-}
-function updateDisc(discId, discData) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
-  const db2 = getDb();
-  const now = Math.floor(Date.now() / 1e3);
-  const stmt = db2.prepare(`
-    UPDATE discs SET
-    catalog_no = ?, catalog_maker = ?, maker = ?,
-    release_date = ?, version_type = ?, bonus_status = ?,
-    suruga_id = ?, volume_no = ?, disc_no = ?, note = ?, updated_at = ?
-    WHERE id = ?
-  `);
-  stmt.run(
-    (_a = discData.catalog_no) != null ? _a : "",
-    (_b = discData.catalog_maker) != null ? _b : "",
-    (_c = discData.maker) != null ? _c : "",
-    (_d = discData.release_date) != null ? _d : "",
-    (_e = discData.version_type) != null ? _e : "",
-    (_f = discData.bonus_status) != null ? _f : "",
-    (_g = discData.suruga_id) != null ? _g : "",
-    (_h = discData.volume_no) != null ? _h : 0,
-    (_i = discData.disc_no) != null ? _i : 0,
-    (_j = discData.note) != null ? _j : "",
-    now,
-    discId
-  );
+  return db.select().from(discs).where(eq(discs.id, discId)).get() || null;
 }
 function deleteDisc(discId) {
-  const db2 = getDb();
-  const stmt = db2.prepare("DELETE FROM discs WHERE id = ?");
-  stmt.run(discId);
+  db.delete(discs).where(eq(discs.id, discId)).run();
 }
 function getAllDiscs() {
-  const db2 = getDb();
-  const stmt = db2.prepare("SELECT * FROM discs ORDER BY created_at DESC");
-  return stmt.all();
+  return db.select().from(discs).orderBy(desc(discs.created_at)).all();
+}
+function deleteDiscsByTorrent(hash) {
+  db.delete(discs).where(eq(discs.torrent_hash, hash)).run();
 }
 function saveBdInfo(hash, bdData) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i;
-  const db2 = getDb();
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v;
   const now = Math.floor(Date.now() / 1e3);
-  const stmt = db2.prepare(`
-    INSERT OR REPLACE INTO bd_info
-    (torrent_hash, catalog_no, catalog_maker, maker, release_date, model_no,
-     version_type, bonus_status, suruga_id, note, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  stmt.run(
-    hash,
-    (_a = bdData.catalogNo) != null ? _a : "",
-    (_b = bdData.catalogMaker) != null ? _b : "",
-    (_c = bdData.maker) != null ? _c : "",
-    (_d = bdData.releaseDate) != null ? _d : "",
-    (_e = bdData.modelNo) != null ? _e : "",
-    (_f = bdData.versionType) != null ? _f : "",
-    (_g = bdData.bonusStatus) != null ? _g : "",
-    (_h = bdData.surugaId) != null ? _h : "",
-    (_i = bdData.note) != null ? _i : "",
-    now
-  );
+  db.insert(bd_info).values({
+    torrent_hash: hash,
+    catalog_no: (_a = bdData.catalog_no) != null ? _a : "",
+    catalog_maker: (_b = bdData.catalog_maker) != null ? _b : "",
+    maker: (_c = bdData.maker) != null ? _c : "",
+    release_date: (_d = bdData.release_date) != null ? _d : "",
+    model_no: (_e = bdData.model_no) != null ? _e : "",
+    version_type: (_f = bdData.version_type) != null ? _f : "",
+    bonus_status: (_g = bdData.bonus_status) != null ? _g : "",
+    suruga_id: (_h = bdData.suruga_id) != null ? _h : "",
+    volume_type: (_i = bdData.volume_type) != null ? _i : "",
+    volume_no: (_j = bdData.volume_no) != null ? _j : 0,
+    note: (_k = bdData.note) != null ? _k : "",
+    updated_at: now
+  }).onConflictDoUpdate({
+    target: bd_info.torrent_hash,
+    set: {
+      catalog_no: (_l = bdData.catalog_no) != null ? _l : "",
+      catalog_maker: (_m = bdData.catalog_maker) != null ? _m : "",
+      maker: (_n = bdData.maker) != null ? _n : "",
+      release_date: (_o = bdData.release_date) != null ? _o : "",
+      model_no: (_p = bdData.model_no) != null ? _p : "",
+      version_type: (_q = bdData.version_type) != null ? _q : "",
+      bonus_status: (_r = bdData.bonus_status) != null ? _r : "",
+      suruga_id: (_s = bdData.suruga_id) != null ? _s : "",
+      volume_type: (_t = bdData.volume_type) != null ? _t : "",
+      volume_no: (_u = bdData.volume_no) != null ? _u : 0,
+      note: (_v = bdData.note) != null ? _v : "",
+      updated_at: now
+    }
+  }).run();
 }
 function getBdInfo(hash) {
-  const db2 = getDb();
-  const stmt = db2.prepare("SELECT * FROM bd_info WHERE torrent_hash = ?");
-  return stmt.get(hash);
+  return db.select().from(bd_info).where(eq(bd_info.torrent_hash, hash)).get() || null;
 }
 function saveConfig(key, value) {
-  const db2 = getDb();
   const now = Math.floor(Date.now() / 1e3);
-  const stmt = db2.prepare("INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, ?)");
-  stmt.run(key, value, now);
-}
-function getConfig(key) {
-  var _a;
-  const db2 = getDb();
-  const stmt = db2.prepare("SELECT value FROM config WHERE key = ?");
-  const row = stmt.get(key);
-  return (_a = row == null ? void 0 : row.value) != null ? _a : null;
+  db.insert(config).values({ key, value, updated_at: now }).onConflictDoUpdate({
+    target: config.key,
+    set: { value, updated_at: now }
+  }).run();
 }
 function getAllConfig() {
-  const db2 = getDb();
-  const stmt = db2.prepare("SELECT key, value FROM config");
-  const rows = stmt.all();
+  const rows = db.select().from(config).all();
   return Object.fromEntries(rows.map((row) => [row.key, row.value]));
 }
 function getStats() {
-  const db2 = getDb();
-  const totalStmt = db2.prepare("SELECT COUNT(*) as count FROM torrents WHERE is_deleted = 0");
-  const downloadingStmt = db2.prepare('SELECT COUNT(*) as count FROM torrents WHERE state = "downloading" AND is_deleted = 0');
-  const seedingStmt = db2.prepare('SELECT COUNT(*) as count FROM torrents WHERE state = "uploading" AND is_deleted = 0');
-  const pausedStmt = db2.prepare('SELECT COUNT(*) as count FROM torrents WHERE state LIKE "%paused%" AND is_deleted = 0');
-  const totalSizeStmt = db2.prepare("SELECT COALESCE(SUM(size), 0) as total FROM torrents WHERE is_deleted = 0");
+  var _a, _b, _c, _d, _e;
+  const total = db.select({ count: count() }).from(torrents).where(eq(torrents.is_deleted, false)).get();
+  const downloading = db.select({ count: count() }).from(torrents).where(
+    and(
+      eq(torrents.state, "downloading"),
+      eq(torrents.is_deleted, false)
+    )
+  ).get();
+  const seeding = db.select({ count: count() }).from(torrents).where(
+    and(
+      eq(torrents.state, "uploading"),
+      eq(torrents.is_deleted, false)
+    )
+  ).get();
+  const paused = db.select({ count: count() }).from(torrents).where(
+    and(
+      like(torrents.state, "%paused%"),
+      eq(torrents.is_deleted, false)
+    )
+  ).get();
+  const totalSize = db.select({ total: sql`COALESCE(SUM(size), 0)` }).from(torrents).where(eq(torrents.is_deleted, false)).get();
   return {
-    total: totalStmt.get().count,
-    downloading: downloadingStmt.get().count,
-    seeding: seedingStmt.get().count,
-    paused: pausedStmt.get().count,
-    total_size: totalSizeStmt.get().total
+    total: (_a = total == null ? void 0 : total.count) != null ? _a : 0,
+    downloading: (_b = downloading == null ? void 0 : downloading.count) != null ? _b : 0,
+    seeding: (_c = seeding == null ? void 0 : seeding.count) != null ? _c : 0,
+    paused: (_d = paused == null ? void 0 : paused.count) != null ? _d : 0,
+    total_size: (_e = totalSize == null ? void 0 : totalSize.total) != null ? _e : 0
   };
 }
-
-const db$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  addBoxMember: addBoxMember,
-  addDisc: addDisc,
-  addFiles: addFiles,
-  addTorrent: addTorrent,
-  deleteDisc: deleteDisc,
-  getAllConfig: getAllConfig,
-  getAllDiscs: getAllDiscs,
-  getAllTorrents: getAllTorrents,
-  getBdInfo: getBdInfo,
-  getBoxMembers: getBoxMembers,
-  getConfig: getConfig,
-  getDb: getDb,
-  getDiscById: getDiscById,
-  getDiscsByTorrent: getDiscsByTorrent,
-  getFiles: getFiles,
-  getStats: getStats,
-  getTorrent: getTorrent,
-  initDb: initDb,
-  removeBoxMember: removeBoxMember,
-  saveBdInfo: saveBdInfo,
-  saveConfig: saveConfig,
-  setTorrentType: setTorrentType,
-  softDeleteTorrent: softDeleteTorrent,
-  torrentExists: torrentExists,
-  updateDisc: updateDisc,
-  updateTorrentStatus: updateTorrentStatus
-}, Symbol.toStringTag, { value: 'Module' }));
 
 const _jkQ6FLLN4oExYidzx__JfMhqpMTDIBTD3Z9IW_m7oFs = defineNitroPlugin(() => {
   console.log("Initializing database...");
@@ -2542,22 +2422,7 @@ _JHsvEiTDHhjNBlpMZmBeAMzuH2E4tkFiE3nqNUpj78,
 _jkQ6FLLN4oExYidzx__JfMhqpMTDIBTD3Z9IW_m7oFs
 ];
 
-const assets = {
-  "/index.mjs": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"207cc-oHdMw6YxKPztcatqnDayLBP/bqs\"",
-    "mtime": "2026-03-04T06:38:26.682Z",
-    "size": 133068,
-    "path": "index.mjs"
-  },
-  "/index.mjs.map": {
-    "type": "application/json",
-    "etag": "\"803f5-myo+Ef3vRx/kuKM657f0SQ3wNX4\"",
-    "mtime": "2026-03-04T06:38:26.682Z",
-    "size": 525301,
-    "path": "index.mjs.map"
-  }
-};
+const assets = {};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -2682,8 +2547,6 @@ function createHead(options = {}) {
 
 const unheadOptions = {
   disableDefaults: true,
-  disableCapoSorting: false,
-  plugins: [DeprecationsPlugin, PromisesPlugin, TemplateParamsPlugin, AliasSortingPlugin],
 };
 
 function createSSRContext(event) {
@@ -2760,7 +2623,11 @@ const getSPARenderer = lazyCachedFunction(async () => {
 	// @ts-expect-error virtual file
 	const spaTemplate = await Promise.resolve().then(function () { return _virtual__spaTemplate; }).then((r) => r.template).catch(() => "").then((r) => {
 		{
-			return APP_ROOT_OPEN_TAG + r + APP_ROOT_CLOSE_TAG;
+			const APP_SPA_LOADER_OPEN_TAG = `<${appSpaLoaderTag}${propsToString(appSpaLoaderAttrs)}>`;
+			const APP_SPA_LOADER_CLOSE_TAG = `</${appSpaLoaderTag}>`;
+			const appTemplate = APP_ROOT_OPEN_TAG + APP_ROOT_CLOSE_TAG;
+			const loaderTemplate = r ? APP_SPA_LOADER_OPEN_TAG + r + APP_SPA_LOADER_CLOSE_TAG : "";
+			return appTemplate + loaderTemplate;
 		}
 	});
 	// Create SPA renderer and cache the result for all requests
@@ -3011,12 +2878,13 @@ const _lazy_T_1LzG = () => Promise.resolve().then(function () { return _id__put$
 const _lazy_mcTr7L = () => Promise.resolve().then(function () { return index_get$1; });
 const _lazy_DdudP9 = () => Promise.resolve().then(function () { return index_post$1; });
 const _lazy_e9oMGf = () => Promise.resolve().then(function () { return delete_post$1; });
-const _lazy_RHU9yM = () => Promise.resolve().then(function () { return files_get$1; });
+const _lazy_RHU9yM = () => Promise.resolve().then(function () { return files_get$3; });
 const _lazy_tGkfwI = () => Promise.resolve().then(function () { return info_get$1; });
 const _lazy_jmXrn1 = () => Promise.resolve().then(function () { return stats_get$1; });
 const _lazy_y1cNzJ = () => Promise.resolve().then(function () { return sync_post$1; });
 const _lazy_tzU9Pc = () => Promise.resolve().then(function () { return bdInfo_get$1; });
 const _lazy_OOpztX = () => Promise.resolve().then(function () { return bdInfo_post$1; });
+const _lazy_tKr0Do = () => Promise.resolve().then(function () { return files_get$1; });
 const _lazy_qjTGnC = () => Promise.resolve().then(function () { return type_post$1; });
 const _lazy_vPV4vc = () => Promise.resolve().then(function () { return renderer$1; });
 
@@ -3036,6 +2904,7 @@ const handlers = [
   { route: '/api/qb/torrents/sync', handler: _lazy_y1cNzJ, lazy: true, middleware: false, method: "post" },
   { route: '/api/torrents/bd-info', handler: _lazy_tzU9Pc, lazy: true, middleware: false, method: "get" },
   { route: '/api/torrents/bd-info', handler: _lazy_OOpztX, lazy: true, middleware: false, method: "post" },
+  { route: '/api/torrents/files', handler: _lazy_tKr0Do, lazy: true, middleware: false, method: "get" },
   { route: '/api/torrents/type', handler: _lazy_qjTGnC, lazy: true, middleware: false, method: "post" },
   { route: '/__nuxt_error', handler: _lazy_vPV4vc, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_island/**', handler: _SxA8c9, lazy: false, middleware: false, method: undefined },
@@ -3501,7 +3370,40 @@ const _id__put = defineEventHandler(async (event) => {
     };
   }
   try {
-    updateDisc(parseInt(id), body || {});
+    const db = getDrizzleDb();
+    const disc = getDiscById(parseInt(id));
+    if (!disc) {
+      return {
+        success: false,
+        error: "\u8BB0\u5F55\u4E0D\u5B58\u5728"
+      };
+    }
+    const torrentHash = body.torrent_hash || disc.torrent_hash;
+    const now = Math.floor(Date.now() / 1e3);
+    deleteDiscsByTorrent(torrentHash);
+    if (body.volume_forms && typeof body.volume_forms === "object") {
+      const volumeNos = Object.keys(body.volume_forms).map(Number).sort((a, b) => a - b);
+      const insertData = volumeNos.map((volNo) => {
+        const form = body.volume_forms[volNo];
+        return {
+          torrent_hash: torrentHash,
+          root_path: "",
+          disc_type: body.disc_type || "volume",
+          catalog_no: (form == null ? void 0 : form.catalog_no) || "",
+          catalog_maker: (form == null ? void 0 : form.catalog_maker) || "",
+          maker: (form == null ? void 0 : form.maker) || "",
+          release_date: (form == null ? void 0 : form.release_date) || "",
+          version_type: (form == null ? void 0 : form.version_type) || "",
+          bonus_status: (form == null ? void 0 : form.bonus_status) || "",
+          suruga_id: (form == null ? void 0 : form.suruga_id) || "",
+          volume_no: volNo,
+          disc_no: 1,
+          note: (form == null ? void 0 : form.note) || "",
+          updated_at: now
+        };
+      });
+      db.insert(discs).values(insertData).run();
+    }
     return {
       success: true,
       data: "ok"
@@ -3551,18 +3453,8 @@ const index_post = defineEventHandler(async (event) => {
     const body = await readBody(event);
     const {
       torrent_hash,
-      catalog_no,
-      catalog_maker,
-      maker,
-      release_date,
-      version_type,
-      bonus_status,
-      suruga_id,
-      volume_no,
-      disc_no,
       disc_type,
-      note,
-      node_data
+      volume_forms
     } = body;
     if (!torrent_hash) {
       return {
@@ -3570,21 +3462,31 @@ const index_post = defineEventHandler(async (event) => {
         error: "\u7F3A\u5C11 torrent_hash \u53C2\u6570"
       };
     }
-    addDisc({
-      torrent_hash,
-      root_path: "",
-      disc_type,
-      catalog_no: catalog_no || "",
-      catalog_maker: catalog_maker || "",
-      maker: maker || "",
-      release_date: release_date || "",
-      version_type: version_type || "",
-      bonus_status: bonus_status || "",
-      suruga_id: suruga_id || "",
-      volume_no: volume_no || 0,
-      disc_no: disc_no || 1,
-      note: note || ""
-    });
+    const db = getDrizzleDb();
+    const now = Math.floor(Date.now() / 1e3);
+    if (volume_forms && typeof volume_forms === "object") {
+      const volumeNos = Object.keys(volume_forms).map(Number).sort((a, b) => a - b);
+      const insertData = volumeNos.map((volNo) => {
+        const form = volume_forms[volNo];
+        return {
+          torrent_hash,
+          root_path: "",
+          disc_type: disc_type || "volume",
+          catalog_no: (form == null ? void 0 : form.catalog_no) || "",
+          catalog_maker: (form == null ? void 0 : form.catalog_maker) || "",
+          maker: (form == null ? void 0 : form.maker) || "",
+          release_date: (form == null ? void 0 : form.release_date) || "",
+          version_type: (form == null ? void 0 : form.version_type) || "",
+          bonus_status: (form == null ? void 0 : form.bonus_status) || "",
+          suruga_id: (form == null ? void 0 : form.suruga_id) || "",
+          volume_no: volNo,
+          disc_no: 1,
+          note: (form == null ? void 0 : form.note) || "",
+          updated_at: now
+        };
+      });
+      db.insert(discs).values(insertData).run();
+    }
     return {
       success: true,
       message: "\u521B\u5EFA\u6210\u529F"
@@ -3630,7 +3532,7 @@ const delete_post$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.definePrope
   default: delete_post
 }, Symbol.toStringTag, { value: 'Module' }));
 
-const files_get = defineEventHandler(async (event) => {
+const files_get$2 = defineEventHandler(async (event) => {
   const query = getQuery$1(event);
   const hash = query.hash;
   if (!hash) {
@@ -3653,9 +3555,9 @@ const files_get = defineEventHandler(async (event) => {
   }
 });
 
-const files_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+const files_get$3 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   __proto__: null,
-  default: files_get
+  default: files_get$2
 }, Symbol.toStringTag, { value: 'Module' }));
 
 const info_get = defineEventHandler(async (event) => {
@@ -3667,7 +3569,8 @@ const info_get = defineEventHandler(async (event) => {
     let torrents = getAllTorrents();
     if (state) {
       torrents = torrents.filter((t) => {
-        if (state === "paused") return t.state.includes("paused");
+        var _a;
+        if (state === "paused") return (_a = t.state) == null ? void 0 : _a.includes("paused");
         if (state === "completed") return t.progress === 100;
         return t.state === state;
       });
@@ -3736,7 +3639,6 @@ function getQbClient() {
 }
 async function syncTorrentsFromQb() {
   const client = getQbClient();
-  const { addTorrent, updateTorrentStatus, torrentExists, addFiles } = await Promise.resolve().then(function () { return db$1; });
   try {
     const torrents = await client.listTorrents();
     let newCount = 0;
@@ -3776,7 +3678,6 @@ async function syncTorrentsFromQb() {
       }
     }
     console.log(`Sync completed: new=${newCount}, updated=${updateCount}`);
-    const { saveConfig } = await Promise.resolve().then(function () { return db$1; });
     saveConfig("last_sync", String(Math.floor(Date.now() / 1e3)));
     return { success: true, newCount, updateCount };
   } catch (error) {
@@ -3869,6 +3770,34 @@ const bdInfo_post$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.definePrope
   default: bdInfo_post
 }, Symbol.toStringTag, { value: 'Module' }));
 
+const files_get = defineEventHandler(async (event) => {
+  const query = getQuery$1(event);
+  const hash = query.hash;
+  if (!hash) {
+    return {
+      success: false,
+      error: "\u7F3A\u5C11 hash \u53C2\u6570"
+    };
+  }
+  try {
+    const files = getFiles(hash);
+    return {
+      success: true,
+      data: JSON.stringify(files)
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+const files_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  __proto__: null,
+  default: files_get
+}, Symbol.toStringTag, { value: 'Module' }));
+
 const type_post = defineEventHandler(async (event) => {
   const query = getQuery$1(event);
   const hash = query.hash;
@@ -3940,7 +3869,7 @@ function splitPayload(ssrContext) {
 	};
 }
 
-const renderSSRHeadOptions = {"omitLineBreaks":false};
+const renderSSRHeadOptions = {"omitLineBreaks":true};
 
 // @ts-expect-error private property consumed by vite-generated url helpers
 globalThis.__buildAssetsURL = buildAssetsURL;
@@ -3973,6 +3902,11 @@ const renderer = defineRenderHandler(async (event) => {
 		if (status) {
 			// eslint-disable-next-line @typescript-eslint/no-deprecated
 			ssrError.status = ssrError.statusCode = Number.parseInt(status);
+		}
+		if (typeof ssrError.data === "string") {
+			try {
+				ssrError.data = destr(ssrError.data);
+			} catch {}
 		}
 		setSSRError(ssrContext, ssrError);
 	}

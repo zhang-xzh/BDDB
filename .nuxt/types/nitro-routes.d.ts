@@ -35,6 +35,9 @@ declare module "nitropack/types" {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/torrents/bd-info.get').default>>>>
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/torrents/bd-info.post').default>>>>
     }
+    '/api/torrents/files': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/torrents/files.get').default>>>>
+    }
     '/api/torrents/type': {
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/torrents/type.post').default>>>>
     }

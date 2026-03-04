@@ -1,5 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import { defineNuxtConfig } from 'nuxt/config'
+import { join } from 'path'
 
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
@@ -26,6 +27,12 @@ export default defineNuxtConfig({
   typescript: {
     strict: true,
     typeCheck: false,
+  },
+
+  // 路径别名
+  alias: {
+    '#server': join(__dirname, 'server'),
+    '#shared': join(__dirname, 'shared'),
   },
 
   // 运行时配置

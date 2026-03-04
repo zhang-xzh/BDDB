@@ -73,9 +73,6 @@
       "#shared": [
         "../shared"
       ],
-      "#shared/*": [
-        "../shared/*"
-      ],
       "#server": [
         "../server"
       ],
@@ -101,7 +98,7 @@
         "./imports"
       ],
       "#app-manifest": [
-        "./manifest/meta/dev.json"
+        "./manifest/meta/dev"
       ],
       "#components": [
         "./components"

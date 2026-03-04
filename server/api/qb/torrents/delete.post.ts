@@ -1,28 +1,9 @@
-// POST /api/qb/torrents/delete - 删除种子
 import { defineEventHandler, getQuery } from 'h3'
-import { softDeleteTorrent } from '../../../db'
+import { softDeleteTorrent } from '#server/db/repository'
 
 export default defineEventHandler(async (event) => {
-  const query = getQuery(event)
-  const hash = query.hash as string
-  
-  if (!hash) {
-    return {
-      success: false,
-      error: '缺少 hash 参数',
-    }
-  }
-  
-  try {
-    softDeleteTorrent(hash)
-    return {
-      success: true,
-      data: 'deleted',
-    }
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message,
-    }
-  }
+  const hash = getQuery(event).hash as string
+  if (!hash) return { success: false, error: 'Missing hash' }
+  await softDeleteTorrent(hash)
+  return { success: true, data: 'deleted' }
 })

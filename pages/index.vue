@@ -50,6 +50,10 @@
               <a-button type="link" size="small" @click="editDisc(record)">
                 编辑
               </a-button>
+              <a-button type="link" size="small" @click="syncDiscFiles(record)">
+                <SyncOutlined />
+                同步文件
+              </a-button>
               <a-button type="link" size="small" danger @click="deleteTorrent(record)">
                 删除
               </a-button>
@@ -162,14 +166,18 @@ const columns: TableColumnsType<Torrent> = [
 const fetchTorrents = async () => {
   loading.value = true
   try {
-    const { data } = await useFetch('/api/qb/torrents/info', {
+    const res = await $fetch('/api/qb/torrents/info', {
       query: {
         state: filterState.value,
         search: searchText.value,
       },
     })
-    if (data.value?.success) {
-      torrents.value = JSON.parse(data.value.data)
+    console.log('fetchTorrents response:', res)
+    if (res.success) {
+      torrents.value = JSON.parse(res.data)
+      console.log('torrents loaded:', torrents.value.length)
+    } else {
+      console.error('fetchTorrents failed:', res.error)
     }
   } catch (error) {
     console.error('获取种子列表失败:', error)
@@ -181,9 +189,12 @@ const fetchTorrents = async () => {
 // 获取统计信息
 const fetchStats = async () => {
   try {
-    const { data } = await useFetch('/api/qb/torrents/stats')
-    if (data.value?.success) {
-      stats.value = JSON.parse(data.value.data)
+    const res = await $fetch('/api/qb/torrents/stats')
+    console.log('fetchStats response:', res)
+    if (res.success) {
+      stats.value = JSON.parse(res.data)
+    } else {
+      console.error('fetchStats failed:', res.error)
     }
   } catch (error) {
     console.error('获取统计信息失败:', error)
@@ -225,7 +236,12 @@ const showTorrentDetail = (record: Torrent) => {
 
 // 编辑光盘
 const editDisc = (record: Torrent) => {
-  discEditorRef.value?.open(record.hash)
+  discEditorRef.value?.open(record.hash, false)  // 默认不同步，使用数据库数据
+}
+
+// 同步光盘文件（从 qBittorrent 获取最新文件列表）
+const syncDiscFiles = (record: Torrent) => {
+  discEditorRef.value?.open(record.hash, true)  // 同步模式，从 qBittorrent 获取最新数据
 }
 
 // 光盘保存成功回调
