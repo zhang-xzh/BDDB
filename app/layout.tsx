@@ -1,8 +1,10 @@
 'use client'
 
-import React, { useState } from 'react'
+import React from 'react'
 import { ConfigProvider, Layout, Menu } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
+import { usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import './globals.css'
 
 const { Header, Content, Footer } = Layout
@@ -12,7 +14,14 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const [selectedKeys, setSelectedKeys] = useState(['1'])
+  const pathname = usePathname()
+  const router = useRouter()
+
+  const menuItems = [
+    { key: '/', label: '首页' },
+    { key: '/discs', label: '光盘管理' },
+    { key: '/config', label: '配置' },
+  ]
 
   return (
     <html lang="zh-CN">
@@ -24,16 +33,12 @@ export default function RootLayout({
                 <h1 style={{ margin: 0, fontSize: '24px' }}>BDDB</h1>
               </div>
               <Menu
-                selectedKeys={selectedKeys}
-                onSelect={keys => setSelectedKeys(keys.selectedKeys as string[])}
+                selectedKeys={[pathname]}
+                onSelect={({ key }) => router.push(key)}
                 theme="dark"
                 mode="horizontal"
                 style={{ flex: 1, minWidth: 0 }}
-                items={[
-                  { key: '1', label: '首页' },
-                  { key: '2', label: '光盘管理' },
-                  { key: '3', label: '配置' },
-                ]}
+                items={menuItems}
               />
             </Header>
             <Content style={{ margin: '24px', padding: '24px', background: '#fff', minHeight: 'calc(100vh - 184px)' }}>

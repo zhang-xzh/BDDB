@@ -29,6 +29,7 @@ export async function syncTorrentsFromQb() {
         num_seeds: t.num_seeds, num_leechs: t.num_leechs,
         added_on: t.added_on, completion_on: t.completion_on,
         save_path: t.save_path, uploaded: t.uploaded, downloaded: t.downloaded,
+        category: t.category || '',
       }
 
       const exists = await torrentExists(t.hash)

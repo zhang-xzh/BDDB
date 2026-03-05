@@ -13,7 +13,8 @@ import {
   Tag,
 } from 'antd'
 import type { TableColumnsType } from 'antd'
-import { SyncOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
+import { SyncOutlined, CheckCircleOutlined, CloseCircleOutlined, SettingOutlined } from '@ant-design/icons'
+import { useRouter } from 'next/navigation'
 import type { Torrent } from '@/lib/db/schema'
 import { fetchApi, postApi } from '@/lib/api'
 import DiscEditor, { type DiscEditorRef } from '@/components/DiscEditor'
@@ -27,6 +28,7 @@ interface TorrentWithVolume extends Torrent {
 }
 
 const HomePage: React.FC = () => {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [torrents, setTorrents] = useState<TorrentWithVolume[]>([])
@@ -181,6 +183,18 @@ const HomePage: React.FC = () => {
 
   const columns: TableColumnsType<TorrentWithVolume> = [
     {
+      title: '类别',
+      dataIndex: 'category',
+      key: 'category',
+      width: 120,
+      filters: Array.from(new Set(torrents.map(t => t.category).filter(Boolean))).map(cat => ({
+        text: cat,
+        value: cat,
+      })),
+      onFilter: (value, record) => record.category === value,
+      render: (category: string) => category || '-',
+    },
+    {
       title: '卷',
       dataIndex: 'hasVolumes',
       key: 'hasVolumes',
@@ -253,6 +267,9 @@ const HomePage: React.FC = () => {
         <Space>
           <Button type="primary" onClick={syncTorrents} loading={syncing} icon={<SyncOutlined />}>
             同步 qBittorrent
+          </Button>
+          <Button onClick={() => router.push('/config')} icon={<SettingOutlined />}>
+            配置
           </Button>
           <Search
             value={searchText}

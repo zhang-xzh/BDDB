@@ -210,11 +210,11 @@ export function saveTorrentFiles(torrentId: string, files: Partial<TorrentFile>[
     db.remove({ torrent_id: torrentId }, { multi: true }, (err) => {
       if (err) return reject(err)
       if (docs.length === 0) return resolve()
-      
+
       // 分批插入，避免堆栈溢出
       const batchSize = 100
       let inserted = 0
-      
+
       const insertBatch = (index: number) => {
         const batch = docs.slice(index, index + batchSize)
         if (batch.length === 0) {
@@ -231,7 +231,7 @@ export function saveTorrentFiles(torrentId: string, files: Partial<TorrentFile>[
           }
         })
       }
-      
+
       insertBatch(0)
     })
   })
