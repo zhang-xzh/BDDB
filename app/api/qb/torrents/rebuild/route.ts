@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { clearAllData } from '@/lib/db/repository'
-import { syncTorrentsFromQb } from '@/lib/qb'
-import type { Torrent } from '@/lib/db/schema'
+import {getQbClient, syncTorrentsFromQb} from '@/lib/qb'
 
 // 使用 Node.js runtime 而不是 Edge
 export const runtime = 'nodejs'
@@ -9,7 +8,7 @@ export const runtime = 'nodejs'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
-    const rebuildCategory = body.rebuildCategory === true
+    const rebuildCategory = body.rebuildCategory
 
     if (rebuildCategory) {
       // 仅重建 category 字段：从 qBittorrent 获取最新数据并更新
@@ -48,7 +47,7 @@ export async function POST(request: NextRequest) {
       await clearAllData()
       const result = await syncTorrentsFromQb()
       
-      return NextResponse.json({ 
+      return NextResponse.json({
         success: true, 
         message: '数据已完全重建',
         ...result

@@ -1,164 +1,271 @@
+// SQLite repository 实现
 import { getDb } from './index'
-import type { Torrent, TorrentFile, Volume, QueryCondition } from './schema'
+import type { Torrent, TorrentFile, Volume } from './schema'
 
 const now = () => Math.floor(Date.now() / 1000)
 
-export function torrentExists(hash: string): Promise<boolean> {
-  return new Promise((resolve, reject) => {
-    getDb('torrents').findOne({ hash, is_deleted: false }, (err, doc) => {
-      if (err) reject(err)
-      else resolve(!!doc)
-    })
-  })
+// ============================================================================
+// 数据转换工具 (Serialization Helpers)
+// ============================================================================
+
+function toDbTorrent(torrent: Partial<Torrent>): { qb_torrent: string; is_deleted: number; synced_at: number } {
+  return {
+    qb_torrent: JSON.stringify(torrent.qb_torrent),
+    is_deleted: torrent.is_deleted ? 1 : 0,
+    synced_at: torrent.synced_at ?? now(),
+  }
 }
 
-export async function addTorrent(data: Partial<Torrent>) {
-  const doc = { ...data, synced_at: now() }
-  return new Promise<void>((resolve, reject) => {
-    getDb('torrents').findOne({ hash: data.hash }, (err, existing) => {
-      if (err) return reject(err)
-      const op = existing
-        ? getDb('torrents').update({ hash: data.hash! }, { $set: doc }, {}, (err) => err ? reject(err) : resolve())
-        : getDb('torrents').insert(doc, (err) => err ? reject(err) : resolve())
-    })
-  })
+function fromDbTorrent(row: any): Torrent {
+  return {
+    ...row,
+    qb_torrent: JSON.parse(row.qb_torrent),
+    is_deleted: !!row.is_deleted,
+  } as Torrent
 }
 
-export function updateTorrentStatus(hash: string, data: Partial<Torrent>): Promise<void> {
-  return new Promise((resolve, reject) => {
-    getDb('torrents').update({ hash }, { $set: { ...data, synced_at: now() } }, {}, (err) => {
-      if (err) reject(err)
-      else resolve()
-    })
-  })
+function toDbTorrentFile(file: Partial<TorrentFile>): { qb_torrent_file: string; is_deleted: number; synced_at: number } {
+  return {
+    qb_torrent_file: JSON.stringify(file.qb_torrent_file),
+    is_deleted: file.is_deleted ? 1 : 0,
+    synced_at: file.synced_at ?? now(),
+  }
 }
 
-export function softDeleteTorrent(hash: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    getDb('torrents').update({ hash }, { $set: { is_deleted: true, synced_at: now() } }, {}, (err) => {
-      if (err) reject(err)
-      else resolve()
-    })
-  })
+function fromDbTorrentFile(row: any): TorrentFile {
+  return {
+    ...row,
+    qb_torrent_file: JSON.parse(row.qb_torrent_file),
+    is_deleted: !!row.is_deleted,
+  } as TorrentFile
 }
 
-export function getTorrent(hash: string): Promise<Torrent | null> {
-  return new Promise((resolve, reject) => {
-    getDb('torrents').findOne({ hash }, (err, doc) => {
-      if (err) reject(err)
-      else resolve(doc as Torrent | null)
-    })
-  })
+function toDbVolumeFiles(fileIds: string[]): string {
+  return JSON.stringify(fileIds)
 }
 
-export function getAllTorrents(includeDeleted = false): Promise<Torrent[]> {
-  return new Promise((resolve, reject) => {
-    const query: QueryCondition = includeDeleted ? {} : { is_deleted: false }
-    getDb('torrents').find(query).sort({ added_on: -1 }).exec((err, docs) => {
-      if (err) reject(err)
-      else resolve(docs as Torrent[])
-    })
-  })
+function fromDbVolumeFiles(jsonStr: string): string[] {
+  return JSON.parse(jsonStr)
 }
 
-export function searchTorrents(keyword: string): Promise<Torrent[]> {
-  return new Promise((resolve, reject) => {
-    getDb('torrents').find({ is_deleted: false, name: { $regex: keyword, $options: 'i' } })
-      .sort({ added_on: -1 }).exec((err, docs) => {
-        if (err) reject(err)
-        else resolve(docs as Torrent[])
-      })
-  })
+function fromDbVolume(row: any): Volume {
+  return {
+    ...row,
+    torrent_file_ids: fromDbVolumeFiles(row.torrent_file_ids),
+    is_deleted: !!row.is_deleted,
+  } as Volume
 }
 
-export function addVolume(data: Partial<Volume>): Promise<void> {
-  return new Promise((resolve, reject) => {
-    getDb('volumes').insert({ ...data, created_at: now(), updated_at: now() }, (err) => {
-      if (err) reject(err)
-      else resolve()
-    })
-  })
+// ============================================================================
+// Torrent CRUD
+// ============================================================================
+
+export async function torrentExists(hash: string): Promise<boolean> {
+  const db = getDb()
+  const stmt = db.prepare(`
+    SELECT 1 FROM torrents 
+    WHERE json_extract(qb_torrent, '$.hash') = ? AND is_deleted = 0
+  `)
+  const result = await stmt.get(hash)
+  return !!result
 }
 
-export function updateVolume(id: string, data: Partial<Volume>): Promise<void> {
-  return new Promise((resolve, reject) => {
-    getDb('volumes').update({ _id: id }, { $set: { ...data, updated_at: now() } }, {}, (err) => {
-      if (err) reject(err)
-      else resolve()
-    })
-  })
-}
+export async function addTorrent(data: Partial<Torrent>): Promise<void> {
+  const db = getDb()
+  const hash = data.qb_torrent?.hash
+  if (!hash) throw new Error('Torrent hash is required')
 
-export function deleteVolume(id: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    getDb('volumes').remove({ _id: id }, {}, (err) => {
-      if (err) reject(err)
-      else resolve()
-    })
-  })
-}
-
-export function deleteVolumesByTorrent(torrentId: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    getDb('volumes').remove({ torrent_id: torrentId }, { multi: true }, (err) => {
-      if (err) reject(err)
-      else resolve()
-    })
-  })
-}
-
-export function getVolumesByTorrent(torrentId: string): Promise<Volume[]> {
-  return new Promise((resolve, reject) => {
-    const db = getDb('volumes')
-    db.ensureIndex({ fieldName: 'torrent_id' }, () => {})
-    db.ensureIndex({ fieldName: 'is_deleted' }, () => {})
-    db.find({ torrent_id: torrentId, is_deleted: { $ne: true } })
-      .sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
-        if (err) reject(err)
-        else resolve(docs as Volume[])
-      })
-  })
-}
-
-export function getVolumesByFile(fileId: string): Promise<Volume[]> {
-  return new Promise((resolve, reject) => {
-    const db = getDb('volumes')
-    db.ensureIndex({ fieldName: 'files' }, () => {})
-    db.ensureIndex({ fieldName: 'is_deleted' }, () => {})
-    db.find({ files: fileId, is_deleted: { $ne: true } })
-      .sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
-        if (err) reject(err)
-        else resolve(docs as Volume[])
-      })
-  })
-}
-
-export function getVolumeById(id: string): Promise<Volume | null> {
-  return new Promise((resolve, reject) => {
-    getDb('volumes').findOne({ _id: id }, (err, doc) => {
-      if (err) reject(err)
-      else resolve(doc as Volume | null)
-    })
-  })
-}
-
-export function getAllVolumes(): Promise<Volume[]> {
-  return new Promise((resolve, reject) => {
-    getDb('volumes').find({}).sort({ created_at: -1 }).exec((err, docs) => {
-      if (err) reject(err)
-      else resolve(docs as Volume[])
-    })
-  })
-}
-
-export function getVolumesByBoxId(): Promise<Volume[]> {
-  return Promise.resolve([])
-}
-
-export async function saveVolume(torrentId: string, files: string[], data: Partial<Volume>): Promise<void> {
   const doc = {
-    torrent_id: torrentId,
-    files: files,
+    _id: data._id || `t_${hash}`,
+    ...toDbTorrent(data),
+  }
+
+  const existing = db.prepare(`
+    SELECT _id FROM torrents WHERE json_extract(qb_torrent, '$.hash') = ?
+  `).get(hash)
+
+  if (existing) {
+    db.prepare(`
+      UPDATE torrents SET qb_torrent = ?, is_deleted = ?, synced_at = ?
+      WHERE json_extract(qb_torrent, '$.hash') = ?
+    `).run(doc.qb_torrent, doc.is_deleted, doc.synced_at, hash)
+  } else {
+    db.prepare(`
+      INSERT INTO torrents (_id, qb_torrent, is_deleted, synced_at)
+      VALUES (?, ?, ?, ?)
+    `).run(doc._id, doc.qb_torrent, doc.is_deleted, doc.synced_at)
+  }
+}
+
+export async function updateTorrentStatus(hash: string, data: Partial<Torrent>): Promise<void> {
+  const db = getDb()
+  const updates: string[] = []
+  const values: any[] = []
+
+  if (data.is_deleted !== undefined) {
+    updates.push('is_deleted = ?')
+    values.push(data.is_deleted ? 1 : 0)
+  }
+  if (data.qb_torrent) {
+    updates.push('qb_torrent = ?')
+    values.push(JSON.stringify(data.qb_torrent))
+  }
+  updates.push('synced_at = ?')
+  values.push(now())
+
+  values.push(hash)
+
+  db.prepare(`
+    UPDATE torrents SET ${updates.join(', ')}
+    WHERE json_extract(qb_torrent, '$.hash') = ?
+  `).run(...values)
+}
+
+export async function softDeleteTorrent(hash: string): Promise<void> {
+  const db = getDb()
+  db.prepare(`
+    UPDATE torrents SET is_deleted = 1, synced_at = ?
+    WHERE json_extract(qb_torrent, '$.hash') = ?
+  `).run(now(), hash)
+}
+
+export async function getTorrent(hash: string): Promise<Torrent | null> {
+  const db = getDb()
+  const stmt = db.prepare(`
+    SELECT * FROM torrents 
+    WHERE json_extract(qb_torrent, '$.hash') = ?
+  `)
+  const row = await stmt.get(hash) as any
+  if (!row) return null
+  return fromDbTorrent(row)
+}
+
+export async function getTorrentById(id: string): Promise<Torrent | null> {
+  const db = getDb()
+  const stmt = db.prepare('SELECT * FROM torrents WHERE _id = ?')
+  const row = await stmt.get(id) as any
+  if (!row) return null
+  return fromDbTorrent(row)
+}
+
+export async function getAllTorrents(includeDeleted = false): Promise<Torrent[]> {
+  const db = getDb()
+  const whereClause = includeDeleted ? '' : 'WHERE is_deleted = 0'
+  const stmt = db.prepare(`
+    SELECT * FROM torrents ${whereClause}
+    ORDER BY json_extract(qb_torrent, '$.added_on') DESC
+  `)
+  const rows = await stmt.all() as any[]
+  return rows.map(fromDbTorrent)
+}
+
+export async function searchTorrents(keyword: string): Promise<Torrent[]> {
+  const db = getDb()
+  const stmt = db.prepare(`
+    SELECT * FROM torrents 
+    WHERE is_deleted = 0 AND json_extract(qb_torrent, '$.name') LIKE ?
+    ORDER BY json_extract(qb_torrent, '$.added_on') DESC
+  `)
+  const rows = await stmt.all(`%${keyword}%`) as any[]
+  return rows.map(fromDbTorrent)
+}
+
+export async function getTorrentsByState(state: string): Promise<Torrent[]> {
+  const db = getDb()
+  const stmt = db.prepare(`
+    SELECT * FROM torrents 
+    WHERE is_deleted = 0 AND json_extract(qb_torrent, '$.state') = ?
+    ORDER BY json_extract(qb_torrent, '$.added_on') DESC
+  `)
+  const rows = await stmt.all(state) as any[]
+  return rows.map(fromDbTorrent)
+}
+
+export async function getTorrentsByCategory(category: string): Promise<Torrent[]> {
+  const db = getDb()
+  const stmt = db.prepare(`
+    SELECT * FROM torrents 
+    WHERE is_deleted = 0 AND json_extract(qb_torrent, '$.category') = ?
+    ORDER BY json_extract(qb_torrent, '$.added_on') DESC
+  `)
+  const rows = await stmt.all(category) as any[]
+  return rows.map(fromDbTorrent)
+}
+
+// ============================================================================
+// TorrentFile CRUD
+// ============================================================================
+
+export async function saveTorrentFiles(torrentId: string, files: Partial<TorrentFile>[]): Promise<void> {
+  const db = getDb()
+  const nowTs = now()
+
+  const transaction = db.transaction(() => {
+    // 先删除旧文件
+    db.prepare(`
+      DELETE FROM torrent_files WHERE torrent_id = ?
+    `).run(torrentId)
+
+    if (files.length === 0) return
+
+    // 插入新文件
+    const insert = db.prepare(`
+      INSERT INTO torrent_files (_id, torrent_id, qb_torrent_file, is_deleted, synced_at)
+      VALUES (?, ?, ?, ?, ?)
+    `)
+
+    for (const f of files) {
+      const doc = {
+        _id: f._id || `f_${torrentId}_${f.qb_torrent_file?.name || ''}`,
+        torrent_id: torrentId,
+        ...toDbTorrentFile(f),
+      }
+      insert.run(doc._id, doc.torrent_id, doc.qb_torrent_file, doc.is_deleted, doc.synced_at)
+    }
+  })
+
+  await transaction()
+}
+
+export async function getTorrentFiles(torrentId: string): Promise<TorrentFile[]> {
+  const db = getDb()
+  const stmt = db.prepare(`
+    SELECT * FROM torrent_files 
+    WHERE torrent_id = ? AND is_deleted = 0
+    ORDER BY json_extract(qb_torrent_file, '$.name') ASC
+  `)
+  const rows = await stmt.all(torrentId) as any[]
+  return rows.map(fromDbTorrentFile)
+}
+
+export async function getTorrentFile(fileId: string): Promise<TorrentFile | null> {
+  const db = getDb()
+  const stmt = db.prepare(`
+    SELECT * FROM torrent_files WHERE _id = ?
+  `)
+  const row = await stmt.get(fileId) as any
+  if (!row) return null
+  return fromDbTorrentFile(row)
+}
+
+export async function softDeleteTorrentFiles(torrentId: string): Promise<void> {
+  const db = getDb()
+  db.prepare(`
+    UPDATE torrent_files SET is_deleted = 1, synced_at = ?
+    WHERE torrent_id = ?
+  `).run(now(), torrentId)
+}
+
+// ============================================================================
+// Volume CRUD
+// ============================================================================
+
+export async function addVolume(data: Partial<Volume>): Promise<void> {
+  const db = getDb()
+  const doc = {
+    _id: data._id || `v_${Date.now()}`,
+    torrent_id: data.torrent_id,
+    torrent_file_ids: toDbVolumeFiles(data.torrent_file_ids),
     type: data.type || 'volume',
     volume_no: data.volume_no || 0,
     sort_order: data.sort_order || 0,
@@ -166,99 +273,186 @@ export async function saveVolume(torrentId: string, files: string[], data: Parti
     catalog_no: data.catalog_no || '',
     suruga_id: data.suruga_id || '',
     note: data.note || '',
-    is_deleted: false,
+    title: data.title || '',
+    release_date: data.release_date || '',
+    maker: data.maker || '',
+    version_type: data.version_type || '',
+    bonus_status: data.bonus_status || '',
+    is_deleted: 0,
+    created_at: now(),
     updated_at: now(),
   }
-  return new Promise((resolve, reject) => {
-    getDb('volumes').findOne({ torrent_id: torrentId, volume_no: data.volume_no }, (err, existing) => {
-      if (err) return reject(err)
-      const op = existing
-        ? getDb('volumes').update({ torrent_id: torrentId, volume_no: data.volume_no }, { $set: doc }, {}, (err) => err ? reject(err) : resolve())
-        : getDb('volumes').insert({ ...doc, created_at: now() }, (err) => err ? reject(err) : resolve())
-    })
-  })
+
+  db.prepare(`
+    INSERT INTO volumes (_id, torrent_id, torrent_file_ids, type, volume_no, sort_order,
+      volume_name, catalog_no, suruga_id, note, title, release_date, maker,
+      version_type, bonus_status, is_deleted, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    doc._id, doc.torrent_id, doc.torrent_file_ids, doc.type, doc.volume_no, doc.sort_order,
+    doc.volume_name, doc.catalog_no, doc.suruga_id, doc.note, doc.title, doc.release_date,
+    doc.maker, doc.version_type, doc.bonus_status, doc.is_deleted, doc.created_at, doc.updated_at
+  )
 }
 
-export function clearAllData(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const dbs = ['torrents', 'files', 'volumes']
-    let completed = 0
-    dbs.forEach(dbName => {
-      const db = getDb(dbName)
-      db.remove({}, { multi: true }, (err) => {
-        if (err) return reject(err)
-        completed++
-        if (completed === dbs.length) resolve()
-      })
-    })
-  })
-}
+export async function updateVolume(id: string, data: Partial<Volume>): Promise<void> {
+  const db = getDb()
+  const updates: string[] = []
+  const values: any[] = []
 
-// TorrentFile CRUD
-export function saveTorrentFiles(torrentId: string, files: Partial<TorrentFile>[]): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const db = getDb('files')
-    const nowTs = now()
-    const docs = files.map(f => ({
-      ...f,
-      torrent_id: torrentId,
-      is_deleted: f.is_deleted ?? false,
-      synced_at: f.synced_at ?? nowTs,
-    }))
+  const fields = ['torrent_id', 'torrent_file_ids', 'type', 'volume_no', 'sort_order',
+    'volume_name', 'catalog_no', 'suruga_id', 'note', 'title', 'release_date',
+    'maker', 'version_type', 'bonus_status', 'is_deleted']
 
-    // 先删除旧文件，再插入新文件
-    db.remove({ torrent_id: torrentId }, { multi: true }, (err) => {
-      if (err) return reject(err)
-      if (docs.length === 0) return resolve()
-
-      // 分批插入，避免堆栈溢出
-      const batchSize = 100
-      let inserted = 0
-
-      const insertBatch = (index: number) => {
-        const batch = docs.slice(index, index + batchSize)
-        if (batch.length === 0) {
-          resolve()
-          return
-        }
-        db.insert(batch, (err) => {
-          if (err) return reject(err)
-          inserted += batch.length
-          if (inserted >= docs.length) {
-            resolve()
-          } else {
-            insertBatch(index + batchSize)
-          }
-        })
+  for (const field of fields) {
+    if (data[field as keyof Volume] !== undefined) {
+      updates.push(`${field} = ?`)
+      if (field === 'torrent_file_ids') {
+        values.push(toDbVolumeFiles(data[field as keyof Volume] as string[]))
+      } else {
+        values.push(data[field as keyof Volume])
       }
+    }
+  }
 
-      insertBatch(0)
-    })
-  })
+  updates.push('updated_at = ?')
+  values.push(now())
+  values.push(id)
+
+  db.prepare(`
+    UPDATE volumes SET ${updates.join(', ')} WHERE _id = ?
+  `).run(...values)
 }
 
-export function getTorrentFiles(torrentId: string): Promise<TorrentFile[]> {
-  return new Promise((resolve, reject) => {
-    const db = getDb('files')
-    // 确保索引存在
-    db.ensureIndex({ fieldName: 'torrent_id' }, () => {})
-    db.ensureIndex({ fieldName: 'is_deleted' }, () => {})
-    // 简化查询条件，避免 $or 导致的全表扫描
-    db.find({ torrent_id: torrentId, is_deleted: { $ne: true } })
-      .sort({ name: 1 }).exec((err, docs) => {
-        if (err) reject(err)
-        else resolve(docs as TorrentFile[])
-      })
-  })
+export async function deleteVolume(id: string): Promise<void> {
+  const db = getDb()
+  db.prepare('DELETE FROM volumes WHERE _id = ?').run(id)
 }
 
-export function softDeleteTorrentFiles(torrentId: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    getDb('files').update(
-      { torrent_id: torrentId },
-      { $set: { is_deleted: true, synced_at: now() } },
-      { multi: true },
-      (err) => err ? reject(err) : resolve()
+export async function deleteVolumesByTorrent(torrentId: string): Promise<void> {
+  const db = getDb()
+  db.prepare('DELETE FROM volumes WHERE torrent_id = ?').run(torrentId)
+}
+
+export async function getVolumesByTorrent(torrentId: string): Promise<Volume[]> {
+  const db = getDb()
+  const stmt = db.prepare(`
+    SELECT * FROM volumes 
+    WHERE torrent_id = ? AND is_deleted = 0
+    ORDER BY volume_no ASC, sort_order ASC
+  `)
+  const rows = await stmt.all(torrentId) as any[]
+  return rows.map(fromDbVolume)
+}
+
+export async function getVolumesByFile(fileId: string): Promise<Volume[]> {
+  const db = getDb()
+  const stmt = db.prepare(`
+    SELECT * FROM volumes 
+    WHERE is_deleted = 0 AND torrent_file_ids LIKE ?
+    ORDER BY volume_no ASC, sort_order ASC
+  `)
+  // 使用 LIKE 匹配 JSON 数组中的元素
+  const rows = await stmt.all(`%"${fileId}"%`) as any[]
+  return rows.map(fromDbVolume)
+}
+
+export async function getVolumeById(id: string): Promise<Volume | null> {
+  const db = getDb()
+  const stmt = db.prepare('SELECT * FROM volumes WHERE _id = ?')
+  const result = await stmt.get(id) as any
+  if (!result) return null
+  return fromDbVolume(result)
+}
+
+export async function getAllVolumes(): Promise<Volume[]> {
+  const db = getDb()
+  const stmt = db.prepare(`
+    SELECT * FROM volumes 
+    WHERE is_deleted = 0
+    ORDER BY created_at DESC
+  `)
+  const rows = await stmt.all() as any[]
+  return rows.map(fromDbVolume)
+}
+
+export async function getVolumesByType(type: 'volume' | 'box'): Promise<Volume[]> {
+  const db = getDb()
+  const stmt = db.prepare(`
+    SELECT * FROM volumes 
+    WHERE type = ? AND is_deleted = 0
+    ORDER BY volume_no ASC
+  `)
+  const rows = await stmt.all(type) as any[]
+  return rows.map(fromDbVolume)
+}
+
+export async function saveVolume(torrentId: string, files: string[], data: Partial<Volume>): Promise<void> {
+  const db = getDb()
+  const nowTs = now()
+
+  const doc = {
+    torrent_id: torrentId,
+    torrent_file_ids: toDbVolumeFiles(files),
+    type: data.type || 'volume',
+    volume_no: data.volume_no || 0,
+    sort_order: data.sort_order || 0,
+    volume_name: data.volume_name || '',
+    catalog_no: data.catalog_no || '',
+    suruga_id: data.suruga_id || '',
+    note: data.note || '',
+    title: data.title || '',
+    release_date: data.release_date || '',
+    maker: data.maker || '',
+    version_type: data.version_type || '',
+    bonus_status: data.bonus_status || '',
+    is_deleted: 0,
+    updated_at: nowTs,
+  }
+
+  const existing = await db.prepare(`
+    SELECT _id FROM volumes 
+    WHERE torrent_id = ? AND volume_no = ?
+  `).get(torrentId, data.volume_no) as any
+
+  if (existing) {
+    db.prepare(`
+      UPDATE volumes SET 
+        torrent_file_ids = ?, type = ?, sort_order = ?, volume_name = ?,
+        catalog_no = ?, suruga_id = ?, note = ?, title = ?, release_date = ?,
+        maker = ?, version_type = ?, bonus_status = ?, is_deleted = ?, updated_at = ?
+      WHERE torrent_id = ? AND volume_no = ?
+    `).run(
+      doc.torrent_file_ids, doc.type, doc.sort_order, doc.volume_name,
+      doc.catalog_no, doc.suruga_id, doc.note, doc.title, doc.release_date,
+      doc.maker, doc.version_type, doc.bonus_status, doc.is_deleted, doc.updated_at,
+      torrentId, data.volume_no
     )
+  } else {
+    const volId = `v_${torrentId}_${data.volume_no}`
+    db.prepare(`
+      INSERT INTO volumes (_id, torrent_id, torrent_file_ids, type, volume_no, sort_order,
+        volume_name, catalog_no, suruga_id, note, title, release_date, maker,
+        version_type, bonus_status, is_deleted, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      volId, doc.torrent_id, doc.torrent_file_ids, doc.type, doc.volume_no, doc.sort_order,
+      doc.volume_name, doc.catalog_no, doc.suruga_id, doc.note, doc.title, doc.release_date,
+      doc.maker, doc.version_type, doc.bonus_status, doc.is_deleted, nowTs, doc.updated_at
+    )
+  }
+}
+
+// ============================================================================
+// Utility
+// ============================================================================
+
+export async function clearAllData(): Promise<void> {
+  const db = getDb()
+  const transaction = db.transaction(() => {
+    db.exec('DELETE FROM torrent_files')
+    db.exec('DELETE FROM volumes')
+    db.exec('DELETE FROM torrents')
   })
+  await transaction()
 }

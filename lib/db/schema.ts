@@ -12,9 +12,11 @@ import type { Torrent as QbTorrent, TorrentFile as QbTorrentFile } from '@ctrl/q
 /**
  * Torrent - 种子元数据
  * Extends @ctrl/qbittorrent Torrent type
+ * _id 和 qb_torrent 里的 hash/category/name/state 需要索引
  */
-export interface Torrent extends QbTorrent {
+export interface Torrent {
   _id?: string
+  qb_torrent: QbTorrent           // JSON: 所有 QbTorrent 字段
   is_deleted: boolean
   synced_at: number
 }
@@ -22,21 +24,24 @@ export interface Torrent extends QbTorrent {
 /**
  * TorrentFile - 种子文件
  * Extends @ctrl/qbittorrent TorrentFile type
+ * _id 需要索引
  */
-export interface TorrentFile extends QbTorrentFile {
+export interface TorrentFile {
   _id?: string
   torrent_id: string
+  qb_torrent_file: QbTorrentFile
   is_deleted: boolean
   synced_at: number
 }
 
 /**
  * Volume - 光盘/BOX 元数据
+ * _id/type/catalog_no/volume_name 需要索引
  */
 export interface Volume {
   _id?: string
   torrent_id: string
-  files: string[]
+  torrent_file_ids: string[]
   type: 'volume' | 'box'
   volume_no: number
   sort_order: number
