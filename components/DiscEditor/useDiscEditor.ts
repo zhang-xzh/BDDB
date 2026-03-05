@@ -299,6 +299,7 @@ export function useDiscEditor(): UseDiscEditorReturn {
             const newNodeData = new Map(builtNodeData)
             const newVolumeToKeys = new Map<number, Set<string>>()
 
+            // 第一步：更新所有文件节点的 volume_no
             fileToKeyMap.forEach((key, fileId) => {
               const volumeNo = fileToVolumeMap.get(fileId)
               if (volumeNo !== undefined) {
@@ -309,8 +310,55 @@ export function useDiscEditor(): UseDiscEditorReturn {
               }
             })
 
+            // 第二步：自底向上更新父目录节点的 volume_no
+            // 按深度从大到小排序，确保先处理深层节点
+            const sortedKeys = Array.from(newFlatTree.order).sort((a, b) => {
+              const depthA = newFlatTree.map.get(a)?.depth ?? 0
+              const depthB = newFlatTree.map.get(b)?.depth ?? 0
+              return depthB - depthA
+            })
+
+            sortedKeys.forEach(key => {
+              const nodePath = newFlatTree.map.get(key)
+              if (!nodePath || nodePath.isLeaf) return // 跳过叶子节点
+
+              // 获取所有直接子节点
+              const directChildren = nodePath.children
+              if (directChildren.length === 0) return
+
+              // 获取所有子节点的 volume_no
+              const childVolumes = new Set<number>()
+              let allChildrenHaveVolume = true
+
+              directChildren.forEach(childKey => {
+                const childData = newNodeData.get(childKey)
+                const childVol = childData?.volume_no
+                if (childVol !== undefined) {
+                  childVolumes.add(childVol)
+                } else {
+                  allChildrenHaveVolume = false
+                }
+              })
+
+              // 如果所有子节点都有相同的 volume_no，则父节点也设置为该值
+              if (allChildrenHaveVolume && childVolumes.size === 1) {
+                const volumeNo = childVolumes.values().next().value
+                const existingData = newNodeData.get(key) || {}
+                newNodeData.set(key, { ...existingData, volume_no: volumeNo })
+                if (!newVolumeToKeys.has(volumeNo)) newVolumeToKeys.set(volumeNo, new Set())
+                newVolumeToKeys.get(volumeNo)!.add(key)
+              }
+            })
+
             setNodeData(newNodeData)
             setVolumeToKeys(newVolumeToKeys)
+            
+            // 调试日志：确认数据已正确更新
+            console.log('[DiscEditor] volumes 加载完成')
+            console.log('[DiscEditor] fileToVolumeMap:', Array.from(fileToVolumeMap.entries()))
+            console.log('[DiscEditor] newNodeData size:', newNodeData.size)
+            console.log('[DiscEditor] 有 volume_no 的节点:', Array.from(newNodeData.entries()).filter(([_, d]) => d.volume_no !== undefined).length)
+            console.log('[DiscEditor] 前 5 个有 volume 的节点:', Array.from(newNodeData.entries()).filter(([_, d]) => d.volume_no !== undefined).slice(0, 5))
           }
         }
       }
