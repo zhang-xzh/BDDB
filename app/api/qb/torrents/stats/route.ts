@@ -8,10 +8,10 @@ export async function GET() {
     const torrents = await getAllTorrents()
     const stats = {
       total: torrents.length,
-      downloading: torrents.filter(t => t.state === 'downloading').length,
-      seeding: torrents.filter(t => t.state === 'uploading').length,
-      paused: torrents.filter(t => t.state.includes('paused')).length,
-      total_size: torrents.reduce((acc, t) => acc + (t.size || 0), 0),
+      downloading: torrents.filter(t => t.qb_torrent?.state === 'downloading').length,
+      seeding: torrents.filter(t => t.qb_torrent?.state === 'uploading').length,
+      paused: torrents.filter(t => t.qb_torrent?.state?.includes('paused')).length,
+      total_size: torrents.reduce((acc, t) => acc + (t.qb_torrent?.size || 0), 0),
     }
     return NextResponse.json({ success: true, data: JSON.stringify(stats) })
   } catch (error: any) {

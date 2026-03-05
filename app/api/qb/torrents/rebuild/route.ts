@@ -48,7 +48,6 @@ export async function POST(request: NextRequest) {
       const result = await syncTorrentsFromQb()
       
       return NextResponse.json({
-        success: true, 
         message: '数据已完全重建',
         ...result
       })

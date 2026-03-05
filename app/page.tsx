@@ -84,7 +84,9 @@ const HomePage: React.FC = () => {
         const torrentsWithVolumes = await Promise.all(
           torrentList.map(async (torrent: Torrent) => {
             try {
-              const volRes = await fetchApi<string>(`/api/volumes?torrent_id=${torrent._id}`)
+              const volRes = torrent.id
+                ? await fetchApi<string>(`/api/volumes?torrent_id=${torrent.id}`)
+                : null
               const volumes = volRes?.success && volRes.data ? JSON.parse(volRes.data) : []
               return {
                 ...torrent,
@@ -92,7 +94,7 @@ const HomePage: React.FC = () => {
                 volumeCount: volumes?.length || 0,
               }
             } catch (error) {
-              console.error(`获取 torrent ${torrent._id} 的 volumes 失败:`, error)
+              console.error(`获取 torrent ${torrent.id} 的 volumes 失败:`, error)
               return { ...torrent, hasVolumes: false, volumeCount: 0 }
             }
           })
@@ -140,12 +142,12 @@ const HomePage: React.FC = () => {
 
   // 编辑光盘
   const editDisc = useCallback((record: Torrent) => {
-    discEditorRef.current?.open(record.hash, record.name, false)
+    discEditorRef.current?.open(record.qb_torrent.hash, record.qb_torrent.name, false)
   }, [])
 
   // 同步光盘文件
   const syncDiscFiles = useCallback((record: Torrent) => {
-    discEditorRef.current?.open(record.hash, record.name, true)
+    discEditorRef.current?.open(record.qb_torrent.hash, record.qb_torrent.name, true)
   }, [])
 
   // 光盘保存成功回调
@@ -157,12 +159,12 @@ const HomePage: React.FC = () => {
   const deleteTorrent = useCallback(async (record: Torrent) => {
     confirm({
       title: '确认删除',
-      content: `确定要删除种子 "${record.name}" 吗？`,
+      content: `确定要删除种子 "${record.qb_torrent.name}" 吗？`,
       okText: '确定',
       cancelText: '取消',
       onOk: async () => {
         try {
-          const data = await postApi(`/api/qb/torrents/delete?hash=${record.hash}`)
+          const data = await postApi(`/api/qb/torrents/delete?hash=${record.qb_torrent.hash}`)
           if (data?.success) {
             message.success('删除成功')
             fetchTorrents()
@@ -187,11 +189,11 @@ const HomePage: React.FC = () => {
       dataIndex: 'category',
       key: 'category',
       width: 120,
-      filters: Array.from(new Set(torrents.map(t => t.category).filter(Boolean))).map(cat => ({
+      filters: Array.from(new Set(torrents.map(t => t.qb_torrent.category).filter(Boolean))).map(cat => ({
         text: cat,
         value: cat,
       })),
-      onFilter: (value, record) => record.category === value,
+      onFilter: (value, record) => record.qb_torrent.category === value,
       render: (category: string) => category || '-',
     },
     {
@@ -215,7 +217,7 @@ const HomePage: React.FC = () => {
     },
     {
       title: '名称',
-      dataIndex: 'name',
+      dataIndex: ['qb_torrent', 'name'],
       key: 'name',
       ellipsis: true,
       render: (text, record) => (
@@ -224,7 +226,7 @@ const HomePage: React.FC = () => {
     },
     {
       title: '进度',
-      dataIndex: 'progress',
+      dataIndex: ['qb_torrent', 'progress'],
       key: 'progress',
       width: 120,
       render: (progress: number) => (
@@ -237,7 +239,7 @@ const HomePage: React.FC = () => {
     },
     {
       title: '状态',
-      dataIndex: 'state',
+      dataIndex: ['qb_torrent', 'state'],
       key: 'state',
       width: 100,
       filters: [
@@ -252,10 +254,10 @@ const HomePage: React.FC = () => {
     },
     {
       title: '大小',
-      dataIndex: 'size',
+      dataIndex: ['qb_torrent', 'size'],
       key: 'size',
       width: 100,
-      sorter: (a, b) => a.size - b.size,
+      sorter: (a, b) => (a.qb_torrent?.size || 0) - (b.qb_torrent?.size || 0),
       render: (size: number) => formatSize(size),
     },
   ]

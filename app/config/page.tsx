@@ -60,7 +60,7 @@ const ConfigPage: React.FC = () => {
     try {
       const data = await postApi('/api/qb/torrents/rebuild', { rebuildCategory })
       if (data?.success) {
-        message.success(data.message || '数据已重建')
+        message.success((data.data as any)?.message || '数据已重建')
         setTimeout(() => {
           fetchStats()
         }, 2000)

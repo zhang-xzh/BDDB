@@ -24,14 +24,16 @@ export async function GET(request: NextRequest) {
 
     if (state) {
       torrents = torrents.filter(t => {
-        if (state === 'paused') return t.state?.includes('paused')
-        if (state === 'completed') return t.progress === 100
-        return t.state === state
+        const tState = t.qb_torrent?.state
+        const tProgress = t.qb_torrent?.progress
+        if (state === 'paused') return tState?.includes('paused')
+        if (state === 'completed') return tProgress === 100
+        return tState === state
       })
     }
     if (search) {
       const k = search.toLowerCase()
-      torrents = torrents.filter(t => t.name.toLowerCase().includes(k))
+      torrents = torrents.filter(t => t.qb_torrent?.name?.toLowerCase().includes(k))
     }
 
     return NextResponse.json({ success: true, data: JSON.stringify(torrents) })

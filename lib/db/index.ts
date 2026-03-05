@@ -8,7 +8,7 @@ let db: Database.Database | null = null
 export function getDb(): Database.Database {
   if (!db) {
     db = new Database(path.join(DATA_PATH, 'bddb.sqlite'), {
-      verbose: process.env.NODE_ENV === 'development' ? console.log : null,
+      verbose: process.env.NODE_ENV === 'development' ? console.log : undefined,
     })
     // 开启 WAL 模式提升并发性能
     db.pragma('journal_mode = WAL')
@@ -32,7 +32,7 @@ export function initDb() {
   // 创建 torrents 表
   db.exec(`
     CREATE TABLE IF NOT EXISTS torrents (
-      _id TEXT PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       qb_torrent TEXT NOT NULL,
       is_deleted INTEGER DEFAULT 0,
       synced_at INTEGER
@@ -42,8 +42,8 @@ export function initDb() {
   // 创建 torrent_files 表
   db.exec(`
     CREATE TABLE IF NOT EXISTS torrent_files (
-      _id TEXT PRIMARY KEY,
-      torrent_id TEXT NOT NULL,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      torrent_id INTEGER NOT NULL,
       qb_torrent_file TEXT NOT NULL,
       is_deleted INTEGER DEFAULT 0,
       synced_at INTEGER
@@ -53,8 +53,8 @@ export function initDb() {
   // 创建 volumes 表
   db.exec(`
     CREATE TABLE IF NOT EXISTS volumes (
-      _id TEXT PRIMARY KEY,
-      torrent_id TEXT NOT NULL,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      torrent_id INTEGER NOT NULL,
       torrent_file_ids TEXT NOT NULL,
       type TEXT,
       volume_no INTEGER,

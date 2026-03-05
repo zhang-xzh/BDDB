@@ -15,7 +15,7 @@ import type { Torrent as QbTorrent, TorrentFile as QbTorrentFile } from '@ctrl/q
  * _id 和 qb_torrent 里的 hash/category/name/state 需要索引
  */
 export interface Torrent {
-  _id?: string
+  id?: string
   qb_torrent: QbTorrent           // JSON: 所有 QbTorrent 字段
   is_deleted: boolean
   synced_at: number
@@ -27,7 +27,7 @@ export interface Torrent {
  * _id 需要索引
  */
 export interface TorrentFile {
-  _id?: string
+  id?: string
   torrent_id: string
   qb_torrent_file: QbTorrentFile
   is_deleted: boolean
@@ -39,7 +39,7 @@ export interface TorrentFile {
  * _id/type/catalog_no/volume_name 需要索引
  */
 export interface Volume {
-  _id?: string
+  id?: string
   torrent_id: string
   torrent_file_ids: string[]
   type: 'volume' | 'box'
@@ -94,7 +94,7 @@ export interface NodeData {
  * FileItem - 文件列表项
  */
 export interface FileItem {
-  _id?: string
+  id?: string
   name: string
   size: number
   progress: number

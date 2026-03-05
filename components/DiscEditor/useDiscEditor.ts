@@ -22,7 +22,7 @@ interface UseDiscEditorReturn {
   loading: boolean
   saving: boolean
   torrentName: string
-  torrentId: string
+  torrentId: string | null
   volumeType: 'volume' | 'box'
   volumeForms: Record<number, VolumeForm>
   files: FileItem[]
@@ -36,7 +36,7 @@ interface UseDiscEditorReturn {
   // 设置器
   setVisible: (v: boolean) => void
   setTorrentName: (n: string) => void
-  setTorrentId: (i: string) => void
+  setTorrentId: (i: string | null) => void
   setVolumeType: (t: 'volume' | 'box') => void
   setVolumeForms: (f: Record<number, VolumeForm>) => void
   setFiles: (f: FileItem[]) => void
@@ -71,7 +71,7 @@ export function useDiscEditor(): UseDiscEditorReturn {
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(false)
   const [torrentName, setTorrentName] = useState('')
-  const [torrentId, setTorrentId] = useState('')
+  const [torrentId, setTorrentId] = useState<string | null>(null)
   const [volumeType, setVolumeType] = useState<'volume' | 'box'>('volume')
   const maxVolumes = 20
 
@@ -152,9 +152,9 @@ export function useDiscEditor(): UseDiscEditorReturn {
         const fullPath = `${parentPath}${key}`
 
         const nodeDatum: NodeData = {}
-        if (file?._id) {
-          nodeDatum.files = [file._id]
-          fileToKeyMap.set(file._id, fullPath)
+        if (file?.id) {
+          nodeDatum.files = [file.id]
+          fileToKeyMap.set(file.id, fullPath)
         }
 
         const childKeys: string[] = []
@@ -226,7 +226,7 @@ export function useDiscEditor(): UseDiscEditorReturn {
     setFlatTree({ map: new Map(), order: [], leaves: [] })
     setDefaultExpandedKeys([])
     setVolumeToKeys(new Map())
-    setTorrentId('')
+    setTorrentId(null)
     setVolumeType('volume')
   }
 
@@ -251,7 +251,7 @@ export function useDiscEditor(): UseDiscEditorReturn {
         return
       }
 
-      const tid = torrent._id
+      const tid = torrent.id
       setTorrentId(tid)
 
       const apiPath = syncFiles ? `/api/qb/torrents/files` : `/api/torrents/files`
@@ -271,7 +271,7 @@ export function useDiscEditor(): UseDiscEditorReturn {
       setFlatTree(newFlatTree)
       setDefaultExpandedKeys(newExpandedKeys)
 
-      if (tid) {
+      if (tid != null) {
         const volumesResult = await fetchApi<string>(`/api/volumes?torrent_id=${tid}`)
         if (volumesResult?.success && volumesResult.data) {
           const volumes = JSON.parse(volumesResult.data)
@@ -288,8 +288,8 @@ export function useDiscEditor(): UseDiscEditorReturn {
                   catalog_no: vol.catalog_no || '',
                   volume_name: vol.volume_name || ''
                 }
-                if (vol.files?.length > 0) {
-                  vol.files.forEach((fileId: string) => fileToVolumeMap.set(fileId, volNo))
+                if (vol.torrent_file_ids?.length > 0) {
+                  vol.torrent_file_ids.forEach((fileId: string) => fileToVolumeMap.set(fileId, volNo))
                 }
               }
             })
@@ -342,7 +342,7 @@ export function useDiscEditor(): UseDiscEditorReturn {
 
               // 如果所有子节点都有相同的 volume_no，则父节点也设置为该值
               if (allChildrenHaveVolume && childVolumes.size === 1) {
-                const volumeNo = childVolumes.values().next().value
+                const volumeNo = childVolumes.values().next().value as number
                 const existingData = newNodeData.get(key) || {}
                 newNodeData.set(key, { ...existingData, volume_no: volumeNo })
                 if (!newVolumeToKeys.has(volumeNo)) newVolumeToKeys.set(volumeNo, new Set())
@@ -370,7 +370,7 @@ export function useDiscEditor(): UseDiscEditorReturn {
   }
 
   const handleSubmit = async () => {
-    if (!torrentId) return
+    if (torrentId == null) return
 
     setSaving(true)
     try {

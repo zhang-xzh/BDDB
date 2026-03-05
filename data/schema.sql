@@ -8,7 +8,7 @@
 -- 存储种子元数据（qb_torrent 为 JSON，包含 QbTorrent 所有字段）
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS torrents (
-  _id TEXT PRIMARY KEY,
+  id TEXT PRIMARY KEY,
   qb_torrent TEXT NOT NULL,
   is_deleted INTEGER DEFAULT 0,
   synced_at INTEGER
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS torrents (
 -- 存储种子文件列表（qb_torrent_file 为 JSON，包含 QbTorrentFile 所有字段）
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS torrent_files (
-  _id TEXT PRIMARY KEY,
+  id TEXT PRIMARY KEY,
   torrent_id TEXT NOT NULL,
   qb_torrent_file TEXT NOT NULL,
   is_deleted INTEGER DEFAULT 0,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS torrent_files (
 -- 存储光盘/BOX 元数据（torrent_file_ids 为 JSON 数组）
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS volumes (
-  _id TEXT PRIMARY KEY,
+  id TEXT PRIMARY KEY,
   torrent_id TEXT NOT NULL,
   torrent_file_ids TEXT NOT NULL,
   type TEXT,
