@@ -1,39 +1,26 @@
 {
-  "name": "bddb-nuxt",
+  "name": "bddb-next",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "nuxt build",
-    "dev": "nuxt dev",
-    "generate": "nuxt generate",
-    "preview": "nuxt preview",
-    "postinstall": "nuxt prepare",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:debug": "playwright test --debug"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
-    "@ant-design/icons-vue": "^7.0.1",
+    "@ant-design/icons": "^6.0.0",
     "@ctrl/qbittorrent": "^9.11.2",
     "@seald-io/nedb": "^4.1.2",
-    "ant-design-vue": "^4.2.6",
-    "dayjs": "^1.11.13",
-    "nuxt": "^4.3.1",
-    "vue": "^3.5.13",
-    "vue-router": "^5.0.3"
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "antd": "^6.3.1",
+    "next": "^16.1.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "typescript": "^5.9.3"
   },
   "devDependencies": {
-    "@nuxt/devtools": "^3.2.2",
-    "@nuxt/test-utils": "^4.0.0",
-    "@types/node": "^25.3.3",
-    "@vitest/coverage-v8": "^4.0.18",
-    "@vue/test-utils": "^2.4.6",
-    "happy-dom": "^20.8.3",
-    "jsdom": "^28.1.0",
-    "typescript": "^5.8.2",
-    "vitest": "^4.0.18"
+    "@types/node": "^25.3.3"
   }
 }

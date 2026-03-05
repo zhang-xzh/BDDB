@@ -1,5 +1,5 @@
 # ========================================================================
-# 通用 .gitignore 模板 (涵盖 OS, IDE, 常见语言与安全)
+# Next.js + TypeScript .gitignore
 # ========================================================================
 
 ### --- 操作系统特定文件 (OS Junk) ---
@@ -11,7 +11,6 @@
 
 # Windows
 Thumbs.db
-Thumbs.db:encryptable
 ehthumbs.db
 desktop.ini
 $RECYCLE.BIN/
@@ -40,76 +39,22 @@ $RECYCLE.BIN/
 *.ipr
 out/
 
-# Sublime Text
-*.sublime-project
-*.sublime-workspace
 
-# Vim
-[._]*.s[a-v][a-z]
-[._]*.sw[a-p]
-Session.vim
-.netrwhist
+### --- Next.js (重要!) ---
+.next/
+.out/
+.vercel/
 
 
-### --- 编程语言相关 (Languages & Runtimes) ---
-# Node.js
+### --- Node.js ---
 node_modules/
 npm-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 .eslintcache
-.next/
-.nuxt/
-.output/
-dist/
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-.venv/
-pip-log.txt
-.pytest_cache/
-
-# Java / Kotlin
-*.class
-*.log
-*.jar
-*.war
-*.ear
-target/
-.gradle/
-build/
-
-# C / C++ / Rust
-*.o
-*.obj
-*.a
-*.lib
-*.so
-*.dylib
-*.exe
-*.out
-*.app
-target/  # Rust
-
-
-### --- 日志、缓存与临时文件 (Logs & Temps) ---
-*.log
-logs/
-*.bak
-*.tmp
-*.temp
-*.cache
-.sass-cache/
 
 
 ### --- 敏感信息与环境变量 (Secrets - 重要!) ---
-# 永远不要提交包含 API Key 或密码的文件
 .env
 .env.local
 .env.development.local
@@ -132,5 +77,13 @@ logs/
 *.sqlite-wal
 *.db
 .data/
-data/
 *.nedb
+
+
+### --- 日志、缓存与临时文件 ---
+*.log
+logs/
+*.bak
+*.tmp
+*.temp
+*.cache

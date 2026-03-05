@@ -1,38 +1,38 @@
-# Rules
-
-## Import Rules
-- **NEVER use `../..`** in imports.
+# BDDB Development Rules
 
 ## Type Consistency
-- Frontend/backend/DB use **same types** from `server/db/schema.ts`.
+- Frontend/backend/DB use **same types** from `lib/db/schema.ts`.
 - `Torrent` extends `@ctrl/qbittorrent` types.
 - Field names must be **identical** across layers.
 
-## Process Rules
-- **NEVER manipulate node process directly**.
-- **NEVER auto-start dev mode**.
-- Use `npm run build` to verify errors.
+## Type Definitions
+- All types defined in `lib/db/schema.ts`.
+- Do NOT create duplicate types in other files.
+- Import types from `@/lib/db/schema`.
 
-## Code Style
-- TypeScript strict mode.
-- `<script setup lang="ts">` for Vue components.
-- Composition API.
-- Compact code, minimal comments.
-- **TDD (Test Driven Development)** approach.
+## API Conventions
+- API routes use `Node.js` runtime (not Edge).
+- Response format: `{ success: boolean, data?: string, error?: string }`.
+- Data is JSON.stringified in response.
 
-## UI Rules (Ant Design Vue)
-- **Ant Design components first** - use built-in components before custom CSS.
-- **Minimal CSS** - prefer component props and slots over custom styles.
+## Component Conventions
+- Client components: `'use client'` directive.
+- Ant Design 6 components.
+- No direct DOM manipulation.
 
-## Performance Rules
-- **Use any complex algorithms to optimize performance**.
-- **Introduce specialized libraries when needed** (e.g., lodash, fast-deep-equal, immutable).
-- **No need to consider human readability** - treat code as machine-generated.
-- Pre-compute and cache data structures (e.g., path maps, lookup tables).
-- Use BFS/DFS instead of array filtering for tree traversal.
-- Avoid $O(n^2)$ operations on large datasets.
+## Database Conventions
+- NeDB collections: `torrents`, `files`, `volumes`.
+- All documents have `is_deleted` and `synced_at` fields.
+- Use repository pattern for data operations.
 
-## NestJS Backend Specifics
-- **Modular Architecture**: Separate logic into Module, Controller, and Service.
-- **DTO Validation**: Use `class-validator` and `class-transformer`.
-- **Dependency Injection**: Always inject services via `constructor(private readonly ...)`.
+## File Naming
+- Components: PascalCase (e.g., `DiscEditor.tsx`).
+- Utilities: camelCase (e.g., `api.ts`).
+- Routes: `route.ts` in folder.
+
+## Build & Run
+```bash
+npm run build    # Always verify build before commit
+npm run dev      # Development
+npm run start    # Production
+```

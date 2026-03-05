@@ -4,9 +4,9 @@
 
 | Category | Technology |
 |----------|------------|
-| Framework | Nuxt 3 (Vue 3) |
+| Framework | Next.js 16 (React 19) |
 | Language | TypeScript |
-| UI | Ant Design Vue 4 |
+| UI | Ant Design 6 |
 | Database | NeDB (@seald-io/nedb) |
 | Downloader | qBittorrent (@ctrl/qbittorrent) |
 
@@ -14,25 +14,31 @@
 
 ```
 C:\APP\BDDB\
-├── app.vue
-├── nuxt.config.ts
-├── package.json
-├── docs/
-│   └── data-schema.md
+├── app/
+│   ├── api/              # API Routes (Node.js runtime)
+│   │   ├── qb/
+│   │   │   └── torrents/
+│   │   ├── torrents/
+│   │   └── volumes/
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx          # Home page
 ├── components/
-│   └── DiscEditor.vue
-├── pages/
-│   └── index.vue
-└── server/
-    ├── db/
-    │   ├── index.ts
-    │   ├── schema.ts
-    │   └── repository.ts
-    ├── qb.ts
-    └── api/
-        ├── qb/
-        ├── torrents/
-        └── volumes/
+│   ├── DiscEditor.tsx    # Disc editor modal
+│   └── Providers.tsx     # Ant Design provider
+├── lib/
+│   ├── db/
+│   │   ├── index.ts      # NeDB connection
+│   │   ├── repository.ts # Data operations
+│   │   └── schema.ts     # Type definitions (统一类型定义)
+│   ├── api.ts            # Client API client
+│   ├── api-server.ts     # Server API utilities
+│   └── qb.ts             # qBittorrent client
+├── data/                 # NeDB data files
+├── next.config.ts
+├── package.json
+├── tsconfig.json
+└── .env.local            # Environment variables
 ```
 
 ## Database
@@ -40,7 +46,7 @@ C:\APP\BDDB\
 ```
 data/
 ├── torrents.nedb  # Torrent metadata (_id, hash, name, size, state, etc.)
-├── files.nedb     # Torrent files (torrent_id, name, size, index, piece_range, etc.)
+├── files.nedb     # Torrent files (torrent_id, name, size, piece_range, etc.)
 └── volumes.nedb   # Disc metadata (torrent_id, files[], volume_no, catalog_no, etc.)
 ```
 
@@ -55,12 +61,13 @@ data/
 npm install
 npm run dev      # http://localhost:3000
 npm run build
-npm run preview
+npm run start
 ```
 
 ## Env Config
 
 ```bash
+# .env.local
 QB_HOST=localhost:18000
 QB_USER=admin
 QB_PASS=password
@@ -69,7 +76,7 @@ QB_PASS=password
 ## API Endpoints
 
 ### Torrents
-- `GET /api/qb/torrents/info?state=&search=` - List torrents
+- `GET /api/qb/torrents/info?state=&search=&hash=` - List torrents
 - `GET /api/qb/torrents/stats` - Statistics
 - `POST /api/qb/torrents/sync` - Sync from qBittorrent
 - `POST /api/qb/torrents/delete?hash=` - Soft delete
@@ -77,10 +84,8 @@ QB_PASS=password
 - `GET /api/torrents/files?hash=` - Get files from DB
 
 ### Volumes
-- `GET /api/volumes?torrent_id=&box_id=` - List volumes
+- `GET /api/volumes?torrent_id=&torrent_file_id=` - List volumes
 - `POST /api/volumes` - Add/update volumes
-- `GET /api/torrents/bd-info?torrent_file_id=` - Get BD info by file ID
-- `POST /api/torrents/bd-info?hash=` - Save BD info
 
 ### Response Format
 ```json
@@ -90,35 +95,42 @@ QB_PASS=password
 ## Conventions
 
 - TypeScript strict mode
-- `<script setup lang="ts">`
-- Composition API
-- Auto-import components
-- **No `../..` in imports** - use `#server/` or `~` aliases
-- **Same field names** - frontend/backend/DB share identical types from `schema.ts`
-- **No direct node process manipulation**
+- `'use client'` for client components
+- Ant Design 6 components
+- Auto-import paths via tsconfig.json
+- API routes use Node.js runtime (not Edge)
+- **统一类型定义**: 所有类型在 `lib/db/schema.ts` 中定义
 - **No auto-start dev mode** - use `npm run build` to verify errors
-- TDD
 
 ## Data Schema
 
-### Torrent (extends @ctrl/qbittorrent)
-```typescript
-import { Torrent as QbTorrent } from '@ctrl/qbittorrent'
+所有类型定义在 `lib/db/schema.ts` 中：
 
-interface Torrent extends QbTorrent {
+### Torrent (扩展自 @ctrl/qbittorrent)
+```typescript
+interface Torrent {
   _id?: string
+  hash: string
+  name: string
+  size: number
+  progress: number
+  state: string
+  num_seeds: number
+  num_leechs: number
+  added_on: number
   is_deleted: boolean
   synced_at: number
 }
 ```
 
-### TorrentFile (extends @ctrl/qbittorrent)
+### TorrentFile (扩展自 @ctrl/qbittorrent)
 ```typescript
-import { TorrentFile as QbTorrentFile } from '@ctrl/qbittorrent'
-
-interface TorrentFile extends QbTorrentFile {
+interface TorrentFile {
   _id?: string
   torrent_id: string  // Reference to Torrent._id
+  name: string
+  size: number
+  progress: number
   is_deleted: boolean
   synced_at: number
 }
@@ -126,7 +138,7 @@ interface TorrentFile extends QbTorrentFile {
 
 ### Volume
 ```typescript
-{
+interface Volume {
   _id?: string
   torrent_id: string    // Reference to Torrent._id
   files: string[]       // Array of TorrentFile._id
@@ -139,5 +151,37 @@ interface TorrentFile extends QbTorrentFile {
   note: string
   created_at: number
   updated_at: number
+}
+```
+
+### 前端组件类型
+```typescript
+// 统计信息
+interface Stats {
+  total: number
+  downloading: number
+  seeding: number
+  paused: number
+  total_size: number
+}
+
+// 卷表单数据
+interface VolumeForm {
+  catalog_no: string
+  volume_name: string
+}
+
+// 树节点数据
+interface NodeData {
+  volume_no?: number
+  files?: string[]
+}
+
+// 文件列表项
+interface FileItem {
+  _id?: string
+  name: string
+  size: number
+  progress: number
 }
 ```
