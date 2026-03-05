@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { Typography, Tree } from 'antd'
+import { Tree } from 'antd'
 import type { DataNode } from 'antd/es/tree'
 import { TreeNodeContent } from './TreeNodeContent'
 
@@ -22,12 +22,8 @@ export function FileTree({
 }: FileTreeProps) {
   const titleRender = useMemo(() => {
     return (node: DataNode) => {
-      const { key, isLeaf } = node
+      const { key } = node
       const title = node.title as string
-
-      if (isLeaf) {
-        return <Typography.Text ellipsis={{ tooltip: title }}>{title}</Typography.Text>
-      }
       return (
         <TreeNodeContent
           title={title}
