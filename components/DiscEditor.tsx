@@ -456,14 +456,14 @@ const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(function DiscEdito
   // 渲染文件树节点
   const renderTreeNode = (title: string, key: string, isLeaf: boolean) => {
     return (
-      <div className="tree-node">
-        <Typography.Text className="node-title" ellipsis={{ tooltip: title }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+        <Typography.Text ellipsis={{ tooltip: title }} style={{ flex: 1 }}>
           {title}
         </Typography.Text>
         <Select
           value={getNodeVolume(key)}
           onChange={(val) => onVolumeChange(key, val)}
-          style={{ width: '100px' }}
+          style={{ width: '100px', flexShrink: 0 }}
           size="small"
           placeholder="卷号"
           allowClear
@@ -486,7 +486,6 @@ const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(function DiscEdito
     <Modal
       open={visible}
       title={torrentName || '编辑产品信息'}
-      wrapClassName="disc-editor-modal"
       width={900}
       confirmLoading={saving}
       onOk={handleSubmit}

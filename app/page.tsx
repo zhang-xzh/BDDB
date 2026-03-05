@@ -221,9 +221,9 @@ const HomePage: React.FC = () => {
   ]
 
   return (
-    <div className="home">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {/* 操作栏 */}
-      <div className="toolbar">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <Space>
           <Button type="primary" onClick={syncTorrents} loading={syncing} icon={<SyncOutlined />}>
             同步 qBittorrent

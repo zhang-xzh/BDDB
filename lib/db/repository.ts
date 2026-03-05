@@ -109,19 +109,27 @@ export function deleteVolumesByTorrent(torrentId: string): Promise<void> {
 
 export function getVolumesByTorrent(torrentId: string): Promise<Volume[]> {
   return new Promise((resolve, reject) => {
-    getDb('volumes').find({ torrent_id: torrentId, $or: [{ is_deleted: false }, { is_deleted: { $exists: false } }] }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
-      if (err) reject(err)
-      else resolve(docs as Volume[])
-    })
+    const db = getDb('volumes')
+    db.ensureIndex({ fieldName: 'torrent_id' }, () => {})
+    db.ensureIndex({ fieldName: 'is_deleted' }, () => {})
+    db.find({ torrent_id: torrentId, is_deleted: { $ne: true } })
+      .sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
+        if (err) reject(err)
+        else resolve(docs as Volume[])
+      })
   })
 }
 
 export function getVolumesByFile(fileId: string): Promise<Volume[]> {
   return new Promise((resolve, reject) => {
-    getDb('volumes').find({ files: fileId, $or: [{ is_deleted: false }, { is_deleted: { $exists: false } }] }).sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
-      if (err) reject(err)
-      else resolve(docs as Volume[])
-    })
+    const db = getDb('volumes')
+    db.ensureIndex({ fieldName: 'files' }, () => {})
+    db.ensureIndex({ fieldName: 'is_deleted' }, () => {})
+    db.find({ files: fileId, is_deleted: { $ne: true } })
+      .sort({ volume_no: 1, sort_order: 1 }).exec((err, docs) => {
+        if (err) reject(err)
+        else resolve(docs as Volume[])
+      })
   })
 }
 
@@ -209,7 +217,12 @@ export function saveTorrentFiles(torrentId: string, files: Partial<TorrentFile>[
 
 export function getTorrentFiles(torrentId: string): Promise<TorrentFile[]> {
   return new Promise((resolve, reject) => {
-    getDb('files').find({ torrent_id: torrentId, $or: [{ is_deleted: false }, { is_deleted: { $exists: false } }] })
+    const db = getDb('files')
+    // 确保索引存在
+    db.ensureIndex({ fieldName: 'torrent_id' }, () => {})
+    db.ensureIndex({ fieldName: 'is_deleted' }, () => {})
+    // 简化查询条件，避免 $or 导致的全表扫描
+    db.find({ torrent_id: torrentId, is_deleted: { $ne: true } })
       .sort({ name: 1 }).exec((err, docs) => {
         if (err) reject(err)
         else resolve(docs as TorrentFile[])

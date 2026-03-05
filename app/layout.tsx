@@ -16,34 +16,32 @@ export default function RootLayout({
 
   return (
     <html lang="zh-CN">
-      <body>
+      <body style={{ margin: 0, padding: 0, minHeight: '100vh' }}>
         <ConfigProvider locale={zhCN}>
-          <div className="layout">
-            <Layout>
-              <Header className="header">
-                <div className="logo">
-                  <h1>BDDB</h1>
-                </div>
-                <Menu
-                  selectedKeys={selectedKeys}
-                  onSelect={keys => setSelectedKeys(keys.selectedKeys as string[])}
-                  theme="dark"
-                  mode="horizontal"
-                  style={{ flex: 1, minWidth: 0 }}
-                >
-                  <Menu.Item key="1">首页</Menu.Item>
-                  <Menu.Item key="2">光盘管理</Menu.Item>
-                  <Menu.Item key="3">配置</Menu.Item>
-                </Menu>
-              </Header>
-              <Content className="content">
-                {children}
-              </Content>
-              <Footer className="footer">
-                BDDB - Next.js Version © {new Date().getFullYear()}
-              </Footer>
-            </Layout>
-          </div>
+          <Layout style={{ minHeight: '100vh' }}>
+            <Header style={{ display: 'flex', alignItems: 'center', padding: '0 24px', gap: '24px' }}>
+              <div style={{ color: 'white', fontSize: '20px', fontWeight: 'bold' }}>
+                <h1 style={{ margin: 0, fontSize: '24px' }}>BDDB</h1>
+              </div>
+              <Menu
+                selectedKeys={selectedKeys}
+                onSelect={keys => setSelectedKeys(keys.selectedKeys as string[])}
+                theme="dark"
+                mode="horizontal"
+                style={{ flex: 1, minWidth: 0 }}
+              >
+                <Menu.Item key="1">首页</Menu.Item>
+                <Menu.Item key="2">光盘管理</Menu.Item>
+                <Menu.Item key="3">配置</Menu.Item>
+              </Menu>
+            </Header>
+            <Content style={{ margin: '24px', padding: '24px', background: '#fff', minHeight: 'calc(100vh - 184px)' }}>
+              {children}
+            </Content>
+            <Footer style={{ textAlign: 'center', color: 'rgba(0, 0, 0, 0.45)' }}>
+              BDDB - Next.js Version © {new Date().getFullYear()}
+            </Footer>
+          </Layout>
         </ConfigProvider>
       </body>
     </html>
