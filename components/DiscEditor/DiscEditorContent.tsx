@@ -72,7 +72,7 @@ export function DiscEditorContent({
           <Empty description="暂无文件数据" />
         )}
 
-        <Space style={{ justifyContent: 'flex-end' }}>
+        <Space>
           <Button onClick={onCancel}>取消</Button>
           <Button type="primary" loading={saving} onClick={onSubmit}>保存</Button>
         </Space>

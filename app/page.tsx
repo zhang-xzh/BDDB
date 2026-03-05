@@ -190,6 +190,9 @@ const HomePage: React.FC = () => {
     async (key: string | string[]) => {
       const newKey = Array.isArray(key) ? key[0] : key || undefined;
 
+      // Clicking the active item would collapse it — ignore, let buttons handle close
+      if (!newKey && activeKey) return;
+
       if (activeKey && activeKey !== newKey) {
         if (!skipSubmitRef.current && editor.hasChanges()) {
           await editor.handleSubmit();
@@ -202,11 +205,7 @@ const HomePage: React.FC = () => {
       if (newKey) {
         const torrent = pagedTorrents.find((t) => t.qb_torrent.hash === newKey);
         if (torrent) {
-          await editor.open(
-            torrent.qb_torrent.hash,
-            torrent.qb_torrent.name,
-            false,
-          );
+          await editor.open(torrent.qb_torrent.hash, torrent.qb_torrent.name, false);
         }
       }
     },

@@ -84,7 +84,7 @@ export function VolumeFormList({
                   })
                 }
                 placeholder="标题"
-                style={{ width: "240px" }}
+                style={{ width: "500px" }}
               />
             </div>
           );
