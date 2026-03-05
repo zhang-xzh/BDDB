@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Card, Space, Empty, Spin, Button, InputNumber } from "antd";
+import { Card, Space, Empty, Spin, Button, InputNumber, message } from "antd";
 import { VolumeFormList } from "./VolumeFormList";
 import { FileTree } from "./FileTree";
 import type { VolumeForm, FileItem, NodeData } from "@/lib/db/schema";
@@ -52,14 +52,35 @@ export function DiscEditorContent({
   onSubmit,
 }: DiscEditorContentProps) {
   const [worksCount, setWorksCount] = useState(1);
+  const [submitted, setSubmitted] = useState(false);
 
   const handleWorksCountChange = (val: number | null) => {
     setWorksCount(val ?? 1);
     resetVolumeAssignments();
   };
 
+  const handleSubmit = () => {
+    setSubmitted(true);
+    const hasError = selectedVolumes.some(
+      (vol) =>
+        !volumeForms[vol]?.catalog_no?.trim() ||
+        !volumeForms[vol]?.volume_name?.trim(),
+    );
+    if (hasError) {
+      message.error("请填写所有卷的型番和标题");
+      return;
+    }
+    onSubmit();
+  };
+
   return (
     <Spin spinning={loading}>
+      <Space>
+        <Button onClick={onCancel}>取消</Button>
+        <Button type="primary" loading={saving} onClick={handleSubmit}>
+          保存
+        </Button>
+      </Space>
       <div
         style={{
           padding: "8px 0",
@@ -73,6 +94,7 @@ export function DiscEditorContent({
           volumeForms={volumeForms}
           onVolumeFormChange={onVolumeFormChange}
           worksCount={worksCount}
+          submitted={submitted}
         />
 
         {files.length > 0 ? (
@@ -115,13 +137,6 @@ export function DiscEditorContent({
         ) : (
           <Empty description="暂无文件数据" />
         )}
-
-        <Space>
-          <Button onClick={onCancel}>取消</Button>
-          <Button type="primary" loading={saving} onClick={onSubmit}>
-            保存
-          </Button>
-        </Space>
       </div>
     </Spin>
   );

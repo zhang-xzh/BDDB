@@ -7,6 +7,8 @@ interface VolumeFormListProps {
   volumeForms: Record<number, VolumeForm>;
   onVolumeFormChange: (vol: number, form: VolumeForm) => void;
   worksCount: number;
+  /** 触发过提交后设为 true，显示验证错误 */
+  submitted?: boolean;
 }
 
 const getVolumeForm = (
@@ -19,13 +21,17 @@ function VolumeRow({
   label,
   volumeForms,
   onVolumeFormChange,
+  submitted,
 }: {
   vol: number;
   label: string;
   volumeForms: Record<number, VolumeForm>;
   onVolumeFormChange: (vol: number, form: VolumeForm) => void;
+  submitted?: boolean;
 }) {
   const form = getVolumeForm(volumeForms, vol);
+  const catalogNoError = submitted && !form.catalog_no.trim();
+  const volumeNameError = submitted && !form.volume_name.trim();
   return (
     <div
       style={{
@@ -67,6 +73,7 @@ function VolumeRow({
         }
         placeholder="型番"
         style={{ width: "120px" }}
+        status={catalogNoError ? "error" : undefined}
       />
       <Input
         value={form.volume_name}
@@ -75,6 +82,7 @@ function VolumeRow({
         }
         placeholder="标题"
         style={{ width: "700px" }}
+        status={volumeNameError ? "error" : undefined}
       />
     </div>
   );
@@ -85,6 +93,7 @@ export function VolumeFormList({
   volumeForms,
   onVolumeFormChange,
   worksCount,
+  submitted,
 }: VolumeFormListProps) {
   if (selectedVolumes.length === 0) return null;
 
@@ -100,6 +109,7 @@ export function VolumeFormList({
               label={`第${vol}卷`}
               volumeForms={volumeForms}
               onVolumeFormChange={onVolumeFormChange}
+              submitted={submitted}
             />
           ))}
         </Space>
@@ -147,6 +157,7 @@ export function VolumeFormList({
                           label={`第${volNo}卷`}
                           volumeForms={volumeForms}
                           onVolumeFormChange={onVolumeFormChange}
+                          submitted={submitted}
                         />
                       );
                     })}

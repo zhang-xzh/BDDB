@@ -111,20 +111,6 @@ const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(
             ) : (
               <Empty description="暂无文件数据" />
             )}
-
-            {/* 底部按钮 */}
-            <Space
-              style={{
-                justifyContent: "flex-end",
-                width: "100%",
-                marginTop: "16px",
-              }}
-            >
-              <Button onClick={handleCancel}>取消</Button>
-              <Button type="primary" onClick={handleSubmit} loading={saving}>
-                保存
-              </Button>
-            </Space>
           </Space>
         </Spin>
       </Modal>
