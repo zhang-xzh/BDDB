@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { Card, Button, Space, Divider, message, Modal, Descriptions, Statistic, Row, Col } from 'antd'
-import { SettingOutlined, SyncOutlined, ReloadOutlined, DatabaseOutlined } from '@ant-design/icons'
+import { SettingOutlined, SyncOutlined, ReloadOutlined, DatabaseOutlined, SaveOutlined } from '@ant-design/icons'
 import { postApi } from '@/lib/api'
 import { fetchApi } from '@/lib/api'
 import type { Stats } from '@/lib/db/schema'
@@ -10,7 +10,7 @@ import type { Stats } from '@/lib/db/schema'
 const ConfigPage: React.FC = () => {
   const [syncing, setSyncing] = useState(false)
   const [rebuilding, setRebuilding] = useState(false)
-  const [rebuildingCategory, setRebuildingCategory] = useState(false)
+  const [flushing, setFlushing] = useState(false)
   const [stats, setStats] = useState<Stats | null>(null)
   const [loadingStats, setLoadingStats] = useState(false)
 
@@ -51,14 +51,10 @@ const ConfigPage: React.FC = () => {
   }, [fetchStats])
 
   // 重建数据
-  const rebuildData = useCallback(async (rebuildCategory = false) => {
-    if (rebuildCategory) {
-      setRebuildingCategory(true)
-    } else {
-      setRebuilding(true)
-    }
+  const rebuildData = useCallback(async () => {
+    setRebuilding(true)
     try {
-      const data = await postApi('/api/qb/torrents/rebuild', { rebuildCategory })
+      const data = await postApi('/api/qb/torrents/rebuild')
       if (data?.success) {
         message.success((data.data as any)?.message || '数据已重建')
         setTimeout(() => {
@@ -72,9 +68,26 @@ const ConfigPage: React.FC = () => {
       message.error('重建失败')
     } finally {
       setRebuilding(false)
-      setRebuildingCategory(false)
     }
   }, [fetchStats])
+
+  // 手动写入所有数据到磁盘
+  const flushStore = useCallback(async () => {
+    setFlushing(true)
+    try {
+      const data = await postApi('/api/store/flush') as any
+      if (data?.success) {
+        message.success(data?.message || '写入完成')
+      } else {
+        message.error(data?.error || '写入失败')
+      }
+    } catch (error) {
+      console.error('写入失败:', error)
+      message.error('写入失败')
+    } finally {
+      setFlushing(false)
+    }
+  }, [])
 
   // 确认重建
   const confirmRebuild = () => {
@@ -84,18 +97,7 @@ const ConfigPage: React.FC = () => {
       okText: '确定',
       cancelText: '取消',
       okButtonProps: { danger: true },
-      onOk: () => rebuildData(false),
-    })
-  }
-
-  // 确认更新类别
-  const confirmUpdateCategory = () => {
-    Modal.confirm({
-      title: '确认更新类别',
-      content: '确定要更新所有种子的类别信息吗？这将从 qBittorrent 获取最新的类别数据。',
-      okText: '确定',
-      cancelText: '取消',
-      onOk: () => rebuildData(true),
+      onOk: () => rebuildData(),
     })
   }
 
@@ -153,7 +155,7 @@ const ConfigPage: React.FC = () => {
                 <p style={{ color: '#666', fontSize: '14px' }}>
                   从 qBittorrent 获取最新的种子列表并更新到数据库。如果种子已存在则更新状态，否则添加新种子。
                 </p>
-                <Button 
+                <Button
                   type="primary" 
                   onClick={syncTorrents} 
                   loading={syncing} 
@@ -162,6 +164,24 @@ const ConfigPage: React.FC = () => {
                   block
                 >
                   {syncing ? '同步中...' : '开始同步'}
+                </Button>
+              </div>
+
+              <Divider />
+
+              <div>
+                <h3 style={{ marginTop: 0 }}>手动写入</h3>
+                <p style={{ color: '#666', fontSize: '14px' }}>
+                  将内存中的所有数据强制写入磁盘。正常情况下每次操作后自动写入，此按钮用于应急保存。
+                </p>
+                <Button
+                  onClick={flushStore}
+                  loading={flushing}
+                  icon={<SaveOutlined />}
+                  size="large"
+                  block
+                >
+                  {flushing ? '写入中...' : '写入磁盘'}
                 </Button>
               </div>
             </Space>
@@ -188,26 +208,6 @@ const ConfigPage: React.FC = () => {
                   block
                 >
                   重建数据
-                </Button>
-              </div>
-
-              <Divider />
-
-              <div>
-                <h3 style={{ marginTop: 0 }}>更新类别</h3>
-                <p style={{ color: '#666', fontSize: '14px' }}>
-                  从 qBittorrent 获取最新的类别信息并更新到数据库。
-                  <br />
-                  保留现有数据，仅更新 category 字段。
-                </p>
-                <Button 
-                  onClick={confirmUpdateCategory} 
-                  loading={rebuildingCategory} 
-                  icon={<SettingOutlined />}
-                  size="large"
-                  block
-                >
-                  更新类别
                 </Button>
               </div>
             </Space>

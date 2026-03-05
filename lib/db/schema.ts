@@ -1,112 +1,98 @@
 // ============================================================================
 // BDDB Schema Definitions
-// All types extend from @ctrl/qbittorrent for type consistency
 // ============================================================================
 
-import type { Torrent as QbTorrent, TorrentFile as QbTorrentFile } from '@ctrl/qbittorrent'
+import type {
+  Torrent as QbTorrent,
+  TorrentFile as QbTorrentFile,
+} from "@ctrl/qbittorrent";
 
 // ============================================================================
-// Database Types (extend from @ctrl/qbittorrent)
+// Storage Types
 // ============================================================================
 
-/**
- * Torrent - 种子元数据
- * Extends @ctrl/qbittorrent Torrent type
- * _id 和 qb_torrent 里的 hash/category/name/state 需要索引
- */
+/** Torrent - API/前端层 */
 export interface Torrent {
-  id?: string
-  qb_torrent: QbTorrent           // JSON: 所有 QbTorrent 字段
-  is_deleted: boolean
-  synced_at: number
+  id?: string;
+  qb_torrent: QbTorrent;
+  is_deleted: boolean;
+  synced_at: number;
 }
 
-/**
- * TorrentFile - 种子文件
- * Extends @ctrl/qbittorrent TorrentFile type
- * _id 需要索引
- */
+/** TorrentFile - API/前端层 */
 export interface TorrentFile {
-  id?: string
-  torrent_id: string
-  qb_torrent_file: QbTorrentFile
-  is_deleted: boolean
-  synced_at: number
+  id?: string;
+  torrent_id: string;
+  qb_torrent_file: QbTorrentFile;
+  is_deleted: boolean;
+  synced_at: number;
 }
 
-/**
- * Volume - 光盘/BOX 元数据
- * _id/type/catalog_no/volume_name 需要索引
- */
+/** StoredFile - 嵌入在 TorrentRecord 中的文件 */
+export interface StoredFile {
+  id: string;
+  qb_torrent_file: QbTorrentFile;
+  is_deleted: boolean;
+  synced_at: number;
+}
+
+/** TorrentRecord - 文件存储格式（每 torrent 一个 JSON 文件） */
+export interface TorrentRecord {
+  id: string;
+  hash: string;
+  added_on: number;
+  qb_torrent: QbTorrent;
+  is_deleted: boolean;
+  synced_at: number;
+  files: StoredFile[];
+}
+
+/** Volume - 光盘/BOX 元数据 */
 export interface Volume {
-  id?: string
-  torrent_id: string
-  torrent_file_ids: string[]
-  type: 'volume' | 'box' | undefined
-  volume_no: number
-  sort_order: number
-  volume_name?: string
-  catalog_no: string
-  suruga_id: string
-  note: string
-  title?: string
-  release_date?: string
-  maker?: string
-  version_type?: string
-  bonus_status?: string
-  media_type?: 'DVD' | 'BD'
-  is_deleted?: boolean
-  created_at: number
-  updated_at: number
+  id: string;
+  torrent_id: string;
+  torrent_file_ids: string[];
+  type?: "volume" | "box";
+  volume_no: number;
+  catalog_no: string;
+  volume_name?: string;
+  media_type?: "DVD" | "BD";
+  is_deleted: boolean;
+  updated_at: number;
 }
 
 // ============================================================================
 // Frontend Component Types
 // ============================================================================
 
-/**
- * Stats - 统计信息
- */
 export interface Stats {
-  total: number
-  downloading: number
-  seeding: number
-  paused: number
-  total_size: number
+  total: number;
+  downloading: number;
+  seeding: number;
+  paused: number;
+  total_size: number;
 }
 
-/**
- * VolumeForm - 卷表单数据
- */
 export interface VolumeForm {
-  catalog_no: string
-  volume_name: string
-  type?: 'volume' | 'box'
-  media_type?: 'DVD' | 'BD'
+  catalog_no: string;
+  volume_name: string;
+  type?: "volume" | "box";
+  media_type?: "DVD" | "BD";
 }
 
-/**
- * NodeData - 树节点数据
- */
 export interface NodeData {
-  volume_no?: number
-  shared_volume_nos?: number[]  // 共享模式：同时属于多个分卷
-  files?: string[]
+  volume_no?: number;
+  shared_volume_nos?: number[];
+  files?: string[];
 }
 
-/**
- * FileItem - 文件列表项
- */
 export interface FileItem {
-  id?: string
-  name: string
-  size: number
-  progress: number
+  id?: string;
+  name: string;
+  size: number;
+  progress: number;
 }
 
-/**
- * QueryCondition - 查询条件
- */
 export interface QueryCondition {
-  [key: string]: any
+  [key: string]: any;
 }

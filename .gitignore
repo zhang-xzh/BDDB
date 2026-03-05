@@ -62,6 +62,7 @@ yarn-error.log*
 .env.production.local
 .env*.local
 
+
 # 密钥文件
 *.pem
 *.key
@@ -78,6 +79,7 @@ yarn-error.log*
 *.db
 .data/
 *.nedb
+data
 
 
 ### --- 日志、缓存与临时文件 ---
