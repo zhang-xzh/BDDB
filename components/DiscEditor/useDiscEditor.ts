@@ -63,6 +63,7 @@ interface UseDiscEditorReturn {
   formatSize: (bytes: number) => string
   resetAll: () => void
   resetVolumeAssignments: () => void
+  deleteVolume: (vol: number) => void
 }
 
 interface BuildTreeResult {
@@ -214,6 +215,38 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
       return newMap
     })
     setVolumeToKeys(new Map())
+  }, [])
+
+  const deleteVolume = useCallback((vol: number) => {
+    // 从 volumeForms 中删除
+    setVolumeForms(prev => {
+      const next = { ...prev }
+      delete next[vol]
+      return next
+    })
+    // 清理 nodeData 中对应卷的选择
+    setNodeData(prev => {
+      const newMap = new Map(prev)
+      newMap.forEach((data, key) => {
+        if (data.volume_no === vol) {
+          newMap.set(key, { ...data, volume_no: undefined })
+        } else if (data.shared_volume_nos?.includes(vol)) {
+          const filtered = data.shared_volume_nos.filter(v => v !== vol)
+          newMap.set(key, {
+            ...data,
+            shared_volume_nos: filtered.length > 0 ? filtered : undefined,
+            volume_no: filtered.length === 1 ? filtered[0] : data.volume_no,
+          })
+        }
+      })
+      return newMap
+    })
+    // 从 volumeToKeys 中删除
+    setVolumeToKeys(prev => {
+      const next = new Map(prev)
+      next.delete(vol)
+      return next
+    })
   }, [])
 
   const buildTree = (fileList: FileItem[]): BuildTreeResult => {
@@ -569,25 +602,21 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
         }
       })
 
-      const savePromises = selectedVolumes.map(volNo =>
-        postApi(`/api/volumes`, {
-          torrent_id: torrentId,
+      const result = await postApi(`/api/volumes`, {
+        torrent_id: torrentId,
+        volumes: selectedVolumes.map(volNo => ({
+          type: volumeForms[volNo]?.type,
+          volume_no: volNo,
+          sort_order: volNo,
+          volume_name: (volumeForms[volNo]?.volume_name || '').trim(),
+          catalog_no: (volumeForms[volNo]?.catalog_no || '').trim(),
+          media_type: volumeForms[volNo]?.media_type,
           files: files[volNo] || [],
-          volumes: [{
-            type: volumeForms[volNo]?.type,
-            volume_no: volNo,
-            sort_order: volNo,
-            volume_name: (volumeForms[volNo]?.volume_name || '').trim(),
-            catalog_no: (volumeForms[volNo]?.catalog_no || '').trim(),
-            media_type: volumeForms[volNo]?.media_type,
-          }],
-        })
-      )
+        })),
+      })
 
-      const results = await Promise.all(savePromises)
-      const failed = results.filter(r => !r?.success)
-      if (failed.length > 0) {
-        message.error(failed[0]?.error || '保存失败')
+      if (!result?.success) {
+        message.error(result?.error || '保存失败')
         return
       }
       message.success('保存成功')
@@ -647,5 +676,6 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
     formatSize,
     resetAll,
     resetVolumeAssignments,
+    deleteVolume,
   }
 }

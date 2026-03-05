@@ -471,6 +471,19 @@ export async function saveVolume(torrentId: string, files: string[], data: Parti
   }
 }
 
+/** 软删除不在 keepVolumeNos 列表中的旧卷记录 */
+export function deleteStaleVolumes(torrentId: string, keepVolumeNos: number[]): void {
+  const db = getDb()
+  if (keepVolumeNos.length === 0) {
+    db.prepare(`UPDATE volumes SET is_deleted = 1, updated_at = ? WHERE torrent_id = ? AND is_deleted = 0`)
+      .run(now(), torrentId)
+  } else {
+    const placeholders = keepVolumeNos.map(() => '?').join(', ')
+    db.prepare(`UPDATE volumes SET is_deleted = 1, updated_at = ? WHERE torrent_id = ? AND volume_no NOT IN (${placeholders}) AND is_deleted = 0`)
+      .run(now(), torrentId, ...keepVolumeNos)
+  }
+}
+
 // ============================================================================
 // Utility
 // ============================================================================

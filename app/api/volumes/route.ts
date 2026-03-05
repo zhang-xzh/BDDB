@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getVolumesByTorrent, getVolumesByFile, getAllVolumes } from '@/lib/db/repository'
-import { saveVolume } from '@/lib/db/repository'
+import { getVolumesByTorrent, getVolumesByFile, getAllVolumes, saveVolume, deleteStaleVolumes } from '@/lib/db/repository'
 
 export const runtime = 'nodejs'
 
@@ -25,17 +24,21 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { torrent_id, files, volumes } = body
+    const { torrent_id, volumes } = body
 
-    if (!torrent_id || !files || !Array.isArray(files)) {
-      return NextResponse.json({ success: false, error: 'Missing torrent_id or files' })
+    if (!torrent_id) {
+      return NextResponse.json({ success: false, error: 'Missing torrent_id' })
     }
     if (!volumes || !Array.isArray(volumes)) {
       return NextResponse.json({ success: false, error: 'Missing volumes' })
     }
 
+    const keepVolumeNos: number[] = volumes.map((v: any) => v.volume_no)
+    deleteStaleVolumes(torrent_id, keepVolumeNos)
+
     for (const v of volumes) {
-      await saveVolume(torrent_id, files, v)
+      const { files, ...volumeData } = v
+      await saveVolume(torrent_id, files ?? [], volumeData)
     }
 
     return NextResponse.json({ success: true, data: 'ok' })

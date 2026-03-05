@@ -41,6 +41,7 @@ const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(
       getNodeSharedVolumes,
       updateVolumeForm,
       resetVolumeAssignments,
+      deleteVolume,
     } = useDiscEditor(onSave);
 
     useImperativeHandle(ref, () => ({ open }), [open]);
@@ -75,6 +76,7 @@ const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(
           getNodeShared={getNodeShared}
           getNodeSharedVolumes={getNodeSharedVolumes}
           resetVolumeAssignments={resetVolumeAssignments}
+          deleteVolume={deleteVolume}
           onCancel={handleCancel}
           onSubmit={handleSubmit}
         />

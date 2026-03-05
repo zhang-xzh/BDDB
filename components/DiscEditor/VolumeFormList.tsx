@@ -1,11 +1,13 @@
 import React from "react";
-import { Card, Space, Input, Radio, Typography } from "antd";
+import { Card, Space, Input, Radio, Typography, Button } from "antd";
+import { DeleteOutlined } from "@ant-design/icons";
 import type { VolumeForm } from "@/lib/db/schema";
 
 interface VolumeFormListProps {
   selectedVolumes: number[];
   volumeForms: Record<number, VolumeForm>;
   onVolumeFormChange: (vol: number, form: VolumeForm) => void;
+  onDeleteVolume: (vol: number) => void;
   worksCount: number;
   /** 触发过提交后设为 true，显示验证错误 */
   submitted?: boolean;
@@ -21,12 +23,14 @@ function VolumeRow({
   label,
   volumeForms,
   onVolumeFormChange,
+  onDeleteVolume,
   submitted,
 }: {
   vol: number;
   label: string;
   volumeForms: Record<number, VolumeForm>;
   onVolumeFormChange: (vol: number, form: VolumeForm) => void;
+  onDeleteVolume: (vol: number) => void;
   submitted?: boolean;
 }) {
   const form = getVolumeForm(volumeForms, vol);
@@ -84,6 +88,13 @@ function VolumeRow({
         style={{ width: "700px" }}
         status={volumeNameError ? "error" : undefined}
       />
+      <Button
+        type="text"
+        danger
+        size="small"
+        icon={<DeleteOutlined />}
+        onClick={() => onDeleteVolume(vol)}
+      />
     </div>
   );
 }
@@ -92,12 +103,12 @@ export function VolumeFormList({
   selectedVolumes,
   volumeForms,
   onVolumeFormChange,
+  onDeleteVolume,
   worksCount,
   submitted,
 }: VolumeFormListProps) {
   if (selectedVolumes.length === 0) return null;
 
-  // Single-work mode: volumes are plain numbers (1, 2, 3...)
   if (worksCount === 1) {
     return (
       <Card size="small" title="卷信息" styles={{ body: { padding: "12px" } }}>
@@ -109,6 +120,7 @@ export function VolumeFormList({
               label={`第${vol}卷`}
               volumeForms={volumeForms}
               onVolumeFormChange={onVolumeFormChange}
+              onDeleteVolume={onDeleteVolume}
               submitted={submitted}
             />
           ))}
@@ -117,7 +129,6 @@ export function VolumeFormList({
     );
   }
 
-  // Multi-work mode: volumes encoded as workIndex * 1000 + volNo
   const groups: Record<number, number[]> = {};
   selectedVolumes.forEach((encoded) => {
     const workIdx = Math.floor(encoded / 1000);
@@ -135,32 +146,24 @@ export function VolumeFormList({
             const workIdx = Number(workIdxStr);
             return (
               <div key={workIdx}>
-                <Typography.Text
-                  strong
-                  style={{ display: "block", marginBottom: 8 }}
-                >
+                <Typography.Text strong style={{ display: "block", marginBottom: 8 }}>
                   作品 {workIdx}
                 </Typography.Text>
-                <Space
-                  style={{ width: "100%", paddingLeft: 16 }}
-                  size={8}
-                  orientation="vertical"
-                >
-                  {vols
-                    .sort((a, b) => a - b)
-                    .map((volNo) => {
-                      const encoded = workIdx * 1000 + volNo;
-                      return (
-                        <VolumeRow
-                          key={encoded}
-                          vol={encoded}
-                          label={`第${volNo}卷`}
-                          volumeForms={volumeForms}
-                          onVolumeFormChange={onVolumeFormChange}
-                          submitted={submitted}
-                        />
-                      );
-                    })}
+                <Space style={{ width: "100%", paddingLeft: 16 }} size={8} orientation="vertical">
+                  {vols.sort((a, b) => a - b).map((volNo) => {
+                    const encoded = workIdx * 1000 + volNo;
+                    return (
+                      <VolumeRow
+                        key={encoded}
+                        vol={encoded}
+                        label={`第${volNo}卷`}
+                        volumeForms={volumeForms}
+                        onVolumeFormChange={onVolumeFormChange}
+                        onDeleteVolume={onDeleteVolume}
+                        submitted={submitted}
+                      />
+                    );
+                  })}
                 </Space>
               </div>
             );

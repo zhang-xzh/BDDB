@@ -27,6 +27,7 @@ interface DiscEditorContentProps {
   getNodeShared: (key: string) => boolean;
   getNodeSharedVolumes: (key: string) => number[];
   resetVolumeAssignments: () => void;
+  deleteVolume: (vol: number) => void;
   onCancel: () => void;
   onSubmit: () => void;
 }
@@ -52,6 +53,7 @@ export function DiscEditorContent({
   getNodeShared,
   getNodeSharedVolumes,
   resetVolumeAssignments,
+  deleteVolume,
   onCancel,
   onSubmit,
 }: DiscEditorContentProps) {
@@ -96,6 +98,7 @@ export function DiscEditorContent({
           selectedVolumes={selectedVolumes}
           volumeForms={volumeForms}
           onVolumeFormChange={onVolumeFormChange}
+          onDeleteVolume={deleteVolume}
           worksCount={worksCount}
           submitted={submitted}
         />

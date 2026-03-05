@@ -316,6 +316,7 @@ const HomePage: React.FC = () => {
               getNodeShared={editor.getNodeShared}
               getNodeSharedVolumes={editor.getNodeSharedVolumes}
               resetVolumeAssignments={editor.resetVolumeAssignments}
+              deleteVolume={editor.deleteVolume}
               onCancel={handleCancel}
               onSubmit={editor.handleSubmit}
             />
