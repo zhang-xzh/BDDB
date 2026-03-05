@@ -32,6 +32,8 @@ interface UseDiscEditorReturn {
   selectedVolumes: number[]
   visibleVolumes: number
   loadMoreVolumes: () => void
+  worksCount: number
+  setWorksCount: (n: number) => void
 
   // 设置器
   setVisible: (v: boolean) => void
@@ -79,6 +81,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
   const [torrentId, setTorrentId] = useState<string | null>(null)
   const [visibleVolumes, setVisibleVolumes] = useState(20)
   const loadMoreVolumes = useCallback(() => setVisibleVolumes(v => v + 10), [])
+  const [worksCount, setWorksCount] = useState(1)
 
   const [volumeForms, setVolumeForms] = useState<Record<number, VolumeForm>>({})
   const [files, setFiles] = useState<FileItem[]>([])
@@ -332,6 +335,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
     setDefaultExpandedKeys([])
     setVolumeToKeys(new Map())
     setTorrentId(null)
+    setWorksCount(1)
   }
 
   const open = async (torrentHash: string, name: string = '', syncFiles = false) => {
@@ -408,7 +412,8 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
           const volumes = JSON.parse(volumesResult.data)
           if (volumes?.length > 0) {
             const newVolumeForms: Record<number, VolumeForm> = {}
-            const fileToVolumeMap: Map<string, number> = new Map()
+            // fileId -> 所有包含它的卷号（用于检测共享）
+            const fileToVolumesMap: Map<string, number[]> = new Map()
 
             volumes.forEach((vol: any) => {
               const volNo = vol.volume_no
@@ -420,24 +425,42 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
                   media_type: vol.media_type || undefined,
                 }
                 if (vol.torrent_file_ids?.length > 0) {
-                  vol.torrent_file_ids.forEach((fileId: string) => fileToVolumeMap.set(fileId, volNo))
+                  vol.torrent_file_ids.forEach((fileId: string) => {
+                    if (!fileToVolumesMap.has(fileId)) fileToVolumesMap.set(fileId, [])
+                    fileToVolumesMap.get(fileId)!.push(volNo)
+                  })
                 }
               }
             })
 
             setVolumeForms(newVolumeForms)
 
+            // 自动检测是否为多作品模式：volume_no >= 1000 说明是编码过的
+            const allVolNos = Object.keys(newVolumeForms).map(Number)
+            const maxEncoded = Math.max(...allVolNos, 0)
+            const detectedWorksCount = maxEncoded >= 1000 ? Math.floor(maxEncoded / 1000) : 1
+            setWorksCount(detectedWorksCount)
+
             const newNodeData = new Map(builtNodeData)
             const newVolumeToKeys = new Map<number, Set<string>>()
 
-            // 第一步：更新所有文件节点的 volume_no
+            // 第一步：更新所有文件节点的 volume_no 或 shared_volume_nos
             fileToKeyMap.forEach((key, fileId) => {
-              const volumeNo = fileToVolumeMap.get(fileId)
-              if (volumeNo !== undefined) {
-                const existingData = newNodeData.get(key) || {}
-                newNodeData.set(key, { ...existingData, volume_no: volumeNo })
-                if (!newVolumeToKeys.has(volumeNo)) newVolumeToKeys.set(volumeNo, new Set())
-                newVolumeToKeys.get(volumeNo)!.add(key)
+              const volNos = fileToVolumesMap.get(fileId)
+              if (!volNos || volNos.length === 0) return
+              const existingData = newNodeData.get(key) || {}
+              if (volNos.length === 1) {
+                // 普通单卷
+                newNodeData.set(key, { ...existingData, volume_no: volNos[0], shared_volume_nos: undefined })
+                if (!newVolumeToKeys.has(volNos[0])) newVolumeToKeys.set(volNos[0], new Set())
+                newVolumeToKeys.get(volNos[0])!.add(key)
+              } else {
+                // 共享：出现在多个卷的文件列表中
+                newNodeData.set(key, { ...existingData, volume_no: undefined, shared_volume_nos: volNos })
+                volNos.forEach(v => {
+                  if (!newVolumeToKeys.has(v)) newVolumeToKeys.set(v, new Set())
+                  newVolumeToKeys.get(v)!.add(key)
+                })
               }
             })
 
@@ -451,33 +474,48 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
 
             sortedKeys.forEach(key => {
               const nodePath = newFlatTree.map.get(key)
-              if (!nodePath || nodePath.isLeaf) return // 跳过叶子节点
+              if (!nodePath || nodePath.isLeaf) return
 
-              // 获取所有直接子节点
               const directChildren = nodePath.children
               if (directChildren.length === 0) return
 
-              // 获取所有子节点的 volume_no
-              const childVolumes = new Set<number>()
+              // 收集所有子节点的有效卷号集合（单卷或共享）
+              const childVolumeSets: Set<number>[] = []
               let allChildrenHaveVolume = true
 
               directChildren.forEach(childKey => {
                 const childData = newNodeData.get(childKey)
-                const childVol = childData?.volume_no
-                if (childVol !== undefined) {
-                  childVolumes.add(childVol)
+                if (childData?.shared_volume_nos?.length) {
+                  childVolumeSets.push(new Set(childData.shared_volume_nos))
+                } else if (childData?.volume_no !== undefined) {
+                  childVolumeSets.push(new Set([childData.volume_no]))
                 } else {
                   allChildrenHaveVolume = false
                 }
               })
 
-              // 如果所有子节点都有相同的 volume_no，则父节点也设置为该值
-              if (allChildrenHaveVolume && childVolumes.size === 1) {
-                const volumeNo = childVolumes.values().next().value as number
-                const existingData = newNodeData.get(key) || {}
-                newNodeData.set(key, { ...existingData, volume_no: volumeNo })
+              if (!allChildrenHaveVolume || childVolumeSets.length === 0) return
+
+              // 求所有子节点卷号的交集（父目录只在所有子节点共同拥有的卷上）
+              const intersection = childVolumeSets.reduce((acc, set) => {
+                return new Set([...acc].filter(v => set.has(v)))
+              })
+
+              if (intersection.size === 0) return
+
+              const existingData = newNodeData.get(key) || {}
+              if (intersection.size === 1) {
+                const volumeNo = intersection.values().next().value as number
+                newNodeData.set(key, { ...existingData, volume_no: volumeNo, shared_volume_nos: undefined })
                 if (!newVolumeToKeys.has(volumeNo)) newVolumeToKeys.set(volumeNo, new Set())
                 newVolumeToKeys.get(volumeNo)!.add(key)
+              } else {
+                const sharedVols = Array.from(intersection)
+                newNodeData.set(key, { ...existingData, volume_no: undefined, shared_volume_nos: sharedVols })
+                sharedVols.forEach(v => {
+                  if (!newVolumeToKeys.has(v)) newVolumeToKeys.set(v, new Set())
+                  newVolumeToKeys.get(v)!.add(key)
+                })
               }
             })
 
@@ -500,6 +538,16 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
 
   const handleSubmit = async () => {
     if (torrentId == null) return
+
+    const hasError = selectedVolumes.some(
+      (vol) =>
+        !volumeForms[vol]?.catalog_no?.trim() ||
+        !volumeForms[vol]?.volume_name?.trim(),
+    )
+    if (hasError) {
+      message.error('请填写所有卷的型番和标题')
+      return
+    }
 
     setSaving(true)
     try {
@@ -572,6 +620,8 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
     selectedVolumes,
     visibleVolumes,
     loadMoreVolumes,
+    worksCount,
+    setWorksCount,
     setVisible,
     setTorrentName,
     setTorrentId,

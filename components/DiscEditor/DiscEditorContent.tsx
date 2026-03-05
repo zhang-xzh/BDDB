@@ -16,6 +16,8 @@ interface DiscEditorContentProps {
   selectedVolumes: number[];
   visibleVolumes: number;
   loadMoreVolumes: () => void;
+  worksCount: number;
+  setWorksCount: (n: number) => void;
   volumeForms: Record<number, VolumeForm>;
   onVolumeFormChange: (vol: number, form: VolumeForm) => void;
   onVolumeChange: (key: string, volumeNo: number | null) => void;
@@ -39,6 +41,8 @@ export function DiscEditorContent({
   selectedVolumes,
   visibleVolumes,
   loadMoreVolumes,
+  worksCount,
+  setWorksCount,
   volumeForms,
   onVolumeFormChange,
   onVolumeChange,
@@ -51,7 +55,6 @@ export function DiscEditorContent({
   onCancel,
   onSubmit,
 }: DiscEditorContentProps) {
-  const [worksCount, setWorksCount] = useState(1);
   const [submitted, setSubmitted] = useState(false);
 
   const handleWorksCountChange = (val: number | null) => {

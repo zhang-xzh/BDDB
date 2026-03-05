@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, forwardRef, useImperativeHandle } from "react";
-import { Modal, Space, Card, Empty, Button, Spin, InputNumber } from "antd";
+import React, { forwardRef, useImperativeHandle } from "react";
+import { Modal } from "antd";
 import type { DiscEditorRef } from "./types";
 import { useDiscEditor } from "./useDiscEditor";
-import { VolumeFormList } from "./VolumeFormList";
-import { FileTree } from "./FileTree";
+import { DiscEditorContent } from "./DiscEditorContent";
 
 interface DiscEditorProps {
   torrentHash?: string;
@@ -16,7 +15,6 @@ interface DiscEditorProps {
 
 const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(
   function DiscEditor({ onSave }, ref) {
-    const [worksCount, setWorksCount] = useState(1);
     const {
       visible,
       loading,
@@ -30,6 +28,8 @@ const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(
       selectedVolumes,
       visibleVolumes,
       loadMoreVolumes,
+      worksCount,
+      setWorksCount,
       open,
       handleSubmit,
       handleCancel,
@@ -45,74 +45,39 @@ const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(
 
     useImperativeHandle(ref, () => ({ open }), [open]);
 
-    const handleWorksCountChange = (val: number | null) => {
-      const next = val ?? 1;
-      setWorksCount(next);
-      resetVolumeAssignments();
-    };
-
     return (
       <Modal
         open={visible}
         title={torrentName || "编辑产品信息"}
         width={900}
-        confirmLoading={saving}
-        onOk={handleSubmit}
         onCancel={handleCancel}
         destroyOnHidden
         footer={null}
       >
-        <Spin spinning={loading}>
-          <Space style={{ width: "100%" }} size={16} orientation="vertical">
-            {/* 卷信息表单 */}
-            <VolumeFormList
-              selectedVolumes={selectedVolumes}
-              volumeForms={volumeForms}
-              onVolumeFormChange={updateVolumeForm}
-              worksCount={worksCount}
-            />
-
-            {/* 文件树 */}
-            {files.length > 0 ? (
-              <Card
-                size="small"
-                title={
-                  <Space>
-                    <span>文件列表</span>
-                    <span>{files.length} 个文件</span>
-                    <InputNumber
-                      mode="spinner"
-                      min={1}
-                      value={worksCount}
-                      onChange={handleWorksCountChange}
-                      addonBefore="作品数"
-                      size="small"
-                      style={{ width: 120 }}
-                    />
-                  </Space>
-                }
-                styles={{ body: { padding: "12px" } }}
-              >
-                <FileTree
-                  treeData={treeData}
-                  defaultExpandedKeys={defaultExpandedKeys}
-                  nodeData={nodeData}
-                  worksCount={worksCount}
-                  visibleVolumes={visibleVolumes}
-                  loadMoreVolumes={loadMoreVolumes}
-                  getNodeVolume={getNodeVolume}
-                  getNodeShared={getNodeShared}
-                  getNodeSharedVolumes={getNodeSharedVolumes}
-                  onVolumeChange={onVolumeChange}
-                  onSharedVolumeChange={onSharedVolumeChange}
-                  onToggleShared={onToggleShared}
-                />
-              </Card>
-            ) : (
-              <Empty description="暂无文件数据" />
-            )}
-          </Space>
-        </Spin>
+        <DiscEditorContent
+          loading={loading}
+          saving={saving}
+          files={files}
+          treeData={treeData}
+          nodeData={nodeData}
+          defaultExpandedKeys={defaultExpandedKeys}
+          selectedVolumes={selectedVolumes}
+          visibleVolumes={visibleVolumes}
+          loadMoreVolumes={loadMoreVolumes}
+          worksCount={worksCount}
+          setWorksCount={setWorksCount}
+          volumeForms={volumeForms}
+          onVolumeFormChange={updateVolumeForm}
+          onVolumeChange={onVolumeChange}
+          onSharedVolumeChange={onSharedVolumeChange}
+          onToggleShared={onToggleShared}
+          getNodeVolume={getNodeVolume}
+          getNodeShared={getNodeShared}
+          getNodeSharedVolumes={getNodeSharedVolumes}
+          resetVolumeAssignments={resetVolumeAssignments}
+          onCancel={handleCancel}
+          onSubmit={handleSubmit}
+        />
       </Modal>
     );
   },

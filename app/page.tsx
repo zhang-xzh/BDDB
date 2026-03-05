@@ -43,7 +43,7 @@ const COL = {
   state: 90,
   size: 72,
 } as const;
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 100;
 
 // Collapse left-indent: arrow icon (~12px) + antd internal padding (16px) + gap (8px) ≈ 36px
 // We add 8px for the gap between arrow and content = 44px total left padding
@@ -205,7 +205,11 @@ const HomePage: React.FC = () => {
       if (newKey) {
         const torrent = pagedTorrents.find((t) => t.qb_torrent.hash === newKey);
         if (torrent) {
-          await editor.open(torrent.qb_torrent.hash, torrent.qb_torrent.name, false);
+          await editor.open(
+            torrent.qb_torrent.hash,
+            torrent.qb_torrent.name,
+            false,
+          );
         }
       }
     },
@@ -301,6 +305,8 @@ const HomePage: React.FC = () => {
               selectedVolumes={editor.selectedVolumes}
               visibleVolumes={editor.visibleVolumes}
               loadMoreVolumes={editor.loadMoreVolumes}
+              worksCount={editor.worksCount}
+              setWorksCount={editor.setWorksCount}
               volumeForms={editor.volumeForms}
               onVolumeFormChange={editor.updateVolumeForm}
               onVolumeChange={editor.onVolumeChange}
@@ -389,6 +395,7 @@ const HomePage: React.FC = () => {
               setCurrentPage(page);
             }}
             showQuickJumper
+            showSizeChanger={false}
           />
         </Flex>
       )}
