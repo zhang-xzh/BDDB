@@ -299,11 +299,17 @@ const HomePage: React.FC = () => {
               nodeData={editor.nodeData}
               defaultExpandedKeys={editor.defaultExpandedKeys}
               selectedVolumes={editor.selectedVolumes}
-              maxVolumes={editor.maxVolumes}
+              visibleVolumes={editor.visibleVolumes}
+              loadMoreVolumes={editor.loadMoreVolumes}
               volumeForms={editor.volumeForms}
               onVolumeFormChange={editor.updateVolumeForm}
               onVolumeChange={editor.onVolumeChange}
+              onSharedVolumeChange={editor.onSharedVolumeChange}
+              onToggleShared={editor.onToggleShared}
               getNodeVolume={editor.getNodeVolume}
+              getNodeShared={editor.getNodeShared}
+              getNodeSharedVolumes={editor.getNodeSharedVolumes}
+              resetVolumeAssignments={editor.resetVolumeAssignments}
               onCancel={handleCancel}
               onSubmit={editor.handleSubmit}
             />

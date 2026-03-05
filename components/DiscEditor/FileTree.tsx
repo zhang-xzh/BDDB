@@ -7,18 +7,30 @@ interface FileTreeProps {
   treeData: DataNode[]
   defaultExpandedKeys: string[]
   nodeData: Map<string, any>
+  worksCount: number
+  visibleVolumes: number
+  loadMoreVolumes: () => void
   getNodeVolume: (key: string) => number | undefined
+  getNodeShared: (key: string) => boolean
+  getNodeSharedVolumes: (key: string) => number[]
   onVolumeChange: (key: string, volumeNo: number | null) => void
-  maxVolumes: number
+  onSharedVolumeChange: (key: string, volumes: number[]) => void
+  onToggleShared: (key: string, shared: boolean) => void
 }
 
 export function FileTree({
   treeData,
   defaultExpandedKeys,
   nodeData,
+  worksCount,
+  visibleVolumes,
+  loadMoreVolumes,
   getNodeVolume,
+  getNodeShared,
+  getNodeSharedVolumes,
   onVolumeChange,
-  maxVolumes,
+  onSharedVolumeChange,
+  onToggleShared,
 }: FileTreeProps) {
   const titleRender = useMemo(() => {
     return (node: DataNode) => {
@@ -28,13 +40,19 @@ export function FileTree({
         <TreeNodeContent
           title={title}
           nodeKey={key as string}
+          worksCount={worksCount}
+          visibleVolumes={visibleVolumes}
+          loadMoreVolumes={loadMoreVolumes}
           getNodeVolume={getNodeVolume}
+          getNodeShared={getNodeShared}
+          getNodeSharedVolumes={getNodeSharedVolumes}
           onVolumeChange={onVolumeChange}
-          maxVolumes={maxVolumes}
+          onSharedVolumeChange={onSharedVolumeChange}
+          onToggleShared={onToggleShared}
         />
       )
     }
-  }, [treeData, getNodeVolume, onVolumeChange, maxVolumes])
+  }, [treeData, worksCount, visibleVolumes, loadMoreVolumes, getNodeVolume, getNodeShared, getNodeSharedVolumes, onVolumeChange, onSharedVolumeChange, onToggleShared])
 
   return (
     <Tree<DataNode>

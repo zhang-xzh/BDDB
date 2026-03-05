@@ -30,7 +30,8 @@ interface UseDiscEditorReturn {
   flatTree: FlatTree
   defaultExpandedKeys: string[]
   selectedVolumes: number[]
-  maxVolumes: number
+  visibleVolumes: number
+  loadMoreVolumes: () => void
 
   // 设置器
   setVisible: (v: boolean) => void
@@ -50,11 +51,16 @@ interface UseDiscEditorReturn {
   handleCancel: () => void
   hasChanges: () => boolean
   onVolumeChange: (key: string, volumeNo: number | null) => void
+  onSharedVolumeChange: (key: string, volumes: number[]) => void
+  onToggleShared: (key: string, shared: boolean) => void
   getNodeVolume: (key: string) => number | undefined
+  getNodeShared: (key: string) => boolean
+  getNodeSharedVolumes: (key: string) => number[]
   getVolumeForm: (vol: number) => VolumeForm
   updateVolumeForm: (vol: number, form: VolumeForm) => void
   formatSize: (bytes: number) => string
   resetAll: () => void
+  resetVolumeAssignments: () => void
 }
 
 interface BuildTreeResult {
@@ -71,7 +77,8 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
   const [loading, setLoading] = useState(false)
   const [torrentName, setTorrentName] = useState('')
   const [torrentId, setTorrentId] = useState<string | null>(null)
-  const maxVolumes = 20
+  const [visibleVolumes, setVisibleVolumes] = useState(20)
+  const loadMoreVolumes = useCallback(() => setVisibleVolumes(v => v + 10), [])
 
   const [volumeForms, setVolumeForms] = useState<Record<number, VolumeForm>>({})
   const [files, setFiles] = useState<FileItem[]>([])
@@ -128,6 +135,83 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
     })
     return children
   }
+
+  const getNodeShared = useCallback((key: string): boolean => {
+    return Array.isArray(nodeData.get(key)?.shared_volume_nos)
+  }, [nodeData])
+
+  const getNodeSharedVolumes = useCallback((key: string): number[] => {
+    return nodeData.get(key)?.shared_volume_nos ?? []
+  }, [nodeData])
+
+  const onToggleShared = (key: string, shared: boolean) => {
+    const nodesToUpdate = [key, ...getAllChildrenKeys(key)]
+    const newMap = new Map(nodeData)
+    const newVolumeToKeys = new Map(volumeToKeys)
+
+    nodesToUpdate.forEach(k => {
+      const current = newMap.get(k) || {}
+      if (shared) {
+        const vols = current.volume_no !== undefined ? [current.volume_no] : []
+        newMap.set(k, { ...current, shared_volume_nos: vols, volume_no: undefined })
+        if (current.volume_no !== undefined) {
+          newVolumeToKeys.get(current.volume_no)?.delete(k)
+          if (newVolumeToKeys.get(current.volume_no)?.size === 0) newVolumeToKeys.delete(current.volume_no)
+        }
+        vols.forEach(v => {
+          if (!newVolumeToKeys.has(v)) newVolumeToKeys.set(v, new Set())
+          newVolumeToKeys.get(v)!.add(k)
+        })
+      } else {
+        const vols = current.shared_volume_nos ?? []
+        const firstVol = vols[0]
+        newMap.set(k, { ...current, volume_no: firstVol, shared_volume_nos: undefined })
+        vols.forEach(v => {
+          newVolumeToKeys.get(v)?.delete(k)
+          if (newVolumeToKeys.get(v)?.size === 0) newVolumeToKeys.delete(v)
+        })
+        if (firstVol !== undefined) {
+          if (!newVolumeToKeys.has(firstVol)) newVolumeToKeys.set(firstVol, new Set())
+          newVolumeToKeys.get(firstVol)!.add(k)
+        }
+      }
+    })
+    setNodeData(newMap)
+    setVolumeToKeys(newVolumeToKeys)
+  }
+
+  const onSharedVolumeChange = (key: string, volumes: number[]) => {
+    const nodesToUpdate = [key, ...getAllChildrenKeys(key)]
+    const newMap = new Map(nodeData)
+    const newVolumeToKeys = new Map(volumeToKeys)
+
+    nodesToUpdate.forEach(k => {
+      const current = newMap.get(k) || {}
+      const oldVolumes = current.shared_volume_nos ?? []
+      newMap.set(k, { ...current, shared_volume_nos: volumes, volume_no: undefined })
+      oldVolumes.forEach(v => {
+        newVolumeToKeys.get(v)?.delete(k)
+        if (newVolumeToKeys.get(v)?.size === 0) newVolumeToKeys.delete(v)
+      })
+      volumes.forEach(v => {
+        if (!newVolumeToKeys.has(v)) newVolumeToKeys.set(v, new Set())
+        newVolumeToKeys.get(v)!.add(k)
+      })
+    })
+    setNodeData(newMap)
+    setVolumeToKeys(newVolumeToKeys)
+  }
+
+  const resetVolumeAssignments = useCallback(() => {
+    setNodeData(prev => {
+      const newMap = new Map(prev)
+      newMap.forEach((data, key) => {
+        newMap.set(key, { files: data.files })
+      })
+      return newMap
+    })
+    setVolumeToKeys(new Map())
+  }, [])
 
   const buildTree = (fileList: FileItem[]): BuildTreeResult => {
     const root: Record<string, any> = {}
@@ -424,11 +508,15 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
         files[vol] = []
       })
       nodeData.forEach((data, key) => {
-        if (data.volume_no && data.files && data.files.length > 0) {
-          const vol = data.volume_no
-          if (!files[vol]) files[vol] = []
-          data.files.forEach(fileId => {
-            if (!files[vol].includes(fileId)) files[vol].push(fileId)
+        if (data.files && data.files.length > 0) {
+          const volumes: number[] = []
+          if (data.volume_no !== undefined) volumes.push(data.volume_no)
+          if (data.shared_volume_nos?.length) volumes.push(...data.shared_volume_nos)
+          volumes.forEach(vol => {
+            if (!files[vol]) files[vol] = []
+            data.files!.forEach(fileId => {
+              if (!files[vol].includes(fileId)) files[vol].push(fileId)
+            })
           })
         }
       })
@@ -482,7 +570,8 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
     flatTree,
     defaultExpandedKeys,
     selectedVolumes,
-    maxVolumes,
+    visibleVolumes,
+    loadMoreVolumes,
     setVisible,
     setTorrentName,
     setTorrentId,
@@ -498,10 +587,15 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
     handleCancel,
     hasChanges,
     onVolumeChange,
+    onSharedVolumeChange,
+    onToggleShared,
     getNodeVolume,
+    getNodeShared,
+    getNodeSharedVolumes,
     getVolumeForm,
     updateVolumeForm,
     formatSize,
     resetAll,
+    resetVolumeAssignments,
   }
 }

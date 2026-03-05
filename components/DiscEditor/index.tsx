@@ -1,15 +1,7 @@
 "use client";
 
-import React, { forwardRef, useImperativeHandle } from "react";
-import {
-  Modal,
-  Space,
-  Card,
-  Typography,
-  Empty,
-  Button,
-  Spin,
-} from "antd";
+import React, { useState, forwardRef, useImperativeHandle } from "react";
+import { Modal, Space, Card, Empty, Button, Spin, InputNumber } from "antd";
 import type { DiscEditorRef } from "./types";
 import { useDiscEditor } from "./useDiscEditor";
 import { VolumeFormList } from "./VolumeFormList";
@@ -24,6 +16,7 @@ interface DiscEditorProps {
 
 const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(
   function DiscEditor({ onSave }, ref) {
+    const [worksCount, setWorksCount] = useState(1);
     const {
       visible,
       loading,
@@ -35,16 +28,28 @@ const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(
       nodeData,
       defaultExpandedKeys,
       selectedVolumes,
-      maxVolumes,
+      visibleVolumes,
+      loadMoreVolumes,
       open,
       handleSubmit,
       handleCancel,
       onVolumeChange,
+      onSharedVolumeChange,
+      onToggleShared,
       getNodeVolume,
+      getNodeShared,
+      getNodeSharedVolumes,
       updateVolumeForm,
-    } = useDiscEditor(onSave)
+      resetVolumeAssignments,
+    } = useDiscEditor(onSave);
 
     useImperativeHandle(ref, () => ({ open }), [open]);
+
+    const handleWorksCountChange = (val: number | null) => {
+      const next = val ?? 1;
+      setWorksCount(next);
+      resetVolumeAssignments();
+    };
 
     return (
       <Modal
@@ -64,6 +69,7 @@ const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(
               selectedVolumes={selectedVolumes}
               volumeForms={volumeForms}
               onVolumeFormChange={updateVolumeForm}
+              worksCount={worksCount}
             />
 
             {/* 文件树 */}
@@ -74,6 +80,15 @@ const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(
                   <Space>
                     <span>文件列表</span>
                     <span>{files.length} 个文件</span>
+                    <InputNumber
+                      mode="spinner"
+                      min={1}
+                      value={worksCount}
+                      onChange={handleWorksCountChange}
+                      addonBefore="作品数"
+                      size="small"
+                      style={{ width: 120 }}
+                    />
                   </Space>
                 }
                 styles={{ body: { padding: "12px" } }}
@@ -82,9 +97,15 @@ const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(
                   treeData={treeData}
                   defaultExpandedKeys={defaultExpandedKeys}
                   nodeData={nodeData}
+                  worksCount={worksCount}
+                  visibleVolumes={visibleVolumes}
+                  loadMoreVolumes={loadMoreVolumes}
                   getNodeVolume={getNodeVolume}
+                  getNodeShared={getNodeShared}
+                  getNodeSharedVolumes={getNodeSharedVolumes}
                   onVolumeChange={onVolumeChange}
-                  maxVolumes={maxVolumes}
+                  onSharedVolumeChange={onSharedVolumeChange}
+                  onToggleShared={onToggleShared}
                 />
               </Card>
             ) : (

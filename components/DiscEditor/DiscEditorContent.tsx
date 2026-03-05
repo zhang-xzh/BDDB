@@ -1,26 +1,32 @@
-'use client'
+"use client";
 
-import React from 'react'
-import { Card, Space, Empty, Spin, Button } from 'antd'
-import { VolumeFormList } from './VolumeFormList'
-import { FileTree } from './FileTree'
-import type { VolumeForm, FileItem, NodeData } from '@/lib/db/schema'
+import React, { useState } from "react";
+import { Card, Space, Empty, Spin, Button, InputNumber } from "antd";
+import { VolumeFormList } from "./VolumeFormList";
+import { FileTree } from "./FileTree";
+import type { VolumeForm, FileItem, NodeData } from "@/lib/db/schema";
 
 interface DiscEditorContentProps {
-  loading: boolean
-  saving: boolean
-  files: FileItem[]
-  treeData: any[]
-  nodeData: Map<string, NodeData>
-  defaultExpandedKeys: string[]
-  selectedVolumes: number[]
-  maxVolumes: number
-  volumeForms: Record<number, VolumeForm>
-  onVolumeFormChange: (vol: number, form: VolumeForm) => void
-  onVolumeChange: (key: string, volumeNo: number | null) => void
-  getNodeVolume: (key: string) => number | undefined
-  onCancel: () => void
-  onSubmit: () => void
+  loading: boolean;
+  saving: boolean;
+  files: FileItem[];
+  treeData: any[];
+  nodeData: Map<string, NodeData>;
+  defaultExpandedKeys: string[];
+  selectedVolumes: number[];
+  visibleVolumes: number;
+  loadMoreVolumes: () => void;
+  volumeForms: Record<number, VolumeForm>;
+  onVolumeFormChange: (vol: number, form: VolumeForm) => void;
+  onVolumeChange: (key: string, volumeNo: number | null) => void;
+  onSharedVolumeChange: (key: string, volumes: number[]) => void;
+  onToggleShared: (key: string, shared: boolean) => void;
+  getNodeVolume: (key: string) => number | undefined;
+  getNodeShared: (key: string) => boolean;
+  getNodeSharedVolumes: (key: string) => number[];
+  resetVolumeAssignments: () => void;
+  onCancel: () => void;
+  onSubmit: () => void;
 }
 
 export function DiscEditorContent({
@@ -31,21 +37,42 @@ export function DiscEditorContent({
   nodeData,
   defaultExpandedKeys,
   selectedVolumes,
-  maxVolumes,
+  visibleVolumes,
+  loadMoreVolumes,
   volumeForms,
   onVolumeFormChange,
   onVolumeChange,
+  onSharedVolumeChange,
+  onToggleShared,
   getNodeVolume,
+  getNodeShared,
+  getNodeSharedVolumes,
+  resetVolumeAssignments,
   onCancel,
   onSubmit,
 }: DiscEditorContentProps) {
+  const [worksCount, setWorksCount] = useState(1);
+
+  const handleWorksCountChange = (val: number | null) => {
+    setWorksCount(val ?? 1);
+    resetVolumeAssignments();
+  };
+
   return (
     <Spin spinning={loading}>
-      <div style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div
+        style={{
+          padding: "8px 0",
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px",
+        }}
+      >
         <VolumeFormList
           selectedVolumes={selectedVolumes}
           volumeForms={volumeForms}
           onVolumeFormChange={onVolumeFormChange}
+          worksCount={worksCount}
         />
 
         {files.length > 0 ? (
@@ -54,18 +81,35 @@ export function DiscEditorContent({
             title={
               <Space>
                 <span>文件列表</span>
-                <span style={{ color: '#999', fontWeight: 'normal' }}>{files.length} 个文件</span>
+                <span style={{ color: "#999", fontWeight: "normal" }}>
+                  {files.length} 个文件
+                </span>
+                <InputNumber
+                  min={1}
+                  value={worksCount}
+                  onChange={handleWorksCountChange}
+                  addonBefore="作品数"
+                  size="small"
+                  mode="spinner"
+                  style={{ width: 100 }}
+                />
               </Space>
             }
-            styles={{ body: { padding: '12px' } }}
+            styles={{ body: { padding: "12px" } }}
           >
             <FileTree
               treeData={treeData}
               defaultExpandedKeys={defaultExpandedKeys}
               nodeData={nodeData}
+              worksCount={worksCount}
+              visibleVolumes={visibleVolumes}
+              loadMoreVolumes={loadMoreVolumes}
               getNodeVolume={getNodeVolume}
+              getNodeShared={getNodeShared}
+              getNodeSharedVolumes={getNodeSharedVolumes}
               onVolumeChange={onVolumeChange}
-              maxVolumes={maxVolumes}
+              onSharedVolumeChange={onSharedVolumeChange}
+              onToggleShared={onToggleShared}
             />
           </Card>
         ) : (
@@ -74,9 +118,11 @@ export function DiscEditorContent({
 
         <Space>
           <Button onClick={onCancel}>取消</Button>
-          <Button type="primary" loading={saving} onClick={onSubmit}>保存</Button>
+          <Button type="primary" loading={saving} onClick={onSubmit}>
+            保存
+          </Button>
         </Space>
       </div>
     </Spin>
-  )
+  );
 }

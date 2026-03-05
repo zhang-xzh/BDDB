@@ -90,6 +90,7 @@ export interface VolumeForm {
  */
 export interface NodeData {
   volume_no?: number
+  shared_volume_nos?: number[]  // 共享模式：同时属于多个分卷
   files?: string[]
 }
 

@@ -1,94 +1,159 @@
 import React from "react";
-import { Card, Space, Input, Radio } from "antd";
+import { Card, Space, Input, Radio, Typography } from "antd";
 import type { VolumeForm } from "@/lib/db/schema";
 
 interface VolumeFormListProps {
   selectedVolumes: number[];
   volumeForms: Record<number, VolumeForm>;
   onVolumeFormChange: (vol: number, form: VolumeForm) => void;
+  worksCount: number;
+}
+
+const getVolumeForm = (
+  volumeForms: Record<number, VolumeForm>,
+  vol: number,
+): VolumeForm => volumeForms[vol] || { catalog_no: "", volume_name: "" };
+
+function VolumeRow({
+  vol,
+  label,
+  volumeForms,
+  onVolumeFormChange,
+}: {
+  vol: number;
+  label: string;
+  volumeForms: Record<number, VolumeForm>;
+  onVolumeFormChange: (vol: number, form: VolumeForm) => void;
+}) {
+  const form = getVolumeForm(volumeForms, vol);
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        flexWrap: "wrap",
+      }}
+    >
+      <Radio.Group
+        defaultValue="volume"
+        size="small"
+        value={form.type}
+        onChange={(e) =>
+          onVolumeFormChange(vol, { ...form, type: e.target.value })
+        }
+        buttonStyle="solid"
+      >
+        <Radio.Button value="volume">VOL</Radio.Button>
+        <Radio.Button value="box">BOX</Radio.Button>
+      </Radio.Group>
+      <Radio.Group
+        defaultValue="BD"
+        size="small"
+        value={form.media_type}
+        onChange={(e) =>
+          onVolumeFormChange(vol, { ...form, media_type: e.target.value })
+        }
+        buttonStyle="solid"
+      >
+        <Radio.Button value="BD">BD</Radio.Button>
+        <Radio.Button value="DVD">DVD</Radio.Button>
+      </Radio.Group>
+      <span style={{ fontWeight: 500, minWidth: "60px" }}>{label}</span>
+      <Input
+        value={form.catalog_no}
+        onChange={(e) =>
+          onVolumeFormChange(vol, { ...form, catalog_no: e.target.value })
+        }
+        placeholder="型番"
+        style={{ width: "120px" }}
+      />
+      <Input
+        value={form.volume_name}
+        onChange={(e) =>
+          onVolumeFormChange(vol, { ...form, volume_name: e.target.value })
+        }
+        placeholder="标题"
+        style={{ width: "700px" }}
+      />
+    </div>
+  );
 }
 
 export function VolumeFormList({
   selectedVolumes,
   volumeForms,
   onVolumeFormChange,
+  worksCount,
 }: VolumeFormListProps) {
   if (selectedVolumes.length === 0) return null;
 
-  const getVolumeForm = (vol: number): VolumeForm => {
-    return volumeForms[vol] || { catalog_no: "", volume_name: "" };
-  };
+  // Single-work mode: volumes are plain numbers (1, 2, 3...)
+  if (worksCount === 1) {
+    return (
+      <Card size="small" title="卷信息" styles={{ body: { padding: "12px" } }}>
+        <Space style={{ width: "100%" }} size={12} orientation="vertical">
+          {selectedVolumes.map((vol) => (
+            <VolumeRow
+              key={vol}
+              vol={vol}
+              label={`第${vol}卷`}
+              volumeForms={volumeForms}
+              onVolumeFormChange={onVolumeFormChange}
+            />
+          ))}
+        </Space>
+      </Card>
+    );
+  }
+
+  // Multi-work mode: volumes encoded as workIndex * 1000 + volNo
+  const groups: Record<number, number[]> = {};
+  selectedVolumes.forEach((encoded) => {
+    const workIdx = Math.floor(encoded / 1000);
+    const volNo = encoded % 1000;
+    if (!groups[workIdx]) groups[workIdx] = [];
+    groups[workIdx].push(volNo);
+  });
 
   return (
     <Card size="small" title="卷信息" styles={{ body: { padding: "12px" } }}>
-      <Space style={{ width: "100%" }} size={12} orientation="vertical">
-        {selectedVolumes.map((vol) => {
-          const form = getVolumeForm(vol);
-          return (
-            <div
-              key={vol}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                flexWrap: "wrap",
-              }}
-            >
-              <Radio.Group
-                defaultValue="volume"
-                size="small"
-                value={form.type}
-                onChange={(e) =>
-                  onVolumeFormChange(vol, { ...form, type: e.target.value })
-                }
-                buttonStyle="solid"
-              >
-                <Radio.Button value="volume">分卷</Radio.Button>
-                <Radio.Button value="box">BOX</Radio.Button>
-              </Radio.Group>
-              <Radio.Group
-                defaultValue="BD"
-                size="small"
-                value={form.media_type}
-                onChange={(e) =>
-                  onVolumeFormChange(vol, {
-                    ...form,
-                    media_type: e.target.value,
-                  })
-                }
-                buttonStyle="solid"
-              >
-                <Radio.Button value="BD">BD</Radio.Button>
-                <Radio.Button value="DVD">DVD</Radio.Button>
-              </Radio.Group>
-              <span style={{ fontWeight: 500, minWidth: "60px" }}>
-                第{vol}卷
-              </span>
-              <Input
-                value={form.catalog_no}
-                onChange={(e) =>
-                  onVolumeFormChange(vol, {
-                    ...form,
-                    catalog_no: e.target.value,
-                  })
-                }
-                placeholder="型番"
-                style={{ width: "120px" }}
-              />
-              <Input
-                value={form.volume_name}
-                onChange={(e) =>
-                  onVolumeFormChange(vol, {
-                    ...form,
-                    volume_name: e.target.value,
-                  })
-                }
-                placeholder="标题"
-                style={{ width: "700px" }}
-              />
-            </div>
-          );
-        })}
+      <Space style={{ width: "100%" }} size={16} orientation="vertical">
+        {Object.entries(groups)
+          .sort(([a], [b]) => Number(a) - Number(b))
+          .map(([workIdxStr, vols]) => {
+            const workIdx = Number(workIdxStr);
+            return (
+              <div key={workIdx}>
+                <Typography.Text
+                  strong
+                  style={{ display: "block", marginBottom: 8 }}
+                >
+                  作品 {workIdx}
+                </Typography.Text>
+                <Space
+                  style={{ width: "100%", paddingLeft: 16 }}
+                  size={8}
+                  orientation="vertical"
+                >
+                  {vols
+                    .sort((a, b) => a - b)
+                    .map((volNo) => {
+                      const encoded = workIdx * 1000 + volNo;
+                      return (
+                        <VolumeRow
+                          key={encoded}
+                          vol={encoded}
+                          label={`第${volNo}卷`}
+                          volumeForms={volumeForms}
+                          onVolumeFormChange={onVolumeFormChange}
+                        />
+                      );
+                    })}
+                </Space>
+              </div>
+            );
+          })}
       </Space>
     </Card>
   );
