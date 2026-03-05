@@ -10,9 +10,10 @@ import {
   Badge,
   Modal,
   message,
+  Tag,
 } from 'antd'
 import type { TableColumnsType } from 'antd'
-import { SyncOutlined } from '@ant-design/icons'
+import { SyncOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
 import type { Torrent } from '@/lib/db/schema'
 import { fetchApi, postApi } from '@/lib/api'
 import DiscEditor, { type DiscEditorRef } from '@/components/DiscEditor'
@@ -20,10 +21,15 @@ import DiscEditor, { type DiscEditorRef } from '@/components/DiscEditor'
 const { Search } = Input
 const { confirm } = Modal
 
+interface TorrentWithVolume extends Torrent {
+  hasVolumes?: boolean
+  volumeCount?: number
+}
+
 const HomePage: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
-  const [torrents, setTorrents] = useState<Torrent[]>([])
+  const [torrents, setTorrents] = useState<TorrentWithVolume[]>([])
   const [searchText, setSearchText] = useState('')
   const discEditorRef = useRef<DiscEditorRef>(null)
 
@@ -70,7 +76,27 @@ const HomePage: React.FC = () => {
     try {
       const res = await fetchApi<string>('/api/qb/torrents/info')
       if (res.success && res.data) {
-        setTorrents(JSON.parse(res.data))
+        const torrentList = JSON.parse(res.data)
+        
+        // 批量查询每个 torrent 的 volumes 状态
+        const torrentsWithVolumes = await Promise.all(
+          torrentList.map(async (torrent: Torrent) => {
+            try {
+              const volRes = await fetchApi<string>(`/api/volumes?torrent_id=${torrent._id}`)
+              const volumes = volRes?.success && volRes.data ? JSON.parse(volRes.data) : []
+              return {
+                ...torrent,
+                hasVolumes: volumes?.length > 0,
+                volumeCount: volumes?.length || 0,
+              }
+            } catch (error) {
+              console.error(`获取 torrent ${torrent._id} 的 volumes 失败:`, error)
+              return { ...torrent, hasVolumes: false, volumeCount: 0 }
+            }
+          })
+        )
+        
+        setTorrents(torrentsWithVolumes)
       }
     } catch (error) {
       console.error('获取种子列表失败:', error)
@@ -153,7 +179,26 @@ const HomePage: React.FC = () => {
     fetchTorrents()
   }, [fetchTorrents])
 
-  const columns: TableColumnsType<Torrent> = [
+  const columns: TableColumnsType<TorrentWithVolume> = [
+    {
+      title: '卷',
+      dataIndex: 'hasVolumes',
+      key: 'hasVolumes',
+      width: 80,
+      filters: [
+        { text: '有卷', value: true },
+        { text: '无卷', value: false },
+      ],
+      render: (hasVolumes: boolean, record: TorrentWithVolume) => (
+        hasVolumes ? (
+          <Tag icon={<CheckCircleOutlined />} color="success">
+            {record.volumeCount}
+          </Tag>
+        ) : (
+          <Tag icon={<CloseCircleOutlined />} color="default" />
+        )
+      ),
+    },
     {
       title: '名称',
       dataIndex: 'name',
@@ -198,25 +243,6 @@ const HomePage: React.FC = () => {
       width: 100,
       sorter: (a, b) => a.size - b.size,
       render: (size: number) => formatSize(size),
-    },
-    {
-      title: '操作',
-      key: 'action',
-      width: 200,
-      render: (_, record) => (
-        <Space>
-          <Button type="link" size="small" onClick={() => editDisc(record)}>
-            编辑
-          </Button>
-          <Button type="link" size="small" onClick={() => syncDiscFiles(record)}>
-            <SyncOutlined />
-            同步文件
-          </Button>
-          <Button type="link" size="small" danger onClick={() => deleteTorrent(record)}>
-            删除
-          </Button>
-        </Space>
-      ),
     },
   ]
 
