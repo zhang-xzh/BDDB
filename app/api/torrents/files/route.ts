@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTorrent, getTorrentFiles } from '@/lib/db/repository'
+import { getTorrent, getTorrentFilesAsFileItems } from '@/lib/db/repository'
 
 export const runtime = 'nodejs'
 
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     if (!torrent) {
       return NextResponse.json({ success: false, error: 'Torrent not found' })
     }
-    const files = await getTorrentFiles(torrent.id!)
+    const files = await getTorrentFilesAsFileItems(torrent.id!)
     return NextResponse.json({ success: true, data: JSON.stringify(files) })
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message })

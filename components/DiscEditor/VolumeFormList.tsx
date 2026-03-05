@@ -21,7 +21,7 @@ export function VolumeFormList({
 
   return (
     <Card size="small" title="卷信息" styles={{ body: { padding: '12px' } }}>
-      <Space direction="vertical" style={{ width: '100%' }} size={12} orientation="vertical">
+      <Space style={{ width: '100%' }} size={12} orientation="vertical">
         {selectedVolumes.map(vol => (
           <div key={vol} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontWeight: 500, minWidth: '60px' }}>第{vol}卷</span>

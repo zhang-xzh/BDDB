@@ -78,29 +78,7 @@ const HomePage: React.FC = () => {
     try {
       const res = await fetchApi<string>('/api/qb/torrents/info')
       if (res.success && res.data) {
-        const torrentList = JSON.parse(res.data)
-        
-        // 批量查询每个 torrent 的 volumes 状态
-        const torrentsWithVolumes = await Promise.all(
-          torrentList.map(async (torrent: Torrent) => {
-            try {
-              const volRes = torrent.id
-                ? await fetchApi<string>(`/api/volumes?torrent_id=${torrent.id}`)
-                : null
-              const volumes = volRes?.success && volRes.data ? JSON.parse(volRes.data) : []
-              return {
-                ...torrent,
-                hasVolumes: volumes?.length > 0,
-                volumeCount: volumes?.length || 0,
-              }
-            } catch (error) {
-              console.error(`获取 torrent ${torrent.id} 的 volumes 失败:`, error)
-              return { ...torrent, hasVolumes: false, volumeCount: 0 }
-            }
-          })
-        )
-        
-        setTorrents(torrentsWithVolumes)
+        setTorrents(JSON.parse(res.data))
       }
     } catch (error) {
       console.error('获取种子列表失败:', error)
@@ -186,7 +164,7 @@ const HomePage: React.FC = () => {
   const columns: TableColumnsType<TorrentWithVolume> = [
     {
       title: '类别',
-      dataIndex: 'category',
+      dataIndex: ['qb_torrent', 'category'],
       key: 'category',
       width: 120,
       filters: Array.from(new Set(torrents.map(t => t.qb_torrent.category).filter(Boolean))).map(cat => ({
@@ -290,7 +268,7 @@ const HomePage: React.FC = () => {
         dataSource={torrents}
         loading={loading}
         pagination={pagination}
-        rowKey="hash"
+        rowKey={(record) => record.qb_torrent.hash}
         size="small"
       />
 

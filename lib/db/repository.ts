@@ -47,6 +47,16 @@ function fromDbTorrentFile(row: any): TorrentFile {
   } as TorrentFile
 }
 
+function torrentFileToFileItem(torrentFile: TorrentFile): any {
+  const qbFile = torrentFile.qb_torrent_file
+  return {
+    id: torrentFile.id,
+    name: qbFile.name,
+    size: qbFile.size,
+    progress: qbFile.progress || 0,
+  }
+}
+
 function toDbVolumeFiles(fileIds: string[]): string {
   return JSON.stringify(fileIds)
 }
@@ -72,6 +82,7 @@ function fromDbVolume(row: any): Volume {
     maker: row.maker,
     version_type: row.version_type,
     bonus_status: row.bonus_status,
+    media_type: row.media_type,
     is_deleted: !!row.is_deleted,
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -84,11 +95,7 @@ function fromDbVolume(row: any): Volume {
 
 export async function torrentExists(hash: string): Promise<boolean> {
   const db = getDb()
-  const stmt = db.prepare(`
-    SELECT 1 FROM torrents 
-    WHERE json_extract(qb_torrent, '$.hash') = ? AND is_deleted = 0
-  `)
-  const result = await stmt.get(hash)
+  const result = db.prepare(`SELECT 1 FROM torrents WHERE hash = ? AND is_deleted = 0`).get(hash)
   return !!result
 }
 
@@ -98,21 +105,21 @@ export async function addTorrent(data: Partial<Torrent>): Promise<void> {
   if (!hash) throw new Error('Torrent hash is required')
 
   const doc = toDbTorrent(data)
+  const addedOn = data.qb_torrent?.added_on ?? null
 
-  const existing = db.prepare(`
-    SELECT id FROM torrents WHERE json_extract(qb_torrent, '$.hash') = ?
-  `).get(hash)
+  const existing = db.prepare(`SELECT id FROM torrents WHERE hash = ?`).get(hash) as any
 
   if (existing) {
-    db.prepare(`
-      UPDATE torrents SET qb_torrent = ?, is_deleted = ?, synced_at = ?
-      WHERE json_extract(qb_torrent, '$.hash') = ?
-    `).run(doc.qb_torrent, doc.is_deleted, doc.synced_at, hash)
+    if (!existing.id) {
+      db.prepare(`UPDATE torrents SET id = ?, qb_torrent = ?, is_deleted = ?, synced_at = ? WHERE hash = ?`)
+        .run(generateId(), doc.qb_torrent, doc.is_deleted, doc.synced_at, hash)
+    } else {
+      db.prepare(`UPDATE torrents SET qb_torrent = ?, is_deleted = ?, synced_at = ? WHERE hash = ?`)
+        .run(doc.qb_torrent, doc.is_deleted, doc.synced_at, hash)
+    }
   } else {
-    db.prepare(`
-      INSERT INTO torrents (id, qb_torrent, is_deleted, synced_at)
-      VALUES (?, ?, ?, ?)
-    `).run(generateId(), doc.qb_torrent, doc.is_deleted, doc.synced_at)
+    db.prepare(`INSERT INTO torrents (id, hash, added_on, qb_torrent, is_deleted, synced_at) VALUES (?, ?, ?, ?, ?, ?)`)
+      .run(generateId(), hash, addedOn, doc.qb_torrent, doc.is_deleted, doc.synced_at)
   }
 }
 
@@ -131,30 +138,19 @@ export async function updateTorrentStatus(hash: string, data: Partial<Torrent>):
   }
   updates.push('synced_at = ?')
   values.push(now())
-
   values.push(hash)
 
-  db.prepare(`
-    UPDATE torrents SET ${updates.join(', ')}
-    WHERE json_extract(qb_torrent, '$.hash') = ?
-  `).run(...values)
+  db.prepare(`UPDATE torrents SET ${updates.join(', ')} WHERE hash = ?`).run(...values)
 }
 
 export async function softDeleteTorrent(hash: string): Promise<void> {
   const db = getDb()
-  db.prepare(`
-    UPDATE torrents SET is_deleted = 1, synced_at = ?
-    WHERE json_extract(qb_torrent, '$.hash') = ?
-  `).run(now(), hash)
+  db.prepare(`UPDATE torrents SET is_deleted = 1, synced_at = ? WHERE hash = ?`).run(now(), hash)
 }
 
 export async function getTorrent(hash: string): Promise<Torrent | null> {
   const db = getDb()
-  const stmt = db.prepare(`
-    SELECT * FROM torrents 
-    WHERE json_extract(qb_torrent, '$.hash') = ?
-  `)
-  const row = await stmt.get(hash) as any
+  const row = db.prepare(`SELECT * FROM torrents WHERE hash = ?`).get(hash) as any
   if (!row) return null
   return fromDbTorrent(row)
 }
@@ -170,11 +166,10 @@ export async function getTorrentById(id: string): Promise<Torrent | null> {
 export async function getAllTorrents(includeDeleted = false): Promise<Torrent[]> {
   const db = getDb()
   const whereClause = includeDeleted ? '' : 'WHERE is_deleted = 0'
-  const stmt = db.prepare(`
+  const rows = db.prepare(`
     SELECT * FROM torrents ${whereClause}
-    ORDER BY json_extract(qb_torrent, '$.added_on') DESC
-  `)
-  const rows = await stmt.all() as any[]
+    ORDER BY added_on DESC
+  `).all() as any[]
   return rows.map(fromDbTorrent)
 }
 
@@ -257,6 +252,11 @@ export async function getTorrentFiles(torrentId: string): Promise<TorrentFile[]>
   return rows.map(fromDbTorrentFile)
 }
 
+export async function getTorrentFilesAsFileItems(torrentId: string): Promise<any[]> {
+  const files = await getTorrentFiles(torrentId)
+  return files.map(torrentFileToFileItem)
+}
+
 export async function getTorrentFile(fileId: string): Promise<TorrentFile | null> {
   const db = getDb()
   const stmt = db.prepare(`
@@ -285,7 +285,7 @@ export async function addVolume(data: Partial<Volume>): Promise<void> {
     id: generateId(),
     torrent_id: data.torrent_id,
     torrent_file_ids: toDbVolumeFiles(data.torrent_file_ids || []),
-    type: data.type || 'volume',
+    type: data.type ?? null,
     volume_no: data.volume_no || 0,
     sort_order: data.sort_order || 0,
     volume_name: data.volume_name || '',
@@ -384,6 +384,14 @@ export async function getVolumeById(id: string): Promise<Volume | null> {
   return fromDbVolume(result)
 }
 
+export function getVolumeCounts(): Map<string, number> {
+  const db = getDb()
+  const rows = db.prepare(`
+    SELECT torrent_id, COUNT(*) as cnt FROM volumes WHERE is_deleted = 0 GROUP BY torrent_id
+  `).all() as { torrent_id: string; cnt: number }[]
+  return new Map(rows.map(r => [r.torrent_id, r.cnt]))
+}
+
 export async function getAllVolumes(): Promise<Volume[]> {
   const db = getDb()
   const stmt = db.prepare(`
@@ -414,7 +422,7 @@ export async function saveVolume(torrentId: string, files: string[], data: Parti
     id: generateId(),
     torrent_id: torrentId,
     torrent_file_ids: toDbVolumeFiles(files),
-    type: data.type || 'volume',
+    type: data.type ?? null,
     volume_no: data.volume_no || 0,
     sort_order: data.sort_order || 0,
     volume_name: data.volume_name || '',
@@ -426,6 +434,7 @@ export async function saveVolume(torrentId: string, files: string[], data: Parti
     maker: data.maker || '',
     version_type: data.version_type || '',
     bonus_status: data.bonus_status || '',
+    media_type: data.media_type || null,
     is_deleted: 0,
     updated_at: nowTs,
   }
@@ -440,24 +449,24 @@ export async function saveVolume(torrentId: string, files: string[], data: Parti
       UPDATE volumes SET
         torrent_file_ids = ?, type = ?, sort_order = ?, volume_name = ?,
         catalog_no = ?, suruga_id = ?, note = ?, title = ?, release_date = ?,
-        maker = ?, version_type = ?, bonus_status = ?, is_deleted = ?, updated_at = ?
+        maker = ?, version_type = ?, bonus_status = ?, media_type = ?, is_deleted = ?, updated_at = ?
       WHERE torrent_id = ? AND volume_no = ?
     `).run(
       doc.torrent_file_ids, doc.type, doc.sort_order, doc.volume_name,
       doc.catalog_no, doc.suruga_id, doc.note, doc.title, doc.release_date,
-      doc.maker, doc.version_type, doc.bonus_status, doc.is_deleted, doc.updated_at,
+      doc.maker, doc.version_type, doc.bonus_status, doc.media_type, doc.is_deleted, doc.updated_at,
       torrentId, data.volume_no
     )
   } else {
     db.prepare(`
       INSERT INTO volumes (id, torrent_id, torrent_file_ids, type, volume_no, sort_order,
         volume_name, catalog_no, suruga_id, note, title, release_date, maker,
-        version_type, bonus_status, is_deleted, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        version_type, bonus_status, media_type, is_deleted, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       doc.id, doc.torrent_id, doc.torrent_file_ids, doc.type, doc.volume_no, doc.sort_order,
       doc.volume_name, doc.catalog_no, doc.suruga_id, doc.note, doc.title, doc.release_date,
-      doc.maker, doc.version_type, doc.bonus_status, doc.is_deleted, nowTs, doc.updated_at
+      doc.maker, doc.version_type, doc.bonus_status, doc.media_type, doc.is_deleted, nowTs, doc.updated_at
     )
   }
 }

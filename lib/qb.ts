@@ -1,8 +1,6 @@
 import { QBittorrent } from '@ctrl/qbittorrent'
 import { customAlphabet } from 'nanoid'
 import { getDb } from '@/lib/db'
-import { getTorrent } from '@/lib/db/repository'
-import type { Torrent, TorrentFile } from '@/lib/db'
 
 let qbClient: QBittorrent | null = null
 
@@ -40,26 +38,23 @@ function toDbTorrentFile(qbFileData: any): { qb_torrent_file: string; is_deleted
   }
 }
 
-// 快速检查 torrent 是否存在（使用同步 API）
-function torrentExistsSync(hash: string): boolean {
-  const db = getDb()
-  const stmt = db.prepare(`
-    SELECT 1 FROM torrents
-    WHERE json_extract(qb_torrent, '$.hash') = ? AND is_deleted = 0
-  `)
-  const result = stmt.get(hash)
-  return !!result
-}
-
 export async function syncTorrentsFromQb() {
   const client = getQbClient()
   const db = getDb()
 
   try {
     const torrents = await client.listTorrents()
-    let newCount = 0, updateCount = 0
+    const ts = now()
 
-    // 第一步：同步所有 torrents（插入或更新），并收集文件数据
+    // 一次性批量查出所有已有 hash → id 映射（直接读列，无需解析 JSON）
+    const existingRows = db.prepare(
+      `SELECT id, hash FROM torrents WHERE is_deleted = 0`
+    ).all() as { id: string; hash: string }[]
+    const existingMap = new Map(existingRows.map(r => [r.hash, r.id]))
+
+    const newTorrents: { hash: string; data: string }[] = []
+    const updateTorrents: { hash: string; data: string }[] = []
+
     for (const t of torrents) {
       const qbTorrentData = {
         hash: t.hash, name: t.name, size: t.size,
@@ -69,83 +64,66 @@ export async function syncTorrentsFromQb() {
         save_path: t.save_path, uploaded: t.uploaded, downloaded: t.downloaded,
         category: t.category || '',
       }
-
-      const exists = torrentExistsSync(t.hash)
-      const ts = now()
-
-      if (!exists) {
-        // 插入新 torrent
-        db.prepare(`
-          INSERT INTO torrents (qb_torrent, is_deleted, synced_at)
-          VALUES (?, ?, ?)
-        `).run(toDbTorrent(qbTorrentData).qb_torrent, 0, ts)
-
-        // 获取刚插入的 id
-        const inserted = await getTorrent(t.hash)
-        const torrentId = inserted?.id
-
-        if (torrentId) {
-          try {
-            const qbFiles = await client.torrentFiles(t.hash)
-            // 插入文件
-            const insertFile = db.prepare(`
-              INSERT INTO torrent_files (id, torrent_id, qb_torrent_file, is_deleted, synced_at)
-              VALUES (?, ?, ?, ?, ?)
-            `)
-            for (const f of qbFiles) {
-              insertFile.run(
-                generateId(),
-                torrentId,
-                toDbTorrentFile(f).qb_torrent_file,
-                0,
-                ts
-              )
-            }
-          } catch (err) {
-            console.warn(`Failed to get files for ${t.hash}:`, err)
-          }
-        }
-        newCount++
+      const serialized = JSON.stringify(qbTorrentData)
+      if (existingMap.has(t.hash)) {
+        updateTorrents.push({ hash: t.hash, data: serialized })
       } else {
-        // 更新现有 torrent
-        db.prepare(`
-          UPDATE torrents SET qb_torrent = ?, synced_at = ?
-          WHERE json_extract(qb_torrent, '$.hash') = ?
-        `).run(JSON.stringify(qbTorrentData), ts, t.hash)
-
-        // 更新文件
-        const torrent = await getTorrent(t.hash)
-        const torrentId = torrent?.id
-        if (torrentId) {
-          try {
-            const qbFiles = await client.torrentFiles(t.hash)
-            const transaction = db.transaction(() => {
-              db.prepare(`DELETE FROM torrent_files WHERE torrent_id = ?`).run(torrentId)
-              const insertFile = db.prepare(`
-                INSERT INTO torrent_files (id, torrent_id, qb_torrent_file, is_deleted, synced_at)
-                VALUES (?, ?, ?, ?, ?)
-              `)
-              for (const f of qbFiles) {
-                insertFile.run(
-                  generateId(),
-                  torrentId,
-                  toDbTorrentFile(f).qb_torrent_file,
-                  0,
-                  ts
-                )
-              }
-            })
-            await transaction()
-          } catch (err) {
-            console.warn(`Failed to update files for ${t.hash}:`, err)
-          }
-        }
-        updateCount++
+        newTorrents.push({ hash: t.hash, data: serialized })
       }
     }
 
-    console.log(`Sync: new=${newCount}, updated=${updateCount}`)
-    return { success: true, newCount, updateCount }
+    // 批量 INSERT 新 torrents，并记录 hash → rowid 以备文件插入
+    const insertedIds = new Map<string, string>()
+    if (newTorrents.length > 0) {
+      const insertTorrent = db.prepare(
+        `INSERT INTO torrents (id, hash, added_on, qb_torrent, is_deleted, synced_at) VALUES (?, ?, ?, ?, 0, ?)`
+      )
+      db.transaction(() => {
+        for (const t of newTorrents) {
+          const id = generateId()
+          const addedOn = JSON.parse(t.data).added_on ?? null
+          insertTorrent.run(id, t.hash, addedOn, t.data, ts)
+          insertedIds.set(t.hash, id)
+        }
+      })()
+    }
+
+    // 批量 UPDATE 已有 torrents（一个事务），跳过数据未变化的行
+    if (updateTorrents.length > 0) {
+      const updateTorrent = db.prepare(
+        `UPDATE torrents SET qb_torrent = ?, synced_at = ? WHERE hash = ? AND qb_torrent != ?`
+      )
+      db.transaction(() => {
+        for (const t of updateTorrents) {
+          updateTorrent.run(t.data, ts, t.hash, t.data)
+        }
+      })()
+    }
+
+    // 只为新 torrent 并发拉取文件列表（现有 torrent 的文件不在常规 sync 中重建）
+    if (insertedIds.size > 0) {
+      const fileResults = await Promise.allSettled(
+        newTorrents.map(t => client.torrentFiles(t.hash).then(files => ({ hash: t.hash, files })))
+      )
+
+      const insertFile = db.prepare(
+        `INSERT INTO torrent_files (id, torrent_id, qb_torrent_file, is_deleted, synced_at) VALUES (?, ?, ?, 0, ?)`
+      )
+      db.transaction(() => {
+        for (const result of fileResults) {
+          if (result.status !== 'fulfilled') continue
+          const { hash, files } = result.value
+          const torrentId = insertedIds.get(hash)
+          if (!torrentId) continue
+          for (const f of files) {
+            insertFile.run(generateId(), torrentId, toDbTorrentFile(f).qb_torrent_file, ts)
+          }
+        }
+      })()
+    }
+
+    console.log(`Sync: new=${newTorrents.length}, updated=${updateTorrents.length}`)
+    return { success: true, newCount: newTorrents.length, updateCount: updateTorrents.length }
   } catch (error: any) {
     return { success: false, error: error.message }
   }

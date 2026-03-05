@@ -42,7 +42,7 @@ export interface Volume {
   id?: string
   torrent_id: string
   torrent_file_ids: string[]
-  type: 'volume' | 'box'
+  type: 'volume' | 'box' | undefined
   volume_no: number
   sort_order: number
   volume_name?: string
@@ -54,6 +54,7 @@ export interface Volume {
   maker?: string
   version_type?: string
   bonus_status?: string
+  media_type?: 'DVD' | 'BD'
   is_deleted?: boolean
   created_at: number
   updated_at: number

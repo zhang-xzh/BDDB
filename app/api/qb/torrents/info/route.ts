@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAllTorrents, getTorrent } from '@/lib/db/repository'
+import { getAllTorrents, getTorrent, getVolumeCounts } from '@/lib/db/repository'
 
-// 使用 Node.js runtime 而不是 Edge
 export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
@@ -11,7 +10,6 @@ export async function GET(request: NextRequest) {
   const hash = searchParams.get('hash')
 
   try {
-    // 如果指定了 hash，返回单个 torrent
     if (hash) {
       const torrent = await getTorrent(hash)
       if (!torrent) {
@@ -36,7 +34,15 @@ export async function GET(request: NextRequest) {
       torrents = torrents.filter(t => t.qb_torrent?.name?.toLowerCase().includes(k))
     }
 
-    return NextResponse.json({ success: true, data: JSON.stringify(torrents) })
+    // 一条 SQL 批量取所有 torrent 的 volume 计数，附加到结果中
+    const counts = getVolumeCounts()
+    const result = torrents.map(t => ({
+      ...t,
+      volumeCount: t.id ? (counts.get(t.id) ?? 0) : 0,
+      hasVolumes: t.id ? (counts.get(t.id) ?? 0) > 0 : false,
+    }))
+
+    return NextResponse.json({ success: true, data: JSON.stringify(result) })
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message })
   }

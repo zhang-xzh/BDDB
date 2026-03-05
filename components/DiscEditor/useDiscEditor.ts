@@ -23,7 +23,8 @@ interface UseDiscEditorReturn {
   saving: boolean
   torrentName: string
   torrentId: string | null
-  volumeType: 'volume' | 'box'
+  volumeType: 'volume' | 'box' | undefined
+  mediaType: 'DVD' | 'BD' | undefined
   volumeForms: Record<number, VolumeForm>
   files: FileItem[]
   treeData: any[]
@@ -37,7 +38,8 @@ interface UseDiscEditorReturn {
   setVisible: (v: boolean) => void
   setTorrentName: (n: string) => void
   setTorrentId: (i: string | null) => void
-  setVolumeType: (t: 'volume' | 'box') => void
+  setVolumeType: (t: 'volume' | 'box' | undefined) => void
+  setMediaType: (t: 'DVD' | 'BD' | undefined) => void
   setVolumeForms: (f: Record<number, VolumeForm>) => void
   setFiles: (f: FileItem[]) => void
   setTreeData: (t: any[]) => void
@@ -72,7 +74,8 @@ export function useDiscEditor(): UseDiscEditorReturn {
   const [loading, setLoading] = useState(false)
   const [torrentName, setTorrentName] = useState('')
   const [torrentId, setTorrentId] = useState<string | null>(null)
-  const [volumeType, setVolumeType] = useState<'volume' | 'box'>('volume')
+  const [volumeType, setVolumeType] = useState<'volume' | 'box' | undefined>(undefined)
+  const [mediaType, setMediaType] = useState<'DVD' | 'BD' | undefined>(undefined)
   const maxVolumes = 20
 
   const [volumeForms, setVolumeForms] = useState<Record<number, VolumeForm>>({})
@@ -142,6 +145,7 @@ export function useDiscEditor(): UseDiscEditorReturn {
       })
     })
 
+
     function buildTreeRecursive(node: Record<string, any>, parentPath = '', parentKey: string | null = null, level = 0): any[] {
       const result: any[] = []
       const keys: string[] = []
@@ -182,6 +186,7 @@ export function useDiscEditor(): UseDiscEditorReturn {
     }
 
     const treeDataResult = buildTreeRecursive(root)
+
 
     return {
       treeData: treeDataResult,
@@ -227,7 +232,8 @@ export function useDiscEditor(): UseDiscEditorReturn {
     setDefaultExpandedKeys([])
     setVolumeToKeys(new Map())
     setTorrentId(null)
-    setVolumeType('volume')
+    setVolumeType(undefined)
+    setMediaType(undefined)
   }
 
   const open = async (torrentHash: string, name: string = '', syncFiles = false) => {
@@ -254,14 +260,36 @@ export function useDiscEditor(): UseDiscEditorReturn {
       const tid = torrent.id
       setTorrentId(tid)
 
-      const apiPath = syncFiles ? `/api/qb/torrents/files` : `/api/torrents/files`
-      const filesResult = await fetchApi<string>(`${apiPath}?hash=${torrentHash}`)
-      if (!filesResult?.success || !filesResult.data) {
+      // 先尝试从数据库获取文件
+      let filesResult = await fetchApi<string>(`/api/torrents/files?hash=${torrentHash}`)
+      let loadedFiles: FileItem[] = []
+
+      if (filesResult?.success && filesResult.data) {
+        loadedFiles = JSON.parse(filesResult.data)
+      }
+
+      // 如果数据库中没有文件，或者用户明确要求同步，则从 qBittorrent 同步
+      if (loadedFiles.length === 0 || syncFiles) {
+        console.log('[DiscEditor] 从 qBittorrent 同步文件...')
+        filesResult = await fetchApi<string>(`/api/qb/torrents/files?hash=${torrentHash}`)
+        if (filesResult?.success && filesResult.data) {
+          loadedFiles = JSON.parse(filesResult.data)
+        }
+      }
+
+      if (loadedFiles.length === 0) {
+        console.warn('[DiscEditor] 没有获取到文件数据')
         setLoading(false)
         return
       }
 
-      const loadedFiles: FileItem[] = JSON.parse(filesResult.data)
+      if (loadedFiles.length === 0) {
+        console.warn('[DiscEditor] 没有获取到文件数据')
+        setLoading(false)
+        return
+      }
+
+      console.log('[DiscEditor] 加载文件:', loadedFiles.length, '个')
       setFiles(loadedFiles)
 
       const { treeData: newTreeData, nodeData: builtNodeData, fileToKeyMap, flatTree: newFlatTree, defaultExpandedKeys: newExpandedKeys } = buildTree(loadedFiles)
@@ -277,6 +305,7 @@ export function useDiscEditor(): UseDiscEditorReturn {
           const volumes = JSON.parse(volumesResult.data)
           if (volumes?.length > 0) {
             if (volumes[0].type) setVolumeType(volumes[0].type)
+            if (volumes[0].media_type) setMediaType(volumes[0].media_type)
 
             const newVolumeForms: Record<number, VolumeForm> = {}
             const fileToVolumeMap: Map<string, number> = new Map()
@@ -352,13 +381,6 @@ export function useDiscEditor(): UseDiscEditorReturn {
 
             setNodeData(newNodeData)
             setVolumeToKeys(newVolumeToKeys)
-            
-            // 调试日志：确认数据已正确更新
-            console.log('[DiscEditor] volumes 加载完成')
-            console.log('[DiscEditor] fileToVolumeMap:', Array.from(fileToVolumeMap.entries()))
-            console.log('[DiscEditor] newNodeData size:', newNodeData.size)
-            console.log('[DiscEditor] 有 volume_no 的节点:', Array.from(newNodeData.entries()).filter(([_, d]) => d.volume_no !== undefined).length)
-            console.log('[DiscEditor] 前 5 个有 volume 的节点:', Array.from(newNodeData.entries()).filter(([_, d]) => d.volume_no !== undefined).slice(0, 5))
           }
         }
       }
@@ -398,11 +420,17 @@ export function useDiscEditor(): UseDiscEditorReturn {
             sort_order: volNo,
             volume_name: volumeForms[volNo]?.volume_name || '',
             catalog_no: volumeForms[volNo]?.catalog_no || '',
+            media_type: mediaType,
           }],
         })
       )
 
-      await Promise.all(savePromises)
+      const results = await Promise.all(savePromises)
+      const failed = results.filter(r => !r?.success)
+      if (failed.length > 0) {
+        message.error(failed[0]?.error || '保存失败')
+        return
+      }
       message.success('保存成功')
       setVisible(false)
     } catch (error) {
@@ -424,6 +452,7 @@ export function useDiscEditor(): UseDiscEditorReturn {
     torrentName,
     torrentId,
     volumeType,
+    mediaType,
     volumeForms,
     files,
     treeData,
@@ -436,6 +465,7 @@ export function useDiscEditor(): UseDiscEditorReturn {
     setTorrentName,
     setTorrentId,
     setVolumeType,
+    setMediaType,
     setVolumeForms,
     setFiles,
     setTreeData,

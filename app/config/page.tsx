@@ -147,7 +147,7 @@ const ConfigPage: React.FC = () => {
         {/* 同步操作 */}
         <Col xs={24} md={12}>
           <Card title="同步操作" bordered>
-            <Space direction="vertical" style={{ width: '100%' }} size="large">
+            <Space style={{ width: '100%' }} size="large" orientation="vertical">
               <div>
                 <h3 style={{ marginTop: 0 }}>同步 qBittorrent</h3>
                 <p style={{ color: '#666', fontSize: '14px' }}>
@@ -171,7 +171,7 @@ const ConfigPage: React.FC = () => {
         {/* 数据管理 */}
         <Col xs={24} md={12}>
           <Card title="数据管理" bordered>
-            <Space direction="vertical" style={{ width: '100%' }} size="large">
+            <Space style={{ width: '100%' }} size="large" orientation="vertical">
               <div>
                 <h3 style={{ marginTop: 0 }}>重建数据</h3>
                 <p style={{ color: '#666', fontSize: '14px' }}>

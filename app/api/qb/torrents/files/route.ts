@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTorrent, saveTorrentFiles, getTorrentFiles } from '@/lib/db/repository'
+import { getTorrent, saveTorrentFiles, getTorrentFilesAsFileItems } from '@/lib/db/repository'
 import { getQbClient } from '@/lib/qb'
 
 const now = () => Math.floor(Date.now() / 1000)
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       synced_at: now(),
     })))
 
-    const dbFiles = await getTorrentFiles(torrent.id!)
+    const dbFiles = await getTorrentFilesAsFileItems(torrent.id!)
     return NextResponse.json({ success: true, data: JSON.stringify(dbFiles) })
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message })

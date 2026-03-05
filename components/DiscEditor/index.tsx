@@ -31,6 +31,7 @@ const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(function DiscEdito
     torrentName,
     torrentId,
     volumeType,
+    mediaType,
     volumeForms,
     files,
     treeData,
@@ -42,6 +43,7 @@ const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(function DiscEdito
     setTorrentName,
     setTorrentId,
     setVolumeType,
+    setMediaType,
     setVolumeForms,
     setTreeData,
     setNodeData,
@@ -72,17 +74,28 @@ const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(function DiscEdito
       footer={null}
     >
       <Spin spinning={loading}>
-        <Space direction="vertical" style={{ width: '100%' }} size={16} orientation="vertical">
-          {/* 卷类型选择 */}
-          <Radio.Group
-            size="small"
-            value={volumeType}
-            onChange={e => setVolumeType(e.target.value)}
-            buttonStyle="solid"
-          >
-            <Radio.Button value="volume">分卷</Radio.Button>
-            <Radio.Button value="box">BOX</Radio.Button>
-          </Radio.Group>
+        <Space style={{ width: '100%' }} size={16} orientation="vertical">
+          {/* 卷类型 & 媒介类型 */}
+          <Space>
+            <Radio.Group
+              size="small"
+              value={volumeType}
+              onChange={e => setVolumeType(e.target.value)}
+              buttonStyle="solid"
+            >
+              <Radio.Button value="volume">分卷</Radio.Button>
+              <Radio.Button value="box">BOX</Radio.Button>
+            </Radio.Group>
+            <Radio.Group
+              size="small"
+              value={mediaType}
+              onChange={e => setMediaType(e.target.value)}
+              buttonStyle="solid"
+            >
+              <Radio.Button value="DVD">DVD</Radio.Button>
+              <Radio.Button value="BD">BD</Radio.Button>
+            </Radio.Group>
+          </Space>
 
           {/* 卷信息表单 */}
           <VolumeFormList

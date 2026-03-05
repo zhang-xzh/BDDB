@@ -38,7 +38,7 @@ export function FileTree({
         />
       )
     }
-  }, [nodeData, getNodeVolume, onVolumeChange, maxVolumes])
+  }, [treeData, getNodeVolume, onVolumeChange, maxVolumes])
 
   return (
     <Tree<DataNode>
