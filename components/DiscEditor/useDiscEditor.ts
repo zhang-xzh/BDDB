@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import type { VolumeForm, NodeData, FileItem } from '@/lib/db/schema'
 import { fetchApi, postApi } from '@/lib/api'
 import { message } from 'antd'
@@ -23,8 +23,6 @@ interface UseDiscEditorReturn {
   saving: boolean
   torrentName: string
   torrentId: string | null
-  volumeType: 'volume' | 'box' | undefined
-  mediaType: 'DVD' | 'BD' | undefined
   volumeForms: Record<number, VolumeForm>
   files: FileItem[]
   treeData: any[]
@@ -38,8 +36,6 @@ interface UseDiscEditorReturn {
   setVisible: (v: boolean) => void
   setTorrentName: (n: string) => void
   setTorrentId: (i: string | null) => void
-  setVolumeType: (t: 'volume' | 'box' | undefined) => void
-  setMediaType: (t: 'DVD' | 'BD' | undefined) => void
   setVolumeForms: (f: Record<number, VolumeForm>) => void
   setFiles: (f: FileItem[]) => void
   setTreeData: (t: any[]) => void
@@ -52,6 +48,7 @@ interface UseDiscEditorReturn {
   open: (torrentHash: string, name?: string, syncFiles?: boolean) => Promise<void>
   handleSubmit: () => Promise<void>
   handleCancel: () => void
+  hasChanges: () => boolean
   onVolumeChange: (key: string, volumeNo: number | null) => void
   getNodeVolume: (key: string) => number | undefined
   getVolumeForm: (vol: number) => VolumeForm
@@ -68,14 +65,12 @@ interface BuildTreeResult {
   defaultExpandedKeys: string[]
 }
 
-export function useDiscEditor(): UseDiscEditorReturn {
+export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
   const [visible, setVisible] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(false)
   const [torrentName, setTorrentName] = useState('')
   const [torrentId, setTorrentId] = useState<string | null>(null)
-  const [volumeType, setVolumeType] = useState<'volume' | 'box' | undefined>(undefined)
-  const [mediaType, setMediaType] = useState<'DVD' | 'BD' | undefined>(undefined)
   const maxVolumes = 20
 
   const [volumeForms, setVolumeForms] = useState<Record<number, VolumeForm>>({})
@@ -87,6 +82,15 @@ export function useDiscEditor(): UseDiscEditorReturn {
   const [volumeToKeys, setVolumeToKeys] = useState<Map<number, Set<string>>>(new Map())
 
   const currentHashRef = useRef<string | null>(null)
+
+  // Refs for hasChanges detection
+  const nodeDataRef = useRef(nodeData)
+  const volumeFormsRef = useRef(volumeForms)
+  const initialNodeDataRef = useRef<Map<string, NodeData>>(new Map())
+  const initialVolumeFormsRef = useRef<Record<number, VolumeForm>>({})
+
+  useEffect(() => { nodeDataRef.current = nodeData }, [nodeData])
+  useEffect(() => { volumeFormsRef.current = volumeForms }, [volumeForms])
 
   const selectedVolumes = React.useMemo(() => {
     return Array.from(volumeToKeys.keys()).sort((a, b) => a - b)
@@ -223,7 +227,19 @@ export function useDiscEditor(): UseDiscEditorReturn {
     setVolumeToKeys(newVolumeToKeys)
   }
 
+  const hasChanges = useCallback((): boolean => {
+    const curr = nodeDataRef.current
+    const init = initialNodeDataRef.current
+    for (const [key, data] of curr.entries()) {
+      if ((data.volume_no ?? undefined) !== (init.get(key)?.volume_no ?? undefined)) return true
+    }
+    if (JSON.stringify(volumeFormsRef.current) !== JSON.stringify(initialVolumeFormsRef.current)) return true
+    return false
+  }, [])
+
   const resetAll = () => {
+    initialNodeDataRef.current = new Map()
+    initialVolumeFormsRef.current = {}
     setVolumeForms({})
     setFiles([])
     setTreeData([])
@@ -232,8 +248,6 @@ export function useDiscEditor(): UseDiscEditorReturn {
     setDefaultExpandedKeys([])
     setVolumeToKeys(new Map())
     setTorrentId(null)
-    setVolumeType(undefined)
-    setMediaType(undefined)
   }
 
   const open = async (torrentHash: string, name: string = '', syncFiles = false) => {
@@ -244,7 +258,12 @@ export function useDiscEditor(): UseDiscEditorReturn {
     resetAll()
 
     try {
-      const torrentResult = await fetchApi<string>(`/api/qb/torrents/info?hash=${torrentHash}`)
+      // Parallel: torrent info + DB files (independent requests)
+      const [torrentResult, dbFilesResult] = await Promise.all([
+        fetchApi<string>(`/api/qb/torrents/info?hash=${torrentHash}`),
+        fetchApi<string>(`/api/torrents/files?hash=${torrentHash}`),
+      ])
+
       if (!torrentResult?.success || !torrentResult.data) {
         setLoading(false)
         return
@@ -260,27 +279,23 @@ export function useDiscEditor(): UseDiscEditorReturn {
       const tid = torrent.id
       setTorrentId(tid)
 
-      // 先尝试从数据库获取文件
-      let filesResult = await fetchApi<string>(`/api/torrents/files?hash=${torrentHash}`)
-      let loadedFiles: FileItem[] = []
+      // Start volumes fetch immediately after getting tid (runs concurrently)
+      const volumesPromise = tid != null
+        ? fetchApi<string>(`/api/volumes?torrent_id=${tid}`)
+        : Promise.resolve(null)
 
-      if (filesResult?.success && filesResult.data) {
-        loadedFiles = JSON.parse(filesResult.data)
+      let loadedFiles: FileItem[] = []
+      if (dbFilesResult?.success && dbFilesResult.data) {
+        loadedFiles = JSON.parse(dbFilesResult.data)
       }
 
       // 如果数据库中没有文件，或者用户明确要求同步，则从 qBittorrent 同步
       if (loadedFiles.length === 0 || syncFiles) {
         console.log('[DiscEditor] 从 qBittorrent 同步文件...')
-        filesResult = await fetchApi<string>(`/api/qb/torrents/files?hash=${torrentHash}`)
-        if (filesResult?.success && filesResult.data) {
-          loadedFiles = JSON.parse(filesResult.data)
+        const qbFilesResult = await fetchApi<string>(`/api/qb/torrents/files?hash=${torrentHash}`)
+        if (qbFilesResult?.success && qbFilesResult.data) {
+          loadedFiles = JSON.parse(qbFilesResult.data)
         }
-      }
-
-      if (loadedFiles.length === 0) {
-        console.warn('[DiscEditor] 没有获取到文件数据')
-        setLoading(false)
-        return
       }
 
       if (loadedFiles.length === 0) {
@@ -299,14 +314,15 @@ export function useDiscEditor(): UseDiscEditorReturn {
       setFlatTree(newFlatTree)
       setDefaultExpandedKeys(newExpandedKeys)
 
-      if (tid != null) {
-        const volumesResult = await fetchApi<string>(`/api/volumes?torrent_id=${tid}`)
-        if (volumesResult?.success && volumesResult.data) {
+      // Track final state for hasChanges detection
+      let snapshotNodeData: Map<string, NodeData> = builtNodeData
+      let snapshotVolumeForms: Record<number, VolumeForm> = {}
+
+      // Await volumes (started earlier in parallel with file processing)
+      const volumesResult = await volumesPromise
+      if (volumesResult?.success && volumesResult.data) {
           const volumes = JSON.parse(volumesResult.data)
           if (volumes?.length > 0) {
-            if (volumes[0].type) setVolumeType(volumes[0].type)
-            if (volumes[0].media_type) setMediaType(volumes[0].media_type)
-
             const newVolumeForms: Record<number, VolumeForm> = {}
             const fileToVolumeMap: Map<string, number> = new Map()
 
@@ -315,7 +331,9 @@ export function useDiscEditor(): UseDiscEditorReturn {
               if (volNo !== undefined) {
                 newVolumeForms[volNo] = {
                   catalog_no: vol.catalog_no || '',
-                  volume_name: vol.volume_name || ''
+                  volume_name: vol.volume_name || '',
+                  type: vol.type || undefined,
+                  media_type: vol.media_type || undefined,
                 }
                 if (vol.torrent_file_ids?.length > 0) {
                   vol.torrent_file_ids.forEach((fileId: string) => fileToVolumeMap.set(fileId, volNo))
@@ -381,9 +399,14 @@ export function useDiscEditor(): UseDiscEditorReturn {
 
             setNodeData(newNodeData)
             setVolumeToKeys(newVolumeToKeys)
+            snapshotNodeData = newNodeData
+            snapshotVolumeForms = newVolumeForms
           }
-        }
       }
+
+      // Snapshot initial state for hasChanges detection
+      initialNodeDataRef.current = new Map(snapshotNodeData)
+      initialVolumeFormsRef.current = { ...snapshotVolumeForms }
     } catch (error) {
       console.error('加载数据失败:', error)
     } finally {
@@ -415,12 +438,12 @@ export function useDiscEditor(): UseDiscEditorReturn {
           torrent_id: torrentId,
           files: files[volNo] || [],
           volumes: [{
-            type: volumeType,
+            type: volumeForms[volNo]?.type,
             volume_no: volNo,
             sort_order: volNo,
-            volume_name: volumeForms[volNo]?.volume_name || '',
-            catalog_no: volumeForms[volNo]?.catalog_no || '',
-            media_type: mediaType,
+            volume_name: (volumeForms[volNo]?.volume_name || '').trim(),
+            catalog_no: (volumeForms[volNo]?.catalog_no || '').trim(),
+            media_type: volumeForms[volNo]?.media_type,
           }],
         })
       )
@@ -433,6 +456,7 @@ export function useDiscEditor(): UseDiscEditorReturn {
       }
       message.success('保存成功')
       setVisible(false)
+      onSave?.()
     } catch (error) {
       console.error('保存失败:', error)
       message.error('保存失败')
@@ -451,8 +475,6 @@ export function useDiscEditor(): UseDiscEditorReturn {
     saving,
     torrentName,
     torrentId,
-    volumeType,
-    mediaType,
     volumeForms,
     files,
     treeData,
@@ -464,8 +486,6 @@ export function useDiscEditor(): UseDiscEditorReturn {
     setVisible,
     setTorrentName,
     setTorrentId,
-    setVolumeType,
-    setMediaType,
     setVolumeForms,
     setFiles,
     setTreeData,
@@ -476,6 +496,7 @@ export function useDiscEditor(): UseDiscEditorReturn {
     open,
     handleSubmit,
     handleCancel,
+    hasChanges,
     onVolumeChange,
     getNodeVolume,
     getVolumeForm,

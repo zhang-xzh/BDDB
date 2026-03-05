@@ -1,53 +1,109 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
-  Table,
+  Collapse,
+  Flex,
   Space,
-  Button,
   Input,
   Progress,
   Badge,
-  Modal,
-  message,
+  Select,
   Tag,
+  Pagination,
+  Spin,
+  Typography,
+  theme,
 } from "antd";
-import type { TableColumnsType } from "antd";
-import {
-  SyncOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  SettingOutlined,
-} from "@ant-design/icons";
-import { useRouter } from "next/navigation";
+import { CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
 import type { Torrent } from "@/lib/db/schema";
-import { fetchApi, postApi } from "@/lib/api";
-import DiscEditor, { type DiscEditorRef } from "@/components/DiscEditor";
+import { fetchApi } from "@/lib/api";
+import { useDiscEditor } from "@/components/DiscEditor/useDiscEditor";
+import { DiscEditorContent } from "@/components/DiscEditor/DiscEditorContent";
 
 const { Search } = Input;
-const { confirm } = Modal;
+const { Text } = Typography;
 
 interface TorrentWithVolume extends Torrent {
   hasVolumes?: boolean;
   volumeCount?: number;
 }
 
+// Fixed column widths — shared by header and every label row
+const COL = {
+  category: 120,
+  volumes: 56,
+  progress: 130,
+  state: 90,
+  size: 72,
+} as const;
+const PAGE_SIZE = 20;
+
+// Collapse left-indent: arrow icon (~12px) + antd internal padding (16px) + gap (8px) ≈ 36px
+// We add 8px for the gap between arrow and content = 44px total left padding
+const HEADER_INDENT = 44;
+
+const ColHeader: React.FC = () => {
+  const { token } = theme.useToken();
+  return (
+    <Flex
+      align="center"
+      gap={8}
+      style={{
+        padding: `6px 16px 6px ${HEADER_INDENT}px`,
+        background: token.colorFillAlter,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: `${token.borderRadiusLG}px ${token.borderRadiusLG}px 0 0`,
+        fontWeight: token.fontWeightStrong,
+        fontSize: token.fontSize,
+      }}
+    >
+      <Text strong style={{ width: COL.category, flexShrink: 0 }}>
+        类别
+      </Text>
+      <Text strong style={{ width: COL.volumes, flexShrink: 0 }}>
+        卷
+      </Text>
+      <Text strong style={{ flex: 1 }}>
+        名称
+      </Text>
+      <Text strong style={{ width: COL.progress, flexShrink: 0 }}>
+        进度
+      </Text>
+      <Text strong style={{ width: COL.state, flexShrink: 0 }}>
+        状态
+      </Text>
+      <Text
+        strong
+        style={{ width: COL.size, flexShrink: 0, textAlign: "right" }}
+      >
+        大小
+      </Text>
+    </Flex>
+  );
+};
+
 const HomePage: React.FC = () => {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [torrents, setTorrents] = useState<TorrentWithVolume[]>([]);
   const [searchText, setSearchText] = useState("");
-  const discEditorRef = useRef<DiscEditorRef>(null);
+  const [filterCategory, setFilterCategory] = useState<string | undefined>(
+    undefined,
+  );
+  const [filterHasVolumes, setFilterHasVolumes] = useState<boolean | undefined>(
+    undefined,
+  );
+  const [filterState, setFilterState] = useState<string | undefined>(undefined);
+  const [activeKey, setActiveKey] = useState<string | undefined>(undefined);
+  const [currentPage, setCurrentPage] = useState(1);
+  const skipSubmitRef = useRef(false);
 
-  const pagination = {
-    pageSize: 50,
-    showSizeChanger: true,
-    showQuickJumper: true,
-    showTotal: (total: number) => `共 ${total} 条`,
-  };
-
-  // 格式化大小
   const formatSize = useCallback((bytes: number): string => {
     if (bytes === 0) return "0 B";
     const k = 1024;
@@ -56,7 +112,6 @@ const HomePage: React.FC = () => {
     return (bytes / Math.pow(k, i)).toFixed(2) + " " + sizes[i];
   }, []);
 
-  // 获取状态样式
   const getStateStatus = (
     state: string,
   ): "success" | "processing" | "warning" | "default" => {
@@ -67,7 +122,6 @@ const HomePage: React.FC = () => {
     return "default";
   };
 
-  // 获取状态文本
   const getStateText = (state: string): string => {
     const stateMap: Record<string, string> = {
       downloading: "下载中",
@@ -79,7 +133,6 @@ const HomePage: React.FC = () => {
     return stateMap[state] || state;
   };
 
-  // 获取种子列表
   const fetchTorrents = useCallback(async () => {
     setLoading(true);
     try {
@@ -94,223 +147,247 @@ const HomePage: React.FC = () => {
     }
   }, []);
 
-  // 同步 qBittorrent
-  const syncTorrents = useCallback(async () => {
-    setSyncing(true);
-    try {
-      const data = await postApi("/api/qb/torrents/sync");
-      if (data?.success) {
-        message.success("开始同步 qBittorrent");
-        setTimeout(() => {
-          fetchTorrents();
-        }, 2000);
-      } else {
-        message.error(data?.error || "同步失败");
-      }
-    } catch (error) {
-      console.error("同步失败:", error);
-      message.error("同步失败");
-    } finally {
-      setSyncing(false);
+  const editor = useDiscEditor(fetchTorrents);
+
+  const filteredTorrents = useMemo(() => {
+    let list = torrents;
+    if (searchText) {
+      const lower = searchText.toLowerCase();
+      list = list.filter((t) =>
+        t.qb_torrent.name.toLowerCase().includes(lower),
+      );
     }
-  }, [fetchTorrents]);
+    if (filterCategory !== undefined) {
+      list = list.filter((t) => t.qb_torrent.category === filterCategory);
+    }
+    if (filterHasVolumes !== undefined) {
+      list = list.filter((t) => !!t.hasVolumes === filterHasVolumes);
+    }
+    if (filterState !== undefined) {
+      list = list.filter((t) =>
+        filterState === "paused"
+          ? t.qb_torrent.state.includes("paused")
+          : t.qb_torrent.state === filterState,
+      );
+    }
+    return list;
+  }, [torrents, searchText, filterCategory, filterHasVolumes, filterState]);
 
-  // 搜索
-  const handleSearch = useCallback(() => {
-    fetchTorrents();
-  }, [fetchTorrents]);
-
-  // 显示种子详情
-  const showTorrentDetail = useCallback((record: Torrent) => {
-    editDisc(record);
-  }, []);
-
-  // 编辑光盘
-  const editDisc = useCallback((record: Torrent) => {
-    discEditorRef.current?.open(
-      record.qb_torrent.hash,
-      record.qb_torrent.name,
-      false,
-    );
-  }, []);
-
-  // 同步光盘文件
-  const syncDiscFiles = useCallback((record: Torrent) => {
-    discEditorRef.current?.open(
-      record.qb_torrent.hash,
-      record.qb_torrent.name,
-      true,
-    );
-  }, []);
-
-  // 光盘保存成功回调
-  const handleDiscSaved = useCallback(() => {
-    fetchTorrents();
-  }, [fetchTorrents]);
-
-  // 删除种子
-  const deleteTorrent = useCallback(
-    async (record: Torrent) => {
-      confirm({
-        title: "确认删除",
-        content: `确定要删除种子 "${record.qb_torrent.name}" 吗？`,
-        okText: "确定",
-        cancelText: "取消",
-        onOk: async () => {
-          try {
-            const data = await postApi(
-              `/api/qb/torrents/delete?hash=${record.qb_torrent.hash}`,
-            );
-            if (data?.success) {
-              message.success("删除成功");
-              fetchTorrents();
-            } else {
-              message.error(data?.error || "删除失败");
-            }
-          } catch (error) {
-            console.error("删除失败:", error);
-            message.error("删除失败");
-          }
-        },
-      });
-    },
-    [fetchTorrents],
+  const categories = useMemo(
+    () =>
+      Array.from(
+        new Set(torrents.map((t) => t.qb_torrent.category).filter(Boolean)),
+      ),
+    [torrents],
   );
+
+  const pagedTorrents = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredTorrents.slice(start, start + PAGE_SIZE);
+  }, [filteredTorrents, currentPage]);
+
+  const handleCollapseChange = useCallback(
+    async (key: string | string[]) => {
+      const newKey = Array.isArray(key) ? key[0] : key || undefined;
+
+      if (activeKey && activeKey !== newKey) {
+        if (!skipSubmitRef.current && editor.hasChanges()) {
+          await editor.handleSubmit();
+        }
+        skipSubmitRef.current = false;
+      }
+
+      setActiveKey(newKey);
+
+      if (newKey) {
+        const torrent = pagedTorrents.find((t) => t.qb_torrent.hash === newKey);
+        if (torrent) {
+          await editor.open(
+            torrent.qb_torrent.hash,
+            torrent.qb_torrent.name,
+            false,
+          );
+        }
+      }
+    },
+    [activeKey, editor, pagedTorrents],
+  );
+
+  const handleCancel = useCallback(() => {
+    skipSubmitRef.current = true;
+    setActiveKey(undefined);
+  }, []);
 
   useEffect(() => {
     fetchTorrents();
   }, [fetchTorrents]);
 
-  const columns: TableColumnsType<TorrentWithVolume> = [
-    {
-      title: "类别",
-      dataIndex: ["qb_torrent", "category"],
-      key: "category",
-      width: 200,
-      filters: Array.from(
-        new Set(torrents.map((t) => t.qb_torrent.category).filter(Boolean)),
-      ).map((cat) => ({
-        text: cat,
-        value: cat,
-      })),
-      onFilter: (value, record) => record.qb_torrent.category === value,
-      render: (category: string) => category || "-",
-    },
-    {
-      title: "卷",
-      dataIndex: "hasVolumes",
-      key: "hasVolumes",
-      width: 80,
-      filters: [
-        { text: "有卷", value: true },
-        { text: "无卷", value: false },
-      ],
-      render: (hasVolumes: boolean, record: TorrentWithVolume) =>
-        hasVolumes ? (
-          <Tag icon={<CheckCircleOutlined />} color="success">
-            {record.volumeCount}
-          </Tag>
-        ) : (
-          <Tag icon={<CloseCircleOutlined />} color="default" />
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchText, filterCategory, filterHasVolumes, filterState]);
+
+  const collapseItems = useMemo(
+    () =>
+      pagedTorrents.map((t) => ({
+        key: t.qb_torrent.hash,
+        label: (
+          <Flex align="center" gap={8} style={{ width: "100%" }}>
+            <Flex
+              style={{ width: COL.category, flexShrink: 0, overflow: "hidden" }}
+            >
+              {t.qb_torrent.category ? (
+                <Tag color="blue" style={{ margin: 0, maxWidth: "100%" }}>
+                  {t.qb_torrent.category}
+                </Tag>
+              ) : (
+                <Text type="secondary">—</Text>
+              )}
+            </Flex>
+            <Flex style={{ width: COL.volumes, flexShrink: 0 }}>
+              {t.hasVolumes ? (
+                <Tag
+                  icon={<CheckCircleOutlined />}
+                  color="success"
+                  style={{ margin: 0 }}
+                >
+                  {t.volumeCount}
+                </Tag>
+              ) : (
+                <Tag
+                  icon={<CloseCircleOutlined />}
+                  color="default"
+                  style={{ margin: 0 }}
+                />
+              )}
+            </Flex>
+            <Text ellipsis style={{ flex: 1 }}>
+              {t.qb_torrent.name}
+            </Text>
+            <Flex style={{ width: COL.progress, flexShrink: 0 }}>
+              <Progress
+                percent={parseFloat((t.qb_torrent.progress * 100).toFixed(1))}
+                status={t.qb_torrent.progress === 1 ? "success" : "active"}
+                size="small"
+                style={{ margin: 0 }}
+              />
+            </Flex>
+            <Flex style={{ width: COL.state, flexShrink: 0 }}>
+              <Badge
+                status={getStateStatus(t.qb_torrent.state)}
+                text={getStateText(t.qb_torrent.state)}
+              />
+            </Flex>
+            <Text
+              type="secondary"
+              style={{
+                width: COL.size,
+                flexShrink: 0,
+                textAlign: "right",
+                fontSize: 12,
+              }}
+            >
+              {formatSize(t.qb_torrent.size)}
+            </Text>
+          </Flex>
         ),
-    },
-    {
-      title: "名称",
-      dataIndex: ["qb_torrent", "name"],
-      key: "name",
-      ellipsis: true,
-      render: (text, record) => (
-        <a onClick={() => showTorrentDetail(record)}>{text}</a>
-      ),
-    },
-    {
-      title: "进度",
-      dataIndex: ["qb_torrent", "progress"],
-      key: "progress",
-      width: 120,
-      render: (progress: number) => (
-        <Progress
-          percent={parseFloat((progress * 100).toFixed(1))}
-          status={progress === 1 ? "success" : "active"}
-          size="small"
-        />
-      ),
-    },
-    {
-      title: "状态",
-      dataIndex: ["qb_torrent", "state"],
-      key: "state",
-      width: 100,
-      filters: [
-        { text: "下载中", value: "downloading" },
-        { text: "做种中", value: "uploading" },
-        { text: "已暂停", value: "paused" },
-        { text: "已完成", value: "completed" },
-      ],
-      render: (state: string) => (
-        <Badge status={getStateStatus(state)} text={getStateText(state)} />
-      ),
-    },
-    {
-      title: "大小",
-      dataIndex: ["qb_torrent", "size"],
-      key: "size",
-      width: 100,
-      sorter: (a, b) => (a.qb_torrent?.size || 0) - (b.qb_torrent?.size || 0),
-      render: (size: number) => formatSize(size),
-    },
-  ];
+        children:
+          activeKey === t.qb_torrent.hash ? (
+            <DiscEditorContent
+              loading={editor.loading}
+              saving={editor.saving}
+              files={editor.files}
+              treeData={editor.treeData}
+              nodeData={editor.nodeData}
+              defaultExpandedKeys={editor.defaultExpandedKeys}
+              selectedVolumes={editor.selectedVolumes}
+              maxVolumes={editor.maxVolumes}
+              volumeForms={editor.volumeForms}
+              onVolumeFormChange={editor.updateVolumeForm}
+              onVolumeChange={editor.onVolumeChange}
+              getNodeVolume={editor.getNodeVolume}
+              onCancel={handleCancel}
+              onSubmit={editor.handleSubmit}
+            />
+          ) : null,
+      })),
+    [pagedTorrents, activeKey, editor, handleCancel, formatSize],
+  );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      {/* 操作栏 */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "16px",
-        }}
-      >
-        <Space>
-          <Button
-            type="primary"
-            onClick={syncTorrents}
-            loading={syncing}
-            icon={<SyncOutlined />}
-          >
-            同步 qBittorrent
-          </Button>
-          <Button
-            onClick={() => router.push("/config")}
-            icon={<SettingOutlined />}
-          >
-            配置
-          </Button>
-          <Search
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            onSearch={handleSearch}
-            placeholder="搜索种子"
-            style={{ width: "200px" }}
-            allowClear
+    <Flex vertical gap={16}>
+      <Space wrap>
+        <Search
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          placeholder="搜索种子"
+          style={{ width: 200 }}
+          allowClear
+        />
+        <Select
+          allowClear
+          placeholder="类别"
+          style={{ width: 150 }}
+          value={filterCategory}
+          onChange={setFilterCategory}
+          options={categories.map((c) => ({ label: c, value: c }))}
+        />
+        <Select
+          allowClear
+          placeholder="有无卷"
+          style={{ width: 110 }}
+          value={filterHasVolumes}
+          onChange={setFilterHasVolumes}
+          options={[
+            { label: "有卷", value: true },
+            { label: "无卷", value: false },
+          ]}
+        />
+        <Select
+          allowClear
+          placeholder="状态"
+          style={{ width: 110 }}
+          value={filterState}
+          onChange={setFilterState}
+          options={[
+            { label: "下载中", value: "downloading" },
+            { label: "做种中", value: "uploading" },
+            { label: "已暂停", value: "paused" },
+            { label: "已完成", value: "completed" },
+          ]}
+        />
+        <Text type="secondary">共 {filteredTorrents.length} 条</Text>
+      </Space>
+
+      <Spin spinning={loading}>
+        <ColHeader />
+        <Collapse
+          bordered={false}
+          accordion
+          activeKey={activeKey}
+          onChange={handleCollapseChange}
+          items={collapseItems}
+          style={{ borderTop: "none", borderRadius: "0 0 8px 8px" }}
+        />
+      </Spin>
+
+      {filteredTorrents.length > PAGE_SIZE && (
+        <Flex justify="flex-end">
+          <Pagination
+            current={currentPage}
+            pageSize={PAGE_SIZE}
+            total={filteredTorrents.length}
+            onChange={(page) => {
+              if (activeKey) {
+                skipSubmitRef.current = true;
+                setActiveKey(undefined);
+              }
+              setCurrentPage(page);
+            }}
+            showQuickJumper
           />
-        </Space>
-      </div>
-
-      {/* 种子列表 */}
-      <Table
-        columns={columns}
-        dataSource={torrents}
-        loading={loading}
-        pagination={pagination}
-        rowKey={(record) => record.qb_torrent.hash}
-        size="small"
-      />
-
-      {/* 光盘编辑器 */}
-      <DiscEditor ref={discEditorRef} onSave={handleDiscSaved} />
-    </div>
+        </Flex>
+      )}
+    </Flex>
   );
 };
 

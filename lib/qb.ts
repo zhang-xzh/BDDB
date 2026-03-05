@@ -9,8 +9,6 @@ export function getQbClient() {
     const host = process.env.QB_HOST || 'localhost:18000'
     qbClient = new QBittorrent({
       baseUrl: host.startsWith('http') ? host : `http://${host}`,
-      username: process.env.QB_USER || '',
-      password: process.env.QB_PASS || '',
     })
   }
   return qbClient

@@ -26,7 +26,6 @@ ENV NODE_ENV=production
 # standalone 模式只需要这三样
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
 
 # better-sqlite3 原生模块（standalone 不会自动复制）
 COPY --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3

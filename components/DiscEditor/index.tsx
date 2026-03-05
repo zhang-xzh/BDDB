@@ -4,7 +4,6 @@ import React, { forwardRef, useImperativeHandle } from "react";
 import {
   Modal,
   Space,
-  Radio,
   Card,
   Typography,
   Empty,
@@ -24,15 +23,12 @@ interface DiscEditorProps {
 }
 
 const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(
-  function DiscEditor(_, ref) {
+  function DiscEditor({ onSave }, ref) {
     const {
       visible,
       loading,
       saving,
       torrentName,
-      torrentId,
-      volumeType,
-      mediaType,
       volumeForms,
       files,
       treeData,
@@ -40,26 +36,13 @@ const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(
       defaultExpandedKeys,
       selectedVolumes,
       maxVolumes,
-      setVisible,
-      setTorrentName,
-      setTorrentId,
-      setVolumeType,
-      setMediaType,
-      setVolumeForms,
-      setTreeData,
-      setNodeData,
-      setFlatTree,
-      setDefaultExpandedKeys,
-      setVolumeToKeys,
       open,
       handleSubmit,
       handleCancel,
       onVolumeChange,
       getNodeVolume,
-      getVolumeForm,
       updateVolumeForm,
-      formatSize,
-    } = useDiscEditor();
+    } = useDiscEditor(onSave)
 
     useImperativeHandle(ref, () => ({ open }), [open]);
 
@@ -76,28 +59,6 @@ const DiscEditor = forwardRef<DiscEditorRef, DiscEditorProps>(
       >
         <Spin spinning={loading}>
           <Space style={{ width: "100%" }} size={16} orientation="vertical">
-            {/* 卷类型 & 媒介类型 */}
-            <Space>
-              <Radio.Group
-                defaultValue="volume"
-                value={volumeType}
-                onChange={(e) => setVolumeType(e.target.value)}
-                buttonStyle="solid"
-              >
-                <Radio.Button value="volume">分卷</Radio.Button>
-                <Radio.Button value="box">BOX</Radio.Button>
-              </Radio.Group>
-              <Radio.Group
-                defaultValue="BD"
-                value={mediaType}
-                onChange={(e) => setMediaType(e.target.value)}
-                buttonStyle="solid"
-              >
-                <Radio.Button value="BD">BD</Radio.Button>
-                <Radio.Button value="DVD">DVD</Radio.Button>
-              </Radio.Group>
-            </Space>
-
             {/* 卷信息表单 */}
             <VolumeFormList
               selectedVolumes={selectedVolumes}

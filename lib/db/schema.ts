@@ -81,6 +81,8 @@ export interface Stats {
 export interface VolumeForm {
   catalog_no: string
   volume_name: string
+  type?: 'volume' | 'box'
+  media_type?: 'DVD' | 'BD'
 }
 
 /**
