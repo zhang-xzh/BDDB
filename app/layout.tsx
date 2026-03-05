@@ -29,11 +29,12 @@ export default function RootLayout({
                 theme="dark"
                 mode="horizontal"
                 style={{ flex: 1, minWidth: 0 }}
-              >
-                <Menu.Item key="1">首页</Menu.Item>
-                <Menu.Item key="2">光盘管理</Menu.Item>
-                <Menu.Item key="3">配置</Menu.Item>
-              </Menu>
+                items={[
+                  { key: '1', label: '首页' },
+                  { key: '2', label: '光盘管理' },
+                  { key: '3', label: '配置' },
+                ]}
+              />
             </Header>
             <Content style={{ margin: '24px', padding: '24px', background: '#fff', minHeight: 'calc(100vh - 184px)' }}>
               {children}

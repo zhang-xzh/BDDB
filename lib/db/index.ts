@@ -31,4 +31,5 @@ export function initDb() {
   console.log('NeDB initialized')
 }
 
-export * from './schema'
+// 重新导出 schema 类型
+export type { Torrent, TorrentFile, Volume, QueryCondition } from './schema'
