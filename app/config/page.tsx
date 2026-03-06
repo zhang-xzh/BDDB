@@ -5,7 +5,7 @@ import { Card, Button, Space, Divider, message, Modal, Descriptions, Statistic, 
 import { SettingOutlined, SyncOutlined, ReloadOutlined, DatabaseOutlined, SaveOutlined } from '@ant-design/icons'
 import { postApi } from '@/lib/api'
 import { fetchApi } from '@/lib/api'
-import type { Stats } from '@/lib/db/schema'
+import type { Stats } from '@/lib/db'
 
 const ConfigPage: React.FC = () => {
   const [syncing, setSyncing] = useState(false)

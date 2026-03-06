@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getVolumesByTorrent, getVolumesByFile, getAllVolumes, saveVolume, deleteStaleVolumes } from '@/lib/db/repository'
+import { getVolumesByTorrent, getVolumesByFile, getAllVolumes, saveVolume, deleteStaleVolumes } from '@/lib/db'
 
 export const runtime = 'nodejs'
 

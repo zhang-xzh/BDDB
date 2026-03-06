@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { softDeleteTorrent, softDeleteTorrentFiles, getTorrent } from '@/lib/db/repository'
+import { softDeleteTorrent, softDeleteTorrentFiles, getTorrent } from '@/lib/db'
 
 export const runtime = 'nodejs'
 

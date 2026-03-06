@@ -30,7 +30,9 @@ C:\APP\BDDB\
 │   ├── layout.tsx          # Root layout (Ant Design ConfigProvider)
 │   └── page.tsx            # Home page (torrent list)
 ├── components/             # React components
-│   └── DiscEditor/         # Disc editor components
+│   ├── DiscEditor/         # Disc editor components
+│   ├── home/               # Home page UI components + hooks
+│   └── layout/             # Layout shell components
 ├── lib/                    # Utility libraries
 │   ├── db/                 # Storage module
 │   │   ├── index.ts        # Entry point (re-exports)
@@ -169,10 +171,21 @@ export async function GET() {
 
 ### Client Components
 
-- Use `'use client'` directive at the top
+- Use `'use client'` only for **client boundaries** (page/layout entry or module that must run in browser)
+- Do **not** add `'use client'` to every child component by default if it is only imported inside an existing client boundary
 - Use React 19 hooks: `useState`, `useEffect`, `useCallback`, `useRef`
 - Use Ant Design 6 components
 - **No direct DOM manipulation**
+
+### File Consolidation — Fewer Files is Better
+
+- **Do not split files just for the sake of separation.** Only create a new file when the code is genuinely reused elsewhere or is large enough to justify it (guideline: >400 lines after consolidation).
+- Hooks that are **only used by one component** belong in the same file as that component — do not extract them to a separate `useXxx.ts` unless they are shared.
+- Small helper components (< ~80 lines) that are **only rendered by one parent** belong in the same file as the parent — do not extract them.
+- Internal `interface`/`type` definitions that are only used within one file stay in that file — do not create a separate `types.ts`.
+- Pure utility functions (e.g. tree building, formatting) that are tightly coupled to one feature belong in the same file unless they are reused.
+- Only extract to a separate file when: (a) the code is shared by multiple files, or (b) the single file would exceed ~600 lines.
+- Keep `app/page.tsx` and `app/layout.tsx` as thin composition/orchestration layers.
 
 ### Styling — Ant Design First
 

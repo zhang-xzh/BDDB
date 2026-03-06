@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getAllTorrents } from '@/lib/db/repository'
+import { getAllTorrents } from '@/lib/db'
 
 export const runtime = 'nodejs'
 

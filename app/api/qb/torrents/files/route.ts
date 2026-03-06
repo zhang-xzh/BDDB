@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTorrent, saveTorrentFiles, getTorrentFilesAsFileItems } from '@/lib/db/repository'
+import { getTorrent, saveTorrentFiles, getTorrentFilesAsFileItems } from '@/lib/db'
 import { getQbClient } from '@/lib/qb'
 
 const now = () => Math.floor(Date.now() / 1000)

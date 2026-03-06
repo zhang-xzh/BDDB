@@ -1,13 +1,7 @@
 import { QBittorrent } from "@ctrl/qbittorrent";
 import { customAlphabet } from "nanoid";
-import {
-  ensureInit,
-  byHash,
-  byId,
-  fileIndex,
-  writeTorrent,
-} from "@/lib/db/store";
-import type { TorrentRecord, StoredFile } from "@/lib/db/schema";
+import { ensureInit, byHash, byId, fileIndex, writeTorrent } from "@/lib/db";
+import type { TorrentRecord, StoredFile } from "@/lib/db";
 
 let qbClient: QBittorrent | null = null;
 

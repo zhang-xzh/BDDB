@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAllTorrents, getTorrent, getVolumeCounts } from '@/lib/db/repository'
+import { getAllTorrents, getTorrent, getVolumeCounts } from '@/lib/db'
 
 export const runtime = 'nodejs'
 
@@ -34,7 +34,6 @@ export async function GET(request: NextRequest) {
       torrents = torrents.filter(t => t.qb_torrent?.name?.toLowerCase().includes(k))
     }
 
-    // 一条 SQL 批量取所有 torrent 的 volume 计数，附加到结果中
     const counts = getVolumeCounts()
     const result = torrents.map(t => ({
       ...t,

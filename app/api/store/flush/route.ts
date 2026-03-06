@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ensureInit, byHash, writeTorrent, writeVolumes } from "@/lib/db/store";
+import { ensureInit, byHash, writeTorrent, writeVolumes } from "@/lib/db";
 
 export const runtime = "nodejs";
 

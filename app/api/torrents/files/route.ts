@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTorrent, getTorrentFilesAsFileItems } from '@/lib/db/repository'
+import { getTorrent, getTorrentFilesAsFileItems } from '@/lib/db'
 
 export const runtime = 'nodejs'
 

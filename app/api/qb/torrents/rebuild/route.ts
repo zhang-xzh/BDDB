@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clearAllData } from "@/lib/db/repository";
+import { clearAllData } from "@/lib/db";
 import { syncTorrentsFromQb } from "@/lib/qb";
 
 export const runtime = "nodejs";
