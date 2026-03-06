@@ -155,6 +155,17 @@ export async function getAllTorrents(includeDeleted = false): Promise<Torrent[]>
     return filtered.map(recordToTorrent)
 }
 
+export async function getAllTorrentsWithFiles(includeDeleted = false): Promise<(Torrent & {files: StoredFile[]})[]> {
+    await ensureInit()
+    const records = Array.from(byHash.values())
+    const filtered = includeDeleted ? records : records.filter(r => !r.is_deleted)
+    filtered.sort((a, b) => b.added_on - a.added_on)
+    return filtered.map(r => ({
+        ...recordToTorrent(r),
+        files: r.files
+    }))
+}
+
 export async function softDeleteTorrent(hash: string): Promise<void> {
     await ensureInit()
     const r = byHash.get(hash)

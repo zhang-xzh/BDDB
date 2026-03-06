@@ -1,48 +1,56 @@
-import {NextRequest, NextResponse} from 'next/server'
-import {deleteStaleVolumes, getAllVolumes, getVolumesByFile, getVolumesByTorrent, saveVolume} from '@/lib/db'
+export const runtime = 'nodejs';
 
-export const runtime = 'nodejs'
+import {getAllVolumes, getAllTorrentsWithFiles, type Volume} from '@/lib/db';
+import {NextResponse} from 'next/server';
 
-export async function GET(request: NextRequest) {
-    try {
-        const searchParams = request.nextUrl.searchParams
-        const torrent_id = searchParams.get('torrent_id')
-        const torrent_file_id = searchParams.get('torrent_file_id')
-
-        const volumes = torrent_id
-            ? await getVolumesByTorrent(torrent_id)
-            : torrent_file_id
-                ? await getVolumesByFile(torrent_file_id)
-                : await getAllVolumes()
-
-        return NextResponse.json({success: true, data: JSON.stringify(volumes)})
-    } catch (error: any) {
-        return NextResponse.json({success: false, error: error.message})
-    }
+interface VolumeWithFiles extends Volume {
+    torrent_name?: string;
+    files?: any[];
 }
 
-export async function POST(request: NextRequest) {
+export async function GET() {
     try {
-        const body = await request.json()
-        const {torrent_id, volumes} = body
+        const [volumes, torrents] = await Promise.all([
+            getAllVolumes(),
+            getAllTorrentsWithFiles()
+        ]);
 
-        if (!torrent_id) {
-            return NextResponse.json({success: false, error: 'Missing torrent_id'})
-        }
-        if (!volumes || !Array.isArray(volumes)) {
-            return NextResponse.json({success: false, error: 'Missing volumes'})
-        }
-
-        const keepVolumeNos: number[] = volumes.map((v: any) => v.volume_no)
-        deleteStaleVolumes(torrent_id, keepVolumeNos)
-
-        for (const v of volumes) {
-            const {files, ...volumeData} = v
-            await saveVolume(torrent_id, files ?? [], volumeData)
+        // Build torrent map for quick lookup
+        const torrentMap = new Map<string, any>();
+        for (const t of torrents) {
+            torrentMap.set(t.qb_torrent.hash, t.qb_torrent);
         }
 
-        return NextResponse.json({success: true, data: 'ok'})
-    } catch (error: any) {
-        return NextResponse.json({success: false, error: error.message})
+        // Build files map for each torrent
+        const filesMap = new Map<string, any[]>();
+        for (const t of torrents) {
+            if (t.files) {
+                filesMap.set(t.qb_torrent.hash, t.files);
+            }
+        }
+
+        const result: VolumeWithFiles[] = volumes.map(v => {
+            const torrent = torrentMap.get(v.torrent_id);
+            const files = filesMap.get(v.torrent_id) || [];
+            
+            // Filter files that belong to this volume
+            const volumeFiles = files.filter(f => v.torrent_file_ids.includes(f.id));
+            
+            return {
+                ...v,
+                torrent_name: torrent?.name,
+                files: volumeFiles
+            };
+        });
+
+        return NextResponse.json({
+            success: true,
+            data: JSON.stringify(result),
+        });
+    } catch (error) {
+        return NextResponse.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+        }, {status: 500});
     }
 }
