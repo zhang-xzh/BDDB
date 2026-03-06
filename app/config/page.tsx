@@ -1,7 +1,7 @@
 'use client'
 
 import React, {useCallback, useState} from 'react'
-import {Button, Card, Col, Divider, message, Modal, Row, Space} from 'antd'
+import {Button, Card, Col, Divider, Flex, message, Modal, Row, Space, Typography} from 'antd'
 import {ReloadOutlined, SaveOutlined, SettingOutlined, SyncOutlined} from '@ant-design/icons'
 import {postApi} from '@/lib/api'
 
@@ -77,24 +77,22 @@ const ConfigPage: React.FC = () => {
     }
 
     return (
-        <div style={{maxWidth: '1200px', margin: '0 auto'}}>
-            <div style={{marginBottom: '24px'}}>
-                <h1 style={{margin: 0, display: 'flex', alignItems: 'center', gap: '12px'}}>
-                    <SettingOutlined/>
-                    配置
-                </h1>
-            </div>
+        <Flex vertical gap={24} style={{maxWidth: '1200px', margin: '0 auto'}}>
+            <Flex align="center" gap={8}>
+                <SettingOutlined style={{fontSize: 24}}/>
+                <Typography.Title level={2} style={{margin: 0}}>配置</Typography.Title>
+            </Flex>
 
             <Row gutter={[16, 16]}>
                 {/* 同步操作 */}
                 <Col xs={24} md={12}>
                     <Card title="同步操作">
-                        <Space style={{width: '100%'}} size="large" orientation="vertical">
-                            <div>
-                                <h3 style={{marginTop: 0}}>同步 qBittorrent</h3>
-                                <p style={{color: '#666', fontSize: '14px'}}>
+                        <Space style={{width: '100%'}} size="large" direction="vertical">
+                            <Flex vertical gap="small">
+                                <Typography.Title level={3} style={{marginTop: 0}}>同步 qBittorrent</Typography.Title>
+                                <Typography.Paragraph style={{color: '#666', fontSize: '14px'}}>
                                     从 qBittorrent 获取最新的种子列表并更新到数据库。如果种子已存在则更新状态，否则添加新种子。
-                                </p>
+                                </Typography.Paragraph>
                                 <Button
                                     type="primary"
                                     onClick={syncTorrents}
@@ -105,15 +103,15 @@ const ConfigPage: React.FC = () => {
                                 >
                                     {syncing ? '同步中...' : '开始同步'}
                                 </Button>
-                            </div>
+                            </Flex>
 
                             <Divider/>
 
-                            <div>
-                                <h3 style={{marginTop: 0}}>手动写入</h3>
-                                <p style={{color: '#666', fontSize: '14px'}}>
+                            <Flex vertical gap="small">
+                                <Typography.Title level={3} style={{marginTop: 0}}>手动写入</Typography.Title>
+                                <Typography.Paragraph style={{color: '#666', fontSize: '14px'}}>
                                     将内存中的所有数据强制写入磁盘。正常情况下每次操作后自动写入，此按钮用于应急保存。
-                                </p>
+                                </Typography.Paragraph>
                                 <Button
                                     onClick={flushStore}
                                     loading={flushing}
@@ -123,7 +121,7 @@ const ConfigPage: React.FC = () => {
                                 >
                                     {flushing ? '写入中...' : '写入磁盘'}
                                 </Button>
-                            </div>
+                            </Flex>
                         </Space>
                     </Card>
                 </Col>
@@ -131,14 +129,14 @@ const ConfigPage: React.FC = () => {
                 {/* 数据管理 */}
                 <Col xs={24} md={12}>
                     <Card title="数据管理">
-                        <Space style={{width: '100%'}} size="large" orientation="vertical">
-                            <div>
-                                <h3 style={{marginTop: 0}}>重建数据</h3>
-                                <p style={{color: '#666', fontSize: '14px'}}>
+                        <Space style={{width: '100%'}} size="large" direction="vertical">
+                            <Flex vertical gap="small">
+                                <Typography.Title level={3} style={{marginTop: 0}}>重建数据</Typography.Title>
+                                <Typography.Paragraph style={{color: '#666', fontSize: '14px'}}>
                                     清空所有本地数据（种子、文件、卷）并重新从 qBittorrent 同步。
                                     <br/>
-                                    <span style={{color: '#ff4d4f'}}>⚠️ 此操作不可逆，请谨慎使用！</span>
-                                </p>
+                                    <Typography.Text type="danger">⚠️ 此操作不可逆，请谨慎使用！</Typography.Text>
+                                </Typography.Paragraph>
                                 <Button
                                     danger
                                     onClick={confirmRebuild}
@@ -149,12 +147,12 @@ const ConfigPage: React.FC = () => {
                                 >
                                     重建数据
                                 </Button>
-                            </div>
+                            </Flex>
                         </Space>
                     </Card>
                 </Col>
             </Row>
-        </div>
+        </Flex>
     )
 }
 

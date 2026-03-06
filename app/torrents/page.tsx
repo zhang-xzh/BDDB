@@ -1,17 +1,16 @@
-'use client'
+"use client";
 
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {Collapse, Flex, Input, Pagination, Select, Space, Switch, Tag, theme, Typography,} from 'antd'
-import {CheckCircleOutlined, CloseCircleOutlined} from '@ant-design/icons'
-import type {TorrentWithVolume} from '@/lib/db'
-import type {UseDiscEditorReturn} from '@/components/DiscEditor'
-import {DiscEditorContent} from '@/components/DiscEditor'
+import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {Card, Collapse, Divider, Empty, Flex, Input, Pagination, Select, Space, Spin, Switch, Tag, theme, Typography} from "antd";
+import {CheckCircleOutlined, CloseCircleOutlined} from "@ant-design/icons";
+import type {TorrentWithVolume} from "@/lib/db";
+import {fetchApi} from "@/lib/api";
+import {useDiscEditor} from "@/components/DiscEditor";
+import {DiscEditorContent} from "@/components/DiscEditor";
 
 // ─── Constants & Utilities ────────────────────────────────────────────────────
 
-export const COL = {category: 200, volumes: 56, size: 72} as const
-export const PAGE_SIZE = 100
-export const HEADER_INDENT = 44
+const PAGE_SIZE = 100
 
 function formatSize(bytes: number): string {
     if (bytes === 0) return '0 B'
@@ -37,7 +36,7 @@ function matchesFilters(torrent: TorrentWithVolume, filters: {
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
-export function useTorrentListView(torrents: TorrentWithVolume[]) {
+function useTorrentListView(torrents: TorrentWithVolume[]) {
     const [searchText, setSearchText] = useState('')
     const [invertSearch, setInvertSearch] = useState(false)
     const [filterCategory, setFilterCategory] = useState<string | undefined>(undefined)
@@ -73,7 +72,7 @@ export function useTorrentListView(torrents: TorrentWithVolume[]) {
     }
 }
 
-export function useTorrentEditorPanel({pagedTorrents, editor}: {
+function useTorrentEditorPanel({pagedTorrents, editor}: {
     pagedTorrents: TorrentWithVolume[]
     editor: Pick<UseDiscEditorReturn, 'open' | 'hasChanges' | 'handleSubmit'>
 }) {
@@ -108,7 +107,7 @@ export function useTorrentEditorPanel({pagedTorrents, editor}: {
 
 // ─── Components ───────────────────────────────────────────────────────────────
 
-export const TorrentFiltersBar: React.FC<{
+const TorrentFiltersBar: React.FC<{
     searchText: string; invertSearch: boolean; filterCategory?: string; filterHasVolumes?: boolean
     categories: string[]; total: number
     onSearchTextChange: (v: string) => void; onInvertSearchChange: (v: boolean) => void
@@ -116,62 +115,123 @@ export const TorrentFiltersBar: React.FC<{
 }> = ({
           searchText, invertSearch, filterCategory, filterHasVolumes, categories, total,
           onSearchTextChange, onInvertSearchChange, onCategoryChange, onHasVolumesChange
-      }) => (
-    <Space wrap>
-        <Input.Search
-            value={searchText} onChange={e => onSearchTextChange(e.target.value)}
-            placeholder="搜索种子" style={{width: 250}} allowClear
-            suffix={
-                <Switch checked={invertSearch} onChange={onInvertSearchChange}
-                        size="small" checkedChildren="反向" unCheckedChildren="反向"/>
-            }
-        />
-        <Select allowClear placeholder="类别" style={{width: 250}} value={filterCategory}
-                onChange={onCategoryChange} options={categories.map(c => ({label: c, value: c}))}/>
-        <Select allowClear placeholder="是否处理" style={{width: 150}} value={filterHasVolumes}
-                onChange={onHasVolumesChange}
-                options={[{label: '已处理', value: true}, {label: '未处理', value: false}]}/>
-        <Typography.Text type="secondary">共 {total} 条</Typography.Text>
-    </Space>
-)
+      }) => {
+    const {token} = theme.useToken()
+    return (
+    <Card>
+        <Space wrap>
+            <Input.Search
+                value={searchText} onChange={e => onSearchTextChange(e.target.value)}
+                placeholder="搜索种子" style={{width: 250}} allowClear
+                suffix={
+                    <Switch checked={invertSearch} onChange={onInvertSearchChange}
+                            size="small" checkedChildren="反向" unCheckedChildren="反向"/>
+                }
+            />
+            <Select allowClear placeholder="类别" style={{width: 250}} value={filterCategory}
+                    onChange={onCategoryChange} options={categories.map(c => ({label: c, value: c}))}/>
+            <Select allowClear placeholder="是否处理" style={{width: 150}} value={filterHasVolumes}
+                    onChange={onHasVolumesChange}
+                    options={[{label: '已处理', value: true}, {label: '未处理', value: false}]}/>
+            <Typography.Text 
+              type="secondary"
+              style={{color: token.colorTextSecondary}}
+            >
+              共 {total} 条
+            </Typography.Text>
+        </Space>
+    </Card>
+    )
+}
 
-export const TorrentListHeader: React.FC = () => {
+const TorrentListHeader: React.FC = () => {
     const {token} = theme.useToken()
     return (
         <Flex align="center" gap={8} style={{
-            padding: `6px 16px 6px ${HEADER_INDENT}px`,
+            padding: '12px 16px',
             background: token.colorFillAlter,
-            border: `1px solid ${token.colorBorderSecondary}`,
-            borderRadius: `${token.borderRadiusLG}px ${token.borderRadiusLG}px 0 0`,
-            fontWeight: token.fontWeightStrong,
-            fontSize: token.fontSize,
         }}>
-            <Typography.Text strong style={{width: COL.volumes, flexShrink: 0}}>卷</Typography.Text>
-            <Typography.Text strong style={{flex: 1}}>名称</Typography.Text>
-            <Typography.Text strong style={{width: COL.category, flexShrink: 0}}>类别</Typography.Text>
-            <Typography.Text strong style={{width: COL.size, flexShrink: 0, textAlign: 'right'}}>大小</Typography.Text>
+            <Typography.Text 
+              strong 
+              style={{
+                width: 56, 
+                flexShrink: 0,
+                color: token.colorTextHeading
+              }}
+            >
+              卷
+            </Typography.Text>
+            <Typography.Text 
+              strong 
+              style={{flex: 1, color: token.colorTextHeading}}
+            >
+              名称
+            </Typography.Text>
+            <Typography.Text 
+              strong 
+              style={{
+                width: 200, 
+                flexShrink: 0,
+                color: token.colorTextHeading
+              }}
+            >
+              类别
+            </Typography.Text>
+            <Typography.Text 
+              strong 
+              style={{
+                width: 72, 
+                flexShrink: 0, 
+                textAlign: 'right',
+                color: token.colorTextHeading
+              }}
+            >
+              大小
+            </Typography.Text>
         </Flex>
     )
 }
 
-const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume }> = ({torrent}) => (
-    <Flex align="center" gap={8} style={{width: '100%'}}>
-        <Flex style={{width: COL.volumes, flexShrink: 0}}>
-            {torrent.hasVolumes
-                ? <Tag icon={<CheckCircleOutlined/>} color="success" style={{margin: 0}}>{torrent.volumeCount}</Tag>
-                : <Tag icon={<CloseCircleOutlined/>} color="default" style={{margin: 0}}/>}
+const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume }> = ({torrent}) => {
+    const {token} = theme.useToken()
+    return (
+        <Flex align="center" gap={8} style={{width: '100%'}}>
+            <Flex style={{width: 56, flexShrink: 0}}>
+                {torrent.hasVolumes
+                    ? <Tag icon={<CheckCircleOutlined/>} color="success" style={{margin: 0}}>{torrent.volumeCount}</Tag>
+                    : <Tag icon={<CloseCircleOutlined/>} color="default" style={{margin: 0}}/>}
+            </Flex>
+            <Typography.Text 
+              ellipsis 
+              style={{flex: 1, color: token.colorText}}
+            >
+              {torrent.qb_torrent.name}
+            </Typography.Text>
+            <Flex style={{width: 200, flexShrink: 0, overflow: 'hidden'}}>
+                {torrent.qb_torrent.category
+                    ? <Tag color="blue" style={{margin: 0, maxWidth: '100%'}}>{torrent.qb_torrent.category}</Tag>
+                    : <Typography.Text 
+                        type="secondary"
+                        style={{color: token.colorTextSecondary}}
+                      >
+                        —
+                      </Typography.Text>}
+            </Flex>
+            <Typography.Text 
+              type="secondary" 
+              style={{
+                width: 72, 
+                flexShrink: 0, 
+                textAlign: 'right', 
+                fontSize: 12,
+                color: token.colorTextSecondary
+              }}
+            >
+                {formatSize(torrent.qb_torrent.size)}
+            </Typography.Text>
         </Flex>
-        <Typography.Text ellipsis style={{flex: 1}}>{torrent.qb_torrent.name}</Typography.Text>
-        <Flex style={{width: COL.category, flexShrink: 0, overflow: 'hidden'}}>
-            {torrent.qb_torrent.category
-                ? <Tag color="blue" style={{margin: 0, maxWidth: '100%'}}>{torrent.qb_torrent.category}</Tag>
-                : <Typography.Text type="secondary">—</Typography.Text>}
-        </Flex>
-        <Typography.Text type="secondary" style={{width: COL.size, flexShrink: 0, textAlign: 'right', fontSize: 12}}>
-            {formatSize(torrent.qb_torrent.size)}
-        </Typography.Text>
-    </Flex>
-)
+    )
+}
 
 type EditorProps = Pick<UseDiscEditorReturn,
     | 'loading' | 'saving' | 'files' | 'treeData' | 'nodeData' | 'defaultExpandedKeys'
@@ -181,7 +241,7 @@ type EditorProps = Pick<UseDiscEditorReturn,
     | 'resetVolumeAssignments' | 'deleteVolume' | 'handleSubmit'
 >
 
-export const TorrentCollapseList: React.FC<{
+const TorrentCollapseList: React.FC<{
     pagedTorrents: TorrentWithVolume[]
     activeKey: string | undefined
     onChange: (key: string | string[]) => Promise<void>
@@ -214,12 +274,12 @@ export const TorrentCollapseList: React.FC<{
     return (
         <Collapse
             bordered={false} accordion activeKey={activeKey} onChange={onChange}
-            items={collapseItems} style={{borderTop: 'none', borderRadius: '0 0 8px 8px'}}
+            items={collapseItems}
         />
     )
 }
 
-export const TorrentPagination: React.FC<{
+const TorrentPagination: React.FC<{
     currentPage: number; total: number; onPageChange: (page: number) => void
 }> = ({currentPage, total, onPageChange}) => {
     if (total <= PAGE_SIZE) return null
@@ -232,3 +292,93 @@ export const TorrentPagination: React.FC<{
         </Flex>
     )
 }
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+type UseDiscEditorReturn = ReturnType<typeof useDiscEditor>
+
+const TorrentsPage: React.FC = () => {
+    const [loading, setLoading] = useState(false);
+    const [torrents, setTorrents] = useState<TorrentWithVolume[]>([]);
+
+    const fetchTorrents = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await fetchApi<string>("/api/qb/torrents/info");
+            if (res.success && res.data) setTorrents(JSON.parse(res.data));
+        } catch (error) {
+            console.error("获取种子列表失败:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const editor = useDiscEditor(fetchTorrents);
+    const {
+        searchText,
+        setSearchText,
+        invertSearch,
+        setInvertSearch,
+        filterCategory,
+        setFilterCategory,
+        filterHasVolumes,
+        setFilterHasVolumes,
+        currentPage,
+        setCurrentPage,
+        categories,
+        filteredTorrents,
+        pagedTorrents,
+    } = useTorrentListView(torrents);
+    const {activeKey, handleCollapseChange, handleCancel, closeForPageChange} = useTorrentEditorPanel({pagedTorrents, editor});
+
+    useEffect(() => {
+        fetchTorrents();
+    }, [fetchTorrents]);
+
+    if (filteredTorrents.length === 0 && !loading) {
+        return (
+            <Card>
+                <Empty description="暂无种子数据"/>
+            </Card>
+        )
+    }
+
+    return (
+        <Flex vertical gap={16}>
+            <TorrentFiltersBar
+                searchText={searchText}
+                invertSearch={invertSearch}
+                filterCategory={filterCategory}
+                filterHasVolumes={filterHasVolumes}
+                categories={categories}
+                total={filteredTorrents.length}
+                onSearchTextChange={setSearchText}
+                onInvertSearchChange={setInvertSearch}
+                onCategoryChange={setFilterCategory}
+                onHasVolumesChange={setFilterHasVolumes}
+            />
+            <Spin spinning={loading}>
+                <Card styles={{body: {padding: 0}}}>
+                    <TorrentListHeader/>
+                    <TorrentCollapseList
+                        pagedTorrents={pagedTorrents}
+                        activeKey={activeKey}
+                        onChange={handleCollapseChange}
+                        onCancel={handleCancel}
+                        editor={editor}
+                    />
+                </Card>
+            </Spin>
+            <TorrentPagination
+                currentPage={currentPage}
+                total={filteredTorrents.length}
+                onPageChange={(page) => {
+                    if (activeKey) closeForPageChange();
+                    setCurrentPage(page);
+                }}
+            />
+        </Flex>
+    );
+};
+
+export default TorrentsPage;

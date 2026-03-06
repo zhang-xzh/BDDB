@@ -1,10 +1,74 @@
 'use client'
 
 import React, {useEffect, useState} from 'react'
-import {App, ConfigProvider, theme} from 'antd'
+import {App, Button, ConfigProvider, Divider, Layout, Menu, theme, Typography} from 'antd'
+import {MoonOutlined, SunOutlined} from '@ant-design/icons'
+import {usePathname, useRouter} from 'next/navigation'
 import zhCN from 'antd/locale/zh_CN'
-import {AppLayout} from '@/components/layout/AppLayout'
 import './globals.css'
+
+const {Header, Content, Footer} = Layout
+const {Title, Text} = Typography
+
+const menuItems = [
+    {key: '/torrents', label: '种子管理'},
+    {key: '/volume', label: '媒介管理'},
+    {key: '/work', label: '作品管理'},
+    {key: '/series', label: '系列管理'},
+    {key: '/storage', label: '数据管理'},
+    {key: '/config', label: '配置'},
+]
+
+function AppLayout({children, isDark, onToggle}: {
+    children: React.ReactNode
+    isDark: boolean
+    onToggle: () => void
+}) {
+    const {token} = theme.useToken()
+    const pathname = usePathname()
+    const router = useRouter()
+
+    return (
+        <App>
+            <Layout style={{minHeight: '100vh'}}>
+                <Header style={{display: 'flex', alignItems: 'center', padding: '0 24px'}}>
+                    <Title level={4} style={{margin: 0, color: token.colorWhite}}>BDDB</Title>
+                    <Divider orientation="vertical" style={{borderColor: token.colorSplit}}/>
+                    <Menu
+                        selectedKeys={[pathname]}
+                        onSelect={({key}) => router.push(String(key))}
+                        theme="dark"
+                        mode="horizontal"
+                        style={{flex: 1, minWidth: 0, borderInlineEnd: 'none'}}
+                        items={menuItems}
+                    />
+                    <Button
+                        type="text"
+                        icon={isDark ? <SunOutlined/> : <MoonOutlined/>}
+                        onClick={onToggle}
+                    />
+                </Header>
+
+                <Content
+                    style={{
+                        margin: 24,
+                        padding: 24,
+                        background: token.colorBgContainer,
+                        borderRadius: token.borderRadiusLG,
+                    }}
+                >
+                    {children}
+                </Content>
+
+                <Footer style={{textAlign: 'center', background: token.colorBgContainer}}>
+                    <Text type="secondary">
+                        BDDB - Next.js Version © {new Date().getFullYear()}
+                    </Text>
+                </Footer>
+            </Layout>
+        </App>
+    )
+}
 
 export default function RootLayout({children,}: Readonly<{ children: React.ReactNode }>) {
     const [isDark, setIsDark] = useState(false)
@@ -23,13 +87,11 @@ export default function RootLayout({children,}: Readonly<{ children: React.React
 
     return (
         <html lang="zh-CN">
-        <body style={{margin: 0, padding: 0, minHeight: '100vh'}}>
+        <body style={{margin: 0, padding: 0}}>
         <ConfigProvider locale={zhCN} theme={{algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm}}>
-            <App>
-                <AppLayout isDark={isDark} onToggle={onToggle}>
-                    {children}
-                </AppLayout>
-            </App>
+            <AppLayout isDark={isDark} onToggle={onToggle}>
+                {children}
+            </AppLayout>
         </ConfigProvider>
         </body>
         </html>
