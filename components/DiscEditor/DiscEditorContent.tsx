@@ -128,7 +128,6 @@ export function DiscEditorContent({
             <FileTree
               treeData={treeData}
               defaultExpandedKeys={defaultExpandedKeys}
-              nodeData={nodeData}
               worksCount={worksCount}
               visibleVolumes={visibleVolumes}
               loadMoreVolumes={loadMoreVolumes}

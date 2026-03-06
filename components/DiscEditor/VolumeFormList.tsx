@@ -85,9 +85,11 @@ export function VolumeFormList({
 }: VolumeFormListProps) {
   if (selectedVolumes.length === 0) return null;
 
-  if (worksCount === 1) {
-    return (
-      <Card size="small" title="卷信息" styles={{ body: { padding: "12px" } }}>
+  // 渲染内容
+  const renderContent = () => {
+    if (worksCount === 1) {
+      // 单作品场景：直接列出所有卷
+      return (
         <Space style={{ width: "100%" }} size={12} orientation="vertical">
           {selectedVolumes.map((vol) => (
             <VolumeRow
@@ -101,20 +103,19 @@ export function VolumeFormList({
             />
           ))}
         </Space>
-      </Card>
-    );
-  }
+      );
+    }
 
-  const groups: Record<number, number[]> = {};
-  selectedVolumes.forEach((encoded) => {
-    const workIdx = Math.floor(encoded / 1000);
-    const volNo = encoded % 1000;
-    if (!groups[workIdx]) groups[workIdx] = [];
-    groups[workIdx].push(volNo);
-  });
+    // 多作品场景：按作品分组
+    const groups: Record<number, number[]> = {};
+    selectedVolumes.forEach((encoded) => {
+      const workIdx = Math.floor(encoded / 1000);
+      const volNo = encoded % 1000;
+      if (!groups[workIdx]) groups[workIdx] = [];
+      groups[workIdx].push(volNo);
+    });
 
-  return (
-    <Card size="small" title="卷信息" styles={{ body: { padding: "12px" } }}>
+    return (
       <Space style={{ width: "100%" }} size={16} orientation="vertical">
         {Object.entries(groups)
           .sort(([a], [b]) => Number(a) - Number(b))
@@ -145,6 +146,12 @@ export function VolumeFormList({
             );
           })}
       </Space>
+    );
+  };
+
+  return (
+    <Card size="small" title="卷信息" styles={{ body: { padding: "12px" } }}>
+      {renderContent()}
     </Card>
   );
 }
