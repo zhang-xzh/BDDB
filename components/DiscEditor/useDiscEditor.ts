@@ -116,11 +116,11 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
   }
 
   const getVolumeForm = (vol: number): VolumeForm => {
-    return volumeForms[vol] || { catalog_no: '', volume_name: '' }
+    return volumeForms[vol] || { catalog_no: '', volume_name: '', type: 'volume' }
   }
 
   const updateVolumeForm = (vol: number, form: VolumeForm) => {
-    setVolumeForms(prev => ({ ...prev, [vol]: form }))
+    setVolumeForms(prev => ({ ...prev, [vol]: { ...form, type: 'volume' } }))
   }
 
   const getNodeVolume = (key: string): number | undefined => {

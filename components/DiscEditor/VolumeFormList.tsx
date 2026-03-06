@@ -46,18 +46,6 @@ function VolumeRow({
       }}
     >
       <Radio.Group
-        defaultValue="volume"
-        size="small"
-        value={form.type}
-        onChange={(e) =>
-          onVolumeFormChange(vol, { ...form, type: e.target.value })
-        }
-        buttonStyle="solid"
-      >
-        <Radio.Button value="volume">VOL</Radio.Button>
-        <Radio.Button value="box">BOX</Radio.Button>
-      </Radio.Group>
-      <Radio.Group
         defaultValue="BD"
         size="small"
         value={form.media_type}
@@ -73,7 +61,7 @@ function VolumeRow({
       <Input
         value={form.catalog_no}
         onChange={(e) =>
-          onVolumeFormChange(vol, { ...form, catalog_no: e.target.value })
+          onVolumeFormChange(vol, { ...form, catalog_no: e.target.value, type: "volume" })
         }
         placeholder="型番"
         style={{ width: "120px" }}
@@ -82,7 +70,7 @@ function VolumeRow({
       <Input
         value={form.volume_name}
         onChange={(e) =>
-          onVolumeFormChange(vol, { ...form, volume_name: e.target.value })
+          onVolumeFormChange(vol, { ...form, volume_name: e.target.value, type: "volume" })
         }
         placeholder="标题"
         style={{ width: "700px" }}

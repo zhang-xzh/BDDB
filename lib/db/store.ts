@@ -70,8 +70,9 @@ export async function writeTorrent(record: TorrentRecord): Promise<void> {
 }
 
 export async function writeVolumes(): Promise<void> {
+  await fs.mkdir(DATA_DIR, { recursive: true });
   const volumes = Array.from(volumesMap.values());
-  const tmpPath = `${VOLUMES_FILE}.tmp`;
+  const tmpPath = `${VOLUMES_FILE}.${Date.now()}.tmp`;
   await fs.writeFile(tmpPath, JSON.stringify(volumes));
   await fs.rename(tmpPath, VOLUMES_FILE);
 }
