@@ -1,252 +1,234 @@
 'use client'
 
-import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react'
-import {
-  Badge, Collapse, Flex, Input, Pagination, Progress,
-  Select, Space, Switch, Tag, Typography, theme,
-} from 'antd'
-import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
-import type { TorrentWithVolume } from '@/lib/db'
-import type { UseDiscEditorReturn } from '@/components/DiscEditor'
-import { DiscEditorContent } from '@/components/DiscEditor'
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {Collapse, Flex, Input, Pagination, Select, Space, Switch, Tag, theme, Typography,} from 'antd'
+import {CheckCircleOutlined, CloseCircleOutlined} from '@ant-design/icons'
+import type {TorrentWithVolume} from '@/lib/db'
+import type {UseDiscEditorReturn} from '@/components/DiscEditor'
+import {DiscEditorContent} from '@/components/DiscEditor'
 
 // ─── Constants & Utilities ────────────────────────────────────────────────────
 
-export const COL = { category: 120, volumes: 56, progress: 130, state: 90, size: 72 } as const
+export const COL = {category: 200, volumes: 56, size: 72} as const
 export const PAGE_SIZE = 100
 export const HEADER_INDENT = 44
 
 function formatSize(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i]
-}
-
-function getTorrentStateStatus(state: string): 'success' | 'processing' | 'warning' | 'default' {
-  if (state === 'downloading') return 'processing'
-  if (state === 'uploading' || state === 'completed') return 'success'
-  if (state.includes('paused')) return 'warning'
-  return 'default'
-}
-
-function getTorrentStateText(state: string): string {
-  const map: Record<string, string> = { downloading: '下载中', uploading: '做种中', pausedDL: '已暂停', pausedUP: '已暂停', completed: '已完成' }
-  return map[state] || state
+    if (bytes === 0) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i]
 }
 
 function matchesFilters(torrent: TorrentWithVolume, filters: {
-  searchText: string; invertSearch: boolean
-  filterCategory?: string; filterHasVolumes?: boolean; filterState?: string
+    searchText: string; invertSearch: boolean
+    filterCategory?: string; filterHasVolumes?: boolean
 }): boolean {
-  const { searchText, invertSearch, filterCategory, filterHasVolumes, filterState } = filters
-  if (searchText) {
-    const match = torrent.qb_torrent.name.toLowerCase().includes(searchText.toLowerCase())
-    if (invertSearch ? match : !match) return false
-  }
-  if (filterCategory !== undefined && torrent.qb_torrent.category !== filterCategory) return false
-  if (filterHasVolumes !== undefined && !!torrent.hasVolumes !== filterHasVolumes) return false
-  if (filterState !== undefined) {
-    if (filterState === 'paused') return torrent.qb_torrent.state.includes('paused')
-    return torrent.qb_torrent.state === filterState
-  }
-  return true
+    const {searchText, invertSearch, filterCategory, filterHasVolumes} = filters
+    if (searchText) {
+        const match = torrent.qb_torrent.name.toLowerCase().includes(searchText.toLowerCase())
+        if (invertSearch ? match : !match) return false
+    }
+    if (filterCategory !== undefined && torrent.qb_torrent.category !== filterCategory) return false
+    if (filterHasVolumes !== undefined && !!torrent.hasVolumes !== filterHasVolumes) return false
+    return true
 }
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
 export function useTorrentListView(torrents: TorrentWithVolume[]) {
-  const [searchText, setSearchText] = useState('')
-  const [invertSearch, setInvertSearch] = useState(false)
-  const [filterCategory, setFilterCategory] = useState<string | undefined>(undefined)
-  const [filterHasVolumes, setFilterHasVolumes] = useState<boolean | undefined>(undefined)
-  const [filterState, setFilterState] = useState<string | undefined>(undefined)
-  const [currentPage, setCurrentPage] = useState(1)
+    const [searchText, setSearchText] = useState('')
+    const [invertSearch, setInvertSearch] = useState(false)
+    const [filterCategory, setFilterCategory] = useState<string | undefined>(undefined)
+    const [filterHasVolumes, setFilterHasVolumes] = useState<boolean | undefined>(undefined)
+    const [currentPage, setCurrentPage] = useState(1)
 
-  const categories = useMemo(() =>
-    Array.from(new Set(torrents.map(t => t.qb_torrent.category).filter((c): c is string => Boolean(c)))),
-    [torrents])
+    const categories = useMemo(() =>
+            Array.from(new Set(torrents.map(t => t.qb_torrent.category).filter((c): c is string => Boolean(c)))),
+        [torrents])
 
-  const filteredTorrents = useMemo(() =>
-    torrents.filter(t => matchesFilters(t, { searchText, invertSearch, filterCategory, filterHasVolumes, filterState })),
-    [torrents, searchText, invertSearch, filterCategory, filterHasVolumes, filterState])
+    const filteredTorrents = useMemo(() =>
+            torrents.filter(t => matchesFilters(t, {
+                searchText,
+                invertSearch,
+                filterCategory,
+                filterHasVolumes
+            })),
+        [torrents, searchText, invertSearch, filterCategory, filterHasVolumes])
 
-  const pagedTorrents = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE
-    return filteredTorrents.slice(start, start + PAGE_SIZE)
-  }, [filteredTorrents, currentPage])
+    const pagedTorrents = useMemo(() => {
+        const start = (currentPage - 1) * PAGE_SIZE
+        return filteredTorrents.slice(start, start + PAGE_SIZE)
+    }, [filteredTorrents, currentPage])
 
-  useEffect(() => { setCurrentPage(1) }, [searchText, invertSearch, filterCategory, filterHasVolumes, filterState])
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [searchText, invertSearch, filterCategory, filterHasVolumes])
 
-  return {
-    searchText, setSearchText, invertSearch, setInvertSearch,
-    filterCategory, setFilterCategory, filterHasVolumes, setFilterHasVolumes,
-    filterState, setFilterState, currentPage, setCurrentPage,
-    categories, filteredTorrents, pagedTorrents,
-  }
+    return {
+        searchText, setSearchText, invertSearch, setInvertSearch,
+        filterCategory, setFilterCategory, filterHasVolumes, setFilterHasVolumes,
+        currentPage, setCurrentPage, categories, filteredTorrents, pagedTorrents,
+    }
 }
 
-export function useTorrentEditorPanel({ pagedTorrents, editor }: {
-  pagedTorrents: TorrentWithVolume[]
-  editor: Pick<UseDiscEditorReturn, 'open' | 'hasChanges' | 'handleSubmit'>
+export function useTorrentEditorPanel({pagedTorrents, editor}: {
+    pagedTorrents: TorrentWithVolume[]
+    editor: Pick<UseDiscEditorReturn, 'open' | 'hasChanges' | 'handleSubmit'>
 }) {
-  const [activeKey, setActiveKey] = useState<string | undefined>(undefined)
-  const skipSubmitRef = useRef(false)
+    const [activeKey, setActiveKey] = useState<string | undefined>(undefined)
+    const skipSubmitRef = useRef(false)
 
-  const handleCollapseChange = useCallback(async (key: string | string[]) => {
-    const newKey = Array.isArray(key) ? key[0] : key || undefined
-    if (!newKey && activeKey) return
-    if (activeKey && activeKey !== newKey) {
-      if (!skipSubmitRef.current && editor.hasChanges()) await editor.handleSubmit()
-      skipSubmitRef.current = false
-    }
-    setActiveKey(newKey)
-    if (newKey) {
-      const torrent = pagedTorrents.find(t => t.qb_torrent.hash === newKey)
-      if (torrent) await editor.open(torrent.qb_torrent.hash, torrent.qb_torrent.name, false)
-    }
-  }, [activeKey, editor, pagedTorrents])
+    const handleCollapseChange = useCallback(async (key: string | string[]) => {
+        const newKey = Array.isArray(key) ? key[0] : key || undefined
+        if (!newKey && activeKey) return
+        if (activeKey && activeKey !== newKey) {
+            if (!skipSubmitRef.current && editor.hasChanges()) await editor.handleSubmit()
+            skipSubmitRef.current = false
+        }
+        setActiveKey(newKey)
+        if (newKey) {
+            const torrent = pagedTorrents.find(t => t.qb_torrent.hash === newKey)
+            if (torrent) await editor.open(torrent.qb_torrent.hash, torrent.qb_torrent.name, false)
+        }
+    }, [activeKey, editor, pagedTorrents])
 
-  const handleCancel = useCallback(() => { skipSubmitRef.current = true; setActiveKey(undefined) }, [])
-  const closeForPageChange = useCallback(() => { skipSubmitRef.current = true; setActiveKey(undefined) }, [])
+    const handleCancel = useCallback(() => {
+        skipSubmitRef.current = true;
+        setActiveKey(undefined)
+    }, [])
+    const closeForPageChange = useCallback(() => {
+        skipSubmitRef.current = true;
+        setActiveKey(undefined)
+    }, [])
 
-  return { activeKey, handleCollapseChange, handleCancel, closeForPageChange }
+    return {activeKey, handleCollapseChange, handleCancel, closeForPageChange}
 }
 
 // ─── Components ───────────────────────────────────────────────────────────────
 
 export const TorrentFiltersBar: React.FC<{
-  searchText: string; invertSearch: boolean; filterCategory?: string; filterHasVolumes?: boolean
-  categories: string[]; total: number
-  onSearchTextChange: (v: string) => void; onInvertSearchChange: (v: boolean) => void
-  onCategoryChange: (v: string | undefined) => void; onHasVolumesChange: (v: boolean | undefined) => void
-}> = ({ searchText, invertSearch, filterCategory, filterHasVolumes, categories, total,
-  onSearchTextChange, onInvertSearchChange, onCategoryChange, onHasVolumesChange }) => (
-  <Space wrap>
-    <Input.Search
-      value={searchText} onChange={e => onSearchTextChange(e.target.value)}
-      placeholder="搜索种子" style={{ width: 250 }} allowClear
-      suffix={
-        <Switch checked={invertSearch} onChange={onInvertSearchChange}
-          size="small" checkedChildren="反向" unCheckedChildren="反向" />
-      }
-    />
-    <Select allowClear placeholder="类别" style={{ width: 250 }} value={filterCategory}
-      onChange={onCategoryChange} options={categories.map(c => ({ label: c, value: c }))} />
-    <Select allowClear placeholder="是否处理" style={{ width: 150 }} value={filterHasVolumes}
-      onChange={onHasVolumesChange}
-      options={[{ label: '已处理', value: true }, { label: '未处理', value: false }]} />
-    <Typography.Text type="secondary">共 {total} 条</Typography.Text>
-  </Space>
+    searchText: string; invertSearch: boolean; filterCategory?: string; filterHasVolumes?: boolean
+    categories: string[]; total: number
+    onSearchTextChange: (v: string) => void; onInvertSearchChange: (v: boolean) => void
+    onCategoryChange: (v: string | undefined) => void; onHasVolumesChange: (v: boolean | undefined) => void
+}> = ({
+          searchText, invertSearch, filterCategory, filterHasVolumes, categories, total,
+          onSearchTextChange, onInvertSearchChange, onCategoryChange, onHasVolumesChange
+      }) => (
+    <Space wrap>
+        <Input.Search
+            value={searchText} onChange={e => onSearchTextChange(e.target.value)}
+            placeholder="搜索种子" style={{width: 250}} allowClear
+            suffix={
+                <Switch checked={invertSearch} onChange={onInvertSearchChange}
+                        size="small" checkedChildren="反向" unCheckedChildren="反向"/>
+            }
+        />
+        <Select allowClear placeholder="类别" style={{width: 250}} value={filterCategory}
+                onChange={onCategoryChange} options={categories.map(c => ({label: c, value: c}))}/>
+        <Select allowClear placeholder="是否处理" style={{width: 150}} value={filterHasVolumes}
+                onChange={onHasVolumesChange}
+                options={[{label: '已处理', value: true}, {label: '未处理', value: false}]}/>
+        <Typography.Text type="secondary">共 {total} 条</Typography.Text>
+    </Space>
 )
 
 export const TorrentListHeader: React.FC = () => {
-  const { token } = theme.useToken()
-  return (
-    <Flex align="center" gap={8} style={{
-      padding: `6px 16px 6px ${HEADER_INDENT}px`,
-      background: token.colorFillAlter,
-      border: `1px solid ${token.colorBorderSecondary}`,
-      borderRadius: `${token.borderRadiusLG}px ${token.borderRadiusLG}px 0 0`,
-      fontWeight: token.fontWeightStrong,
-      fontSize: token.fontSize,
-    }}>
-      <Typography.Text strong style={{ width: COL.volumes, flexShrink: 0 }}>卷</Typography.Text>
-      <Typography.Text strong style={{ flex: 1 }}>名称</Typography.Text>
-      <Typography.Text strong style={{ width: COL.category, flexShrink: 0 }}>类别</Typography.Text>
-      <Typography.Text strong style={{ width: COL.progress, flexShrink: 0 }}>进度</Typography.Text>
-      <Typography.Text strong style={{ width: COL.state, flexShrink: 0 }}>状态</Typography.Text>
-      <Typography.Text strong style={{ width: COL.size, flexShrink: 0, textAlign: 'right' }}>大小</Typography.Text>
-    </Flex>
-  )
+    const {token} = theme.useToken()
+    return (
+        <Flex align="center" gap={8} style={{
+            padding: `6px 16px 6px ${HEADER_INDENT}px`,
+            background: token.colorFillAlter,
+            border: `1px solid ${token.colorBorderSecondary}`,
+            borderRadius: `${token.borderRadiusLG}px ${token.borderRadiusLG}px 0 0`,
+            fontWeight: token.fontWeightStrong,
+            fontSize: token.fontSize,
+        }}>
+            <Typography.Text strong style={{width: COL.volumes, flexShrink: 0}}>卷</Typography.Text>
+            <Typography.Text strong style={{flex: 1}}>名称</Typography.Text>
+            <Typography.Text strong style={{width: COL.category, flexShrink: 0}}>类别</Typography.Text>
+            <Typography.Text strong style={{width: COL.size, flexShrink: 0, textAlign: 'right'}}>大小</Typography.Text>
+        </Flex>
+    )
 }
 
-const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume }> = ({ torrent }) => (
-  <Flex align="center" gap={8} style={{ width: '100%' }}>
-    <Flex style={{ width: COL.volumes, flexShrink: 0 }}>
-      {torrent.hasVolumes
-        ? <Tag icon={<CheckCircleOutlined />} color="success" style={{ margin: 0 }}>{torrent.volumeCount}</Tag>
-        : <Tag icon={<CloseCircleOutlined />} color="default" style={{ margin: 0 }} />}
+const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume }> = ({torrent}) => (
+    <Flex align="center" gap={8} style={{width: '100%'}}>
+        <Flex style={{width: COL.volumes, flexShrink: 0}}>
+            {torrent.hasVolumes
+                ? <Tag icon={<CheckCircleOutlined/>} color="success" style={{margin: 0}}>{torrent.volumeCount}</Tag>
+                : <Tag icon={<CloseCircleOutlined/>} color="default" style={{margin: 0}}/>}
+        </Flex>
+        <Typography.Text ellipsis style={{flex: 1}}>{torrent.qb_torrent.name}</Typography.Text>
+        <Flex style={{width: COL.category, flexShrink: 0, overflow: 'hidden'}}>
+            {torrent.qb_torrent.category
+                ? <Tag color="blue" style={{margin: 0, maxWidth: '100%'}}>{torrent.qb_torrent.category}</Tag>
+                : <Typography.Text type="secondary">—</Typography.Text>}
+        </Flex>
+        <Typography.Text type="secondary" style={{width: COL.size, flexShrink: 0, textAlign: 'right', fontSize: 12}}>
+            {formatSize(torrent.qb_torrent.size)}
+        </Typography.Text>
     </Flex>
-    <Typography.Text ellipsis style={{ flex: 1 }}>{torrent.qb_torrent.name}</Typography.Text>
-    <Flex style={{ width: COL.category, flexShrink: 0, overflow: 'hidden' }}>
-      {torrent.qb_torrent.category
-        ? <Tag color="blue" style={{ margin: 0, maxWidth: '100%' }}>{torrent.qb_torrent.category}</Tag>
-        : <Typography.Text type="secondary">—</Typography.Text>}
-    </Flex>
-    <Flex style={{ width: COL.progress, flexShrink: 0 }}>
-      <Progress
-        percent={parseFloat((torrent.qb_torrent.progress * 100).toFixed(1))}
-        status={torrent.qb_torrent.progress === 1 ? 'success' : 'active'}
-        size="small" style={{ margin: 0 }}
-      />
-    </Flex>
-    <Flex style={{ width: COL.state, flexShrink: 0 }}>
-      <Badge status={getTorrentStateStatus(torrent.qb_torrent.state)} text={getTorrentStateText(torrent.qb_torrent.state)} />
-    </Flex>
-    <Typography.Text type="secondary" style={{ width: COL.size, flexShrink: 0, textAlign: 'right', fontSize: 12 }}>
-      {formatSize(torrent.qb_torrent.size)}
-    </Typography.Text>
-  </Flex>
 )
 
 type EditorProps = Pick<UseDiscEditorReturn,
-  | 'loading' | 'saving' | 'files' | 'treeData' | 'nodeData' | 'defaultExpandedKeys'
-  | 'selectedVolumes' | 'visibleVolumes' | 'loadMoreVolumes' | 'worksCount' | 'setWorksCount'
-  | 'volumeForms' | 'updateVolumeForm' | 'onVolumeChange' | 'onSharedVolumeChange' | 'onToggleShared'
-  | 'getNodeVolume' | 'getNodeShared' | 'getNodeSharedVolumes'
-  | 'resetVolumeAssignments' | 'deleteVolume' | 'handleSubmit'
+    | 'loading' | 'saving' | 'files' | 'treeData' | 'nodeData' | 'defaultExpandedKeys'
+    | 'selectedVolumes' | 'visibleVolumes' | 'loadMoreVolumes' | 'worksCount' | 'setWorksCount'
+    | 'volumeForms' | 'updateVolumeForm' | 'onVolumeChange' | 'onSharedVolumeChange' | 'onToggleShared'
+    | 'getNodeVolume' | 'getNodeShared' | 'getNodeSharedVolumes'
+    | 'resetVolumeAssignments' | 'deleteVolume' | 'handleSubmit'
 >
 
 export const TorrentCollapseList: React.FC<{
-  pagedTorrents: TorrentWithVolume[]
-  activeKey: string | undefined
-  onChange: (key: string | string[]) => Promise<void>
-  onCancel: () => void
-  editor: EditorProps
-}> = ({ pagedTorrents, activeKey, onChange, onCancel, editor }) => {
-  const collapseItems = useMemo(() =>
-    pagedTorrents.map(torrent => ({
-      key: torrent.qb_torrent.hash,
-      label: <TorrentRowLabel torrent={torrent} />,
-      children: activeKey === torrent.qb_torrent.hash ? (
-        <DiscEditorContent
-          loading={editor.loading} saving={editor.saving} files={editor.files}
-          treeData={editor.treeData} nodeData={editor.nodeData}
-          defaultExpandedKeys={editor.defaultExpandedKeys}
-          selectedVolumes={editor.selectedVolumes} visibleVolumes={editor.visibleVolumes}
-          loadMoreVolumes={editor.loadMoreVolumes} worksCount={editor.worksCount}
-          setWorksCount={editor.setWorksCount} volumeForms={editor.volumeForms}
-          onVolumeFormChange={editor.updateVolumeForm} onVolumeChange={editor.onVolumeChange}
-          onSharedVolumeChange={editor.onSharedVolumeChange} onToggleShared={editor.onToggleShared}
-          getNodeVolume={editor.getNodeVolume} getNodeShared={editor.getNodeShared}
-          getNodeSharedVolumes={editor.getNodeSharedVolumes}
-          resetVolumeAssignments={editor.resetVolumeAssignments} deleteVolume={editor.deleteVolume}
-          onCancel={onCancel} onSubmit={editor.handleSubmit}
-        />
-      ) : null,
-    })),
-    [pagedTorrents, activeKey, editor, onCancel])
+    pagedTorrents: TorrentWithVolume[]
+    activeKey: string | undefined
+    onChange: (key: string | string[]) => Promise<void>
+    onCancel: () => void
+    editor: EditorProps
+}> = ({pagedTorrents, activeKey, onChange, onCancel, editor}) => {
+    const collapseItems = useMemo(() =>
+            pagedTorrents.map(torrent => ({
+                key: torrent.qb_torrent.hash,
+                label: <TorrentRowLabel torrent={torrent}/>,
+                children: activeKey === torrent.qb_torrent.hash ? (
+                    <DiscEditorContent
+                        loading={editor.loading} saving={editor.saving} files={editor.files}
+                        treeData={editor.treeData} nodeData={editor.nodeData}
+                        defaultExpandedKeys={editor.defaultExpandedKeys}
+                        selectedVolumes={editor.selectedVolumes} visibleVolumes={editor.visibleVolumes}
+                        loadMoreVolumes={editor.loadMoreVolumes} worksCount={editor.worksCount}
+                        setWorksCount={editor.setWorksCount} volumeForms={editor.volumeForms}
+                        onVolumeFormChange={editor.updateVolumeForm} onVolumeChange={editor.onVolumeChange}
+                        onSharedVolumeChange={editor.onSharedVolumeChange} onToggleShared={editor.onToggleShared}
+                        getNodeVolume={editor.getNodeVolume} getNodeShared={editor.getNodeShared}
+                        getNodeSharedVolumes={editor.getNodeSharedVolumes}
+                        resetVolumeAssignments={editor.resetVolumeAssignments} deleteVolume={editor.deleteVolume}
+                        onCancel={onCancel} onSubmit={editor.handleSubmit}
+                    />
+                ) : null,
+            })),
+        [pagedTorrents, activeKey, editor, onCancel])
 
-  return (
-    <Collapse
-      bordered={false} accordion activeKey={activeKey} onChange={onChange}
-      items={collapseItems} style={{ borderTop: 'none', borderRadius: '0 0 8px 8px' }}
-    />
-  )
+    return (
+        <Collapse
+            bordered={false} accordion activeKey={activeKey} onChange={onChange}
+            items={collapseItems} style={{borderTop: 'none', borderRadius: '0 0 8px 8px'}}
+        />
+    )
 }
 
 export const TorrentPagination: React.FC<{
-  currentPage: number; total: number; onPageChange: (page: number) => void
-}> = ({ currentPage, total, onPageChange }) => {
-  if (total <= PAGE_SIZE) return null
-  return (
-    <Flex justify="flex-end">
-      <Pagination
-        current={currentPage} pageSize={PAGE_SIZE} total={total}
-        onChange={onPageChange} showQuickJumper showSizeChanger={false}
-      />
-    </Flex>
-  )
+    currentPage: number; total: number; onPageChange: (page: number) => void
+}> = ({currentPage, total, onPageChange}) => {
+    if (total <= PAGE_SIZE) return null
+    return (
+        <Flex justify="flex-end">
+            <Pagination
+                current={currentPage} pageSize={PAGE_SIZE} total={total}
+                onChange={onPageChange} showQuickJumper showSizeChanger={false}
+            />
+        </Flex>
+    )
 }

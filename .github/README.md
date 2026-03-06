@@ -1,13 +1,16 @@
 # Documentation Guide
 
-This directory contains instructions and conventions for working with the BDDB codebase using GitHub Copilot and other AI assistants.
+This directory contains instructions and conventions for working with the BDDB codebase using GitHub Copilot and other
+AI assistants.
 
 ## Files Overview
 
 ### `.github/copilot-instructions.md`
+
 **Primary instructions for GitHub Copilot**
 
 This is the main file that GitHub Copilot reads when providing code suggestions and assistance. It includes:
+
 - Project structure and tech stack overview
 - Type system guidelines and single source of truth principle
 - Database configuration and best practices
@@ -17,9 +20,11 @@ This is the main file that GitHub Copilot reads when providing code suggestions 
 **When to reference**: This is automatically loaded by GitHub Copilot in supported IDEs.
 
 ### `.github/development-rules.md`
+
 **Comprehensive development rules and standards**
 
 Detailed coding standards, conventions, and best practices for the project:
+
 - Type consistency requirements
 - API response formats
 - Component patterns
@@ -30,9 +35,11 @@ Detailed coding standards, conventions, and best practices for the project:
 **When to reference**: Use as a checklist when implementing new features or reviewing code.
 
 ### `DATABASE_CONVENTIONS.md`
+
 **Detailed database layer documentation**
 
 In-depth technical documentation for database operations:
+
 - SQLite type binding constraints
 - JSON serialization patterns
 - Query optimization with JSON1 functions
@@ -42,9 +49,11 @@ In-depth technical documentation for database operations:
 **When to reference**: When working with database operations, queries, or optimization.
 
 ### `PROJECT_OVERVIEW.md`
+
 **High-level project documentation**
 
 Quick reference for project structure and setup:
+
 - Technology stack summary
 - Directory structure
 - Build and run commands

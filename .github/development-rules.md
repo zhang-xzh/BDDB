@@ -3,6 +3,7 @@
 ## Type System
 
 ### Type Consistency
+
 - Frontend/backend/storage use **same types** from `lib/db/schema.ts`
 - Field names must be **identical** across all layers
 - **Never create duplicate types** in other files
@@ -11,6 +12,7 @@
 ## Storage Conventions
 
 ### Architecture
+
 - **Storage**: In-memory Maps + JSON files (no SQL database)
 - **Entry point**: `lib/db/store.ts` — `ensureInit()` loads data on first call
 - **Pattern**: Repository pattern in `lib/db/repository.ts`
@@ -97,23 +99,30 @@ export async function GET() {
 
 ### File Consolidation — Fewer Files is Better
 
-- **Do not split files just for the sake of separation.** Only create a new file when the code is genuinely reused elsewhere or is large enough to justify it (guideline: >400 lines after consolidation).
-- Hooks that are **only used by one component** belong in the same file as that component — do not extract them to a separate `useXxx.ts` unless they are shared.
-- Small helper components (< ~80 lines) that are **only rendered by one parent** belong in the same file as the parent — do not extract them.
-- Internal `interface`/`type` definitions that are only used within one file stay in that file — do not create a separate `types.ts`.
-- Pure utility functions (e.g. tree building, formatting) that are tightly coupled to one feature belong in the same file unless they are reused.
-- Only extract to a separate file when: (a) the code is shared by multiple files, or (b) the single file would exceed ~600 lines.
+- **Do not split files just for the sake of separation.** Only create a new file when the code is genuinely reused
+  elsewhere or is large enough to justify it (guideline: >400 lines after consolidation).
+- Hooks that are **only used by one component** belong in the same file as that component — do not extract them to a
+  separate `useXxx.ts` unless they are shared.
+- Small helper components (< ~80 lines) that are **only rendered by one parent** belong in the same file as the parent —
+  do not extract them.
+- Internal `interface`/`type` definitions that are only used within one file stay in that file — do not create a
+  separate `types.ts`.
+- Pure utility functions (e.g. tree building, formatting) that are tightly coupled to one feature belong in the same
+  file unless they are reused.
+- Only extract to a separate file when: (a) the code is shared by multiple files, or (b) the single file would exceed ~
+  600 lines.
 - Keep `app/page.tsx` and `app/layout.tsx` as thin composition/orchestration layers.
 
 ### Styling — Ant Design First
 
 - **Ant Design components and their built-in props are the highest priority** for layout and styling
 - Target **zero custom CSS** and **zero raw `<div>`** — use Ant Design layout primitives instead:
-  - `<Flex>` / `<Space>` for alignment and gaps
-  - `<Row>` / `<Col>` for grid layout
-  - `<Typography.Text>`, `<Typography.Title>` for text
-  - `style` prop only as last resort for values Ant Design doesn't expose
-- Never write a `<div>` when an Ant Design component (`Card`, `Flex`, `Space`, `Layout`, etc.) can serve the same purpose
+    - `<Flex>` / `<Space>` for alignment and gaps
+    - `<Row>` / `<Col>` for grid layout
+    - `<Typography.Text>`, `<Typography.Title>` for text
+    - `style` prop only as last resort for values Ant Design doesn't expose
+- Never write a `<div>` when an Ant Design component (`Card`, `Flex`, `Space`, `Layout`, etc.) can serve the same
+  purpose
 
 ## File Naming Conventions
 

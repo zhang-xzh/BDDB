@@ -12,6 +12,8 @@ const menuItems = [
     {key: '/', label: '种子管理'},
     {key: '/1', label: '媒介管理'},
     {key: '/2', label: '作品管理'},
+    {key: '/3', label: '系列管理'},
+    {key: '/4', label: '数据管理'},
     {key: '/config', label: '配置'},
 ]
 
@@ -29,7 +31,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     const {token} = theme.useToken()
     const pathname = usePathname()
     const router = useRouter()
- 
+
     return (
         <Layout style={{minHeight: '100vh'}}>
             <Header
