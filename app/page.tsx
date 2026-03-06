@@ -5,14 +5,7 @@ import {Flex, Spin} from "antd";
 import type {TorrentWithVolume} from "@/lib/db";
 import {fetchApi} from "@/lib/api";
 import {useDiscEditor} from "@/components/DiscEditor";
-import {
-  TorrentCollapseList,
-  TorrentFiltersBar,
-  TorrentListHeader,
-  TorrentPagination,
-  useTorrentEditorPanel,
-  useTorrentListView,
-} from "@/components/home/TorrentList";
+import {TorrentCollapseList, TorrentFiltersBar, TorrentListHeader, TorrentPagination, useTorrentEditorPanel, useTorrentListView,} from "@/components/home/TorrentList";
 
 const HomePage: React.FC = () => {
     const [loading, setLoading] = useState(false);
@@ -46,8 +39,7 @@ const HomePage: React.FC = () => {
         filteredTorrents,
         pagedTorrents,
     } = useTorrentListView(torrents);
-    const {activeKey, handleCollapseChange, handleCancel, closeForPageChange} =
-        useTorrentEditorPanel({pagedTorrents, editor});
+    const {activeKey, handleCollapseChange, handleCancel, closeForPageChange} = useTorrentEditorPanel({pagedTorrents, editor});
 
     useEffect(() => {
         fetchTorrents();

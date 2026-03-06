@@ -6,11 +6,7 @@ import zhCN from 'antd/locale/zh_CN'
 import {AppLayout} from '@/components/layout/AppLayout'
 import './globals.css'
 
-export default function RootLayout({
-                                       children,
-                                   }: Readonly<{
-    children: React.ReactNode
-}>) {
+export default function RootLayout({children,}: Readonly<{ children: React.ReactNode }>) {
     const [isDark, setIsDark] = useState(false)
 
     useEffect(() => {
@@ -28,10 +24,7 @@ export default function RootLayout({
     return (
         <html lang="zh-CN">
         <body style={{margin: 0, padding: 0, minHeight: '100vh'}}>
-        <ConfigProvider
-            locale={zhCN}
-            theme={{algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm}}
-        >
+        <ConfigProvider locale={zhCN} theme={{algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm}}>
             <App>
                 <AppLayout isDark={isDark} onToggle={onToggle}>
                     {children}

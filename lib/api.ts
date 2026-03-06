@@ -6,10 +6,7 @@ interface FetchResponse<T> {
     error?: string
 }
 
-export async function fetchApi<T>(
-    endpoint: string,
-    options?: RequestInit
-): Promise<FetchResponse<T>> {
+export async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<FetchResponse<T>> {
     const url = `${API_BASE}${endpoint}`
 
     try {
@@ -25,8 +22,7 @@ export async function fetchApi<T>(
             throw new Error(`HTTP error! status: ${response.status}`)
         }
 
-        const result = await response.json()
-        return result
+        return await response.json()
     } catch (error) {
         console.error(`API request failed: ${url}`, error)
         return {
@@ -36,10 +32,7 @@ export async function fetchApi<T>(
     }
 }
 
-export async function postApi<T>(
-    endpoint: string,
-    body?: unknown
-): Promise<FetchResponse<T>> {
+export async function postApi<T>(endpoint: string, body?: unknown): Promise<FetchResponse<T>> {
     return fetchApi<T>(endpoint, {
         method: 'POST',
         body: body ? JSON.stringify(body) : undefined,
