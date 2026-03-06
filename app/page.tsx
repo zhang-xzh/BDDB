@@ -64,15 +64,15 @@ const ColHeader: React.FC = () => {
         fontSize: token.fontSize,
       }}
     >
-      <Text strong style={{ width: COL.category, flexShrink: 0 }}>
-        类别
-      </Text>
       <Text strong style={{ width: COL.volumes, flexShrink: 0 }}>
         卷
       </Text>
       <Text strong style={{ flex: 1 }}>
         名称
       </Text>
+        <Text strong style={{ width: COL.category, flexShrink: 0 }}>
+            类别
+        </Text>
       <Text strong style={{ width: COL.progress, flexShrink: 0 }}>
         进度
       </Text>
@@ -235,17 +235,6 @@ const HomePage: React.FC = () => {
         key: t.qb_torrent.hash,
         label: (
           <Flex align="center" gap={8} style={{ width: "100%" }}>
-            <Flex
-              style={{ width: COL.category, flexShrink: 0, overflow: "hidden" }}
-            >
-              {t.qb_torrent.category ? (
-                <Tag color="blue" style={{ margin: 0, maxWidth: "100%" }}>
-                  {t.qb_torrent.category}
-                </Tag>
-              ) : (
-                <Text type="secondary">—</Text>
-              )}
-            </Flex>
             <Flex style={{ width: COL.volumes, flexShrink: 0 }}>
               {t.hasVolumes ? (
                 <Tag
@@ -266,6 +255,17 @@ const HomePage: React.FC = () => {
             <Text ellipsis style={{ flex: 1 }}>
               {t.qb_torrent.name}
             </Text>
+              <Flex
+                  style={{ width: COL.category, flexShrink: 0, overflow: "hidden" }}
+              >
+                  {t.qb_torrent.category ? (
+                      <Tag color="blue" style={{ margin: 0, maxWidth: "100%" }}>
+                          {t.qb_torrent.category}
+                      </Tag>
+                  ) : (
+                      <Text type="secondary">—</Text>
+                  )}
+              </Flex>
             <Flex style={{ width: COL.progress, flexShrink: 0 }}>
               <Progress
                 percent={parseFloat((t.qb_torrent.progress * 100).toFixed(1))}
