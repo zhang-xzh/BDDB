@@ -56,7 +56,6 @@ export interface Volume {
   volume_no: number;
   catalog_no: string;
   volume_name?: string;
-  media_type?: "DVD" | "BD";
   is_deleted: boolean;
   updated_at: number;
 }
@@ -77,7 +76,6 @@ export interface VolumeForm {
   catalog_no: string;
   volume_name: string;
   type?: "volume" | "box";
-  media_type?: "DVD" | "BD";
 }
 
 export interface NodeData {

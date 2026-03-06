@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Space, Input, Radio, Typography, Button } from "antd";
+import { Card, Space, Input, Typography, Button } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import type { VolumeForm } from "@/lib/db/schema";
 
@@ -45,18 +45,6 @@ function VolumeRow({
         flexWrap: "wrap",
       }}
     >
-      <Radio.Group
-        defaultValue="BD"
-        size="small"
-        value={form.media_type}
-        onChange={(e) =>
-          onVolumeFormChange(vol, { ...form, media_type: e.target.value })
-        }
-        buttonStyle="solid"
-      >
-        <Radio.Button value="BD">BD</Radio.Button>
-        <Radio.Button value="DVD">DVD</Radio.Button>
-      </Radio.Group>
       <span style={{ fontWeight: 500, minWidth: "60px" }}>{label}</span>
       <Input
         value={form.catalog_no}

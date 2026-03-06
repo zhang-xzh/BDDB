@@ -218,7 +218,6 @@ export async function addVolume(data: Partial<Volume>): Promise<void> {
     volume_no: data.volume_no ?? 0,
     catalog_no: data.catalog_no ?? "",
     volume_name: data.volume_name,
-    media_type: data.media_type,
     is_deleted: false,
     updated_at: now(),
   };
@@ -303,7 +302,6 @@ export async function saveVolume(
     existing.type = data.type;
     existing.catalog_no = data.catalog_no ?? "";
     existing.volume_name = data.volume_name;
-    existing.media_type = data.media_type;
     existing.is_deleted = false;
     existing.updated_at = now();
   } else {
@@ -315,7 +313,6 @@ export async function saveVolume(
       volume_no: data.volume_no ?? 0,
       catalog_no: data.catalog_no ?? "",
       volume_name: data.volume_name,
-      media_type: data.media_type,
       is_deleted: false,
       updated_at: now(),
     };

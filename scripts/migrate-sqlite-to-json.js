@@ -44,7 +44,7 @@ const fileRows = db.prepare(`
 
 const volumeRows = db.prepare(`
   SELECT id, torrent_id, torrent_file_ids, type, volume_no,
-         volume_name, catalog_no, media_type, is_deleted, updated_at
+         volume_name, catalog_no, is_deleted, updated_at
   FROM volumes
 `).all()
 
@@ -108,7 +108,6 @@ const volumes = volumeRows.map(row => ({
   volume_no: row.volume_no ?? 0,
   catalog_no: row.catalog_no || '',
   volume_name: row.volume_name || undefined,
-  media_type: row.media_type || undefined,
   is_deleted: !!row.is_deleted,
   updated_at: row.updated_at ?? 0,
 }))

@@ -455,7 +455,6 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
                   catalog_no: vol.catalog_no || '',
                   volume_name: vol.volume_name || '',
                   type: vol.type || undefined,
-                  media_type: vol.media_type || undefined,
                 }
                 if (vol.torrent_file_ids?.length > 0) {
                   vol.torrent_file_ids.forEach((fileId: string) => {
@@ -610,7 +609,6 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
           sort_order: volNo,
           volume_name: (volumeForms[volNo]?.volume_name || '').trim(),
           catalog_no: (volumeForms[volNo]?.catalog_no || '').trim(),
-          media_type: volumeForms[volNo]?.media_type,
           files: files[volNo] || [],
         })),
       })
