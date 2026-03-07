@@ -824,11 +824,6 @@ export function MediaEditorContent({
                     onMediaFormChange={updateMediaForm}
                     onDeleteMedia={deleteMedia}
                 />
-                <Space>
-                    <Button type="primary" loading={saving} onClick={onSubmit}>
-                        保存
-                    </Button>
-                </Space>
             </Space>
         </Spin>
     )
