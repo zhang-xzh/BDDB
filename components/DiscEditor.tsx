@@ -734,7 +734,6 @@ interface DiscEditorContentProps {
     getNodeSharedVolumes: (key: string) => number[]
     resetVolumeAssignments: () => void
     deleteVolume: (vol: number) => void
-    onCancel: () => void
     onSubmit: () => void
 }
 
@@ -760,7 +759,6 @@ export function DiscEditorContent({
                                       getNodeSharedVolumes,
                                       resetVolumeAssignments,
                                       deleteVolume,
-                                      onCancel,
                                       onSubmit,
                                   }: DiscEditorContentProps) {
     const [submitted, setSubmitted] = useState(false)
@@ -816,10 +814,6 @@ export function DiscEditorContent({
                     onVolumeFormChange={onVolumeFormChange} onDeleteVolume={deleteVolume}
                     worksCount={worksCount} submitted={submitted}
                 />
-                <Space>
-                    <Button onClick={onCancel}>取消</Button>
-                    <Button type="primary" loading={saving} onClick={handleSubmit}>保存</Button>
-                </Space>
             </Space>
         </Spin>
     )
@@ -848,7 +842,7 @@ const DiscEditor = forwardRef<DiscEditorRef, { onSave?: () => void }>(
                     getNodeVolume={editor.getNodeVolume} getNodeShared={editor.getNodeShared}
                     getNodeSharedVolumes={editor.getNodeSharedVolumes}
                     resetVolumeAssignments={editor.resetVolumeAssignments} deleteVolume={editor.deleteVolume}
-                    onCancel={editor.handleCancel} onSubmit={editor.handleSubmit}
+                    onSubmit={editor.handleSubmit}
                 />
             </Modal>
         )

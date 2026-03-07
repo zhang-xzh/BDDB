@@ -113,5 +113,24 @@ function initSchema(db: Database.Database): void {
             PRIMARY KEY (volume_id, file_id)
         );
         CREATE INDEX IF NOT EXISTS idx_volume_files_file ON volume_files(file_id);
+
+        CREATE TABLE IF NOT EXISTS medias (
+            id              TEXT PRIMARY KEY,
+            volume_id       TEXT NOT NULL REFERENCES volumes(id),
+            media_no        INTEGER NOT NULL,
+            media_type      TEXT NOT NULL,
+            content_title   TEXT,
+            description     TEXT,
+            is_deleted      INTEGER NOT NULL DEFAULT 0,
+            updated_at      INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_medias_volume ON medias(volume_id, is_deleted);
+
+        CREATE TABLE IF NOT EXISTS media_files (
+            media_id TEXT NOT NULL REFERENCES medias(id),
+            file_id  TEXT NOT NULL REFERENCES torrent_files(id),
+            PRIMARY KEY (media_id, file_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_media_files_file ON media_files(file_id);
     `)
 }

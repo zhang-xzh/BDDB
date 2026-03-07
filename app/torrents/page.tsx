@@ -76,15 +76,22 @@ function useTorrentEditorPanel({pagedTorrents, editor}: {
     editor: Pick<UseDiscEditorReturn, 'open' | 'hasChanges' | 'handleSubmit'>
 }) {
     const [activeKey, setActiveKey] = useState<string | undefined>(undefined)
-    const skipSubmitRef = useRef(false)
 
     const handleCollapseChange = useCallback(async (key: string | string[]) => {
         const newKey = Array.isArray(key) ? key[0] : key || undefined
-        if (!newKey && activeKey) return
-        if (activeKey && activeKey !== newKey) {
-            if (!skipSubmitRef.current && editor.hasChanges()) await editor.handleSubmit()
-            skipSubmitRef.current = false
+        
+        // 点击已展开的项 → 保存并收起
+        if (activeKey && newKey === activeKey) {
+            if (editor.hasChanges()) await editor.handleSubmit()
+            setActiveKey(undefined)
+            return
         }
+        
+        // 切换到新项 → 保存当前项，打开新项
+        if (activeKey && activeKey !== newKey) {
+            if (editor.hasChanges()) await editor.handleSubmit()
+        }
+        
         setActiveKey(newKey)
         if (newKey) {
             const torrent = pagedTorrents.find(t => t.hash === newKey)
@@ -92,16 +99,12 @@ function useTorrentEditorPanel({pagedTorrents, editor}: {
         }
     }, [activeKey, editor, pagedTorrents])
 
-    const handleCancel = useCallback(() => {
-        skipSubmitRef.current = true;
+    const closeForPageChange = useCallback(async () => {
+        if (editor.hasChanges()) await editor.handleSubmit()
         setActiveKey(undefined)
-    }, [])
-    const closeForPageChange = useCallback(() => {
-        skipSubmitRef.current = true;
-        setActiveKey(undefined)
-    }, [])
+    }, [editor])
 
-    return {activeKey, handleCollapseChange, handleCancel, closeForPageChange}
+    return {activeKey, handleCollapseChange, closeForPageChange}
 }
 
 // ─── Components ───────────────────────────────────────────────────────────────
@@ -150,6 +153,7 @@ const TorrentListHeader: React.FC = () => {
             padding: '12px 16px',
             background: token.colorFillAlter,
         }}>
+            <div style={{width: 24, flexShrink: 0}} />
             <Typography.Text
                 strong
                 style={{
@@ -191,44 +195,47 @@ const TorrentListHeader: React.FC = () => {
     )
 }
 
-const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume }> = ({torrent}) => {
+const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume; isExpanded: boolean }> = ({torrent, isExpanded}) => {
     const {token} = theme.useToken()
+    // 只在展开时阻止行点击冒泡（防止误触收起），收起时允许点击展开
     return (
-        <Flex align="center" gap={8} style={{width: '100%'}}>
-            <Flex style={{width: 56, flexShrink: 0}}>
-                {torrent.hasVolumes
-                    ? <Tag icon={<CheckCircleOutlined/>} color="success" style={{margin: 0}}>{torrent.volumeCount}</Tag>
-                    : <Tag icon={<CloseCircleOutlined/>} color="default" style={{margin: 0}}/>}
+        <div onClick={(e) => isExpanded && e.stopPropagation()}>
+            <Flex align="center" gap={8} style={{width: '100%'}}>
+                <Flex style={{width: 56, flexShrink: 0}}>
+                    {torrent.hasVolumes
+                        ? <Tag icon={<CheckCircleOutlined/>} color="success" style={{margin: 0}}>{torrent.volumeCount}</Tag>
+                        : <Tag icon={<CloseCircleOutlined/>} color="default" style={{margin: 0}}/>}
+                </Flex>
+                <Typography.Text
+                    ellipsis
+                    style={{flex: 1, color: token.colorText}}
+                >
+                    {torrent.name}
+                </Typography.Text>
+                <Flex style={{width: 200, flexShrink: 0, overflow: 'hidden'}}>
+                    {torrent.category
+                        ? <Tag color="blue" style={{margin: 0, maxWidth: '100%'}}>{torrent.category}</Tag>
+                        : <Typography.Text
+                            type="secondary"
+                            style={{color: token.colorTextSecondary}}
+                        >
+                            —
+                        </Typography.Text>}
+                </Flex>
+                <Typography.Text
+                    type="secondary"
+                    style={{
+                        width: 72,
+                        flexShrink: 0,
+                        textAlign: 'right',
+                        fontSize: 12,
+                        color: token.colorTextSecondary
+                    }}
+                >
+                    {formatSize(torrent.size ?? 0)}
+                </Typography.Text>
             </Flex>
-            <Typography.Text
-                ellipsis
-                style={{flex: 1, color: token.colorText}}
-            >
-                {torrent.name}
-            </Typography.Text>
-            <Flex style={{width: 200, flexShrink: 0, overflow: 'hidden'}}>
-                {torrent.category
-                    ? <Tag color="blue" style={{margin: 0, maxWidth: '100%'}}>{torrent.category}</Tag>
-                    : <Typography.Text
-                        type="secondary"
-                        style={{color: token.colorTextSecondary}}
-                    >
-                        —
-                    </Typography.Text>}
-            </Flex>
-            <Typography.Text
-                type="secondary"
-                style={{
-                    width: 72,
-                    flexShrink: 0,
-                    textAlign: 'right',
-                    fontSize: 12,
-                    color: token.colorTextSecondary
-                }}
-            >
-                {formatSize(torrent.size ?? 0)}
-            </Typography.Text>
-        </Flex>
+        </div>
     )
 }
 
@@ -244,13 +251,12 @@ const TorrentCollapseList: React.FC<{
     pagedTorrents: TorrentWithVolume[]
     activeKey: string | undefined
     onChange: (key: string | string[]) => Promise<void>
-    onCancel: () => void
     editor: EditorProps
-}> = ({pagedTorrents, activeKey, onChange, onCancel, editor}) => {
+}> = ({pagedTorrents, activeKey, onChange, editor}) => {
     const collapseItems = useMemo(() =>
             pagedTorrents.map(torrent => ({
                 key: torrent.hash,
-                label: <TorrentRowLabel torrent={torrent}/>,
+                label: <TorrentRowLabel torrent={torrent} isExpanded={activeKey === torrent.hash}/>,
                 children: activeKey === torrent.hash ? (
                     <DiscEditorContent
                         loading={editor.loading} saving={editor.saving} files={editor.files}
@@ -264,15 +270,15 @@ const TorrentCollapseList: React.FC<{
                         getNodeVolume={editor.getNodeVolume} getNodeShared={editor.getNodeShared}
                         getNodeSharedVolumes={editor.getNodeSharedVolumes}
                         resetVolumeAssignments={editor.resetVolumeAssignments} deleteVolume={editor.deleteVolume}
-                        onCancel={onCancel} onSubmit={editor.handleSubmit}
+                        onSubmit={editor.handleSubmit}
                     />
                 ) : null,
             })),
-        [pagedTorrents, activeKey, editor, onCancel])
+        [pagedTorrents, activeKey, editor])
 
     return (
         <Collapse
-            expandIconPlacement={"end"}
+            expandIconPlacement={"start"}
             bordered={false} accordion activeKey={activeKey} onChange={onChange}
             items={collapseItems}
         />
@@ -329,7 +335,7 @@ const TorrentsPage: React.FC = () => {
         filteredTorrents,
         pagedTorrents,
     } = useTorrentListView(torrents);
-    const {activeKey, handleCollapseChange, handleCancel, closeForPageChange} = useTorrentEditorPanel({pagedTorrents, editor});
+    const {activeKey, handleCollapseChange, closeForPageChange} = useTorrentEditorPanel({pagedTorrents, editor});
 
     useEffect(() => {
         fetchTorrents();
@@ -364,7 +370,6 @@ const TorrentsPage: React.FC = () => {
                         pagedTorrents={pagedTorrents}
                         activeKey={activeKey}
                         onChange={handleCollapseChange}
-                        onCancel={handleCancel}
                         editor={editor}
                     />
                 </Card>

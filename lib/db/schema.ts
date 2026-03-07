@@ -95,10 +95,34 @@ export interface VolumeForm {
     volume_name: string
 }
 
+export type MediaType = 'bd' | 'dvd' | 'cd' | 'scan'
+
+export interface Media {
+    id: string
+    volume_id: string
+    media_no: number
+    media_type: MediaType
+    content_title?: string       // 内容标题
+    description?: string         // 说明
+    torrent_file_ids: string[]
+    is_deleted: boolean
+    updated_at: number
+}
+
+export interface MediaForm {
+    media_type: MediaType
+    content_title: string
+    description: string
+}
+
 export interface NodeData {
     volume_no?: number
     shared_volume_nos?: number[]
     files?: string[]
+
+    media_no?: number
+    media_type?: MediaType
+    shared_medias?: number[]
 }
 
 export interface FileItem {

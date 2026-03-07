@@ -1,6 +1,6 @@
 import {customAlphabet} from 'nanoid'
 import {getDb} from './connection'
-import type {FileItem, StoredFile, Torrent, TorrentRecord, Volume} from './schema'
+import type {FileItem, MediaType, Media, StoredFile, Torrent, TorrentRecord, Volume} from './schema'
 
 const generateId = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 16)
 const now = () => Math.floor(Date.now() / 1000)
@@ -447,9 +447,96 @@ export function deleteStaleVolumes(torrentId: string, keepVolumeNos: number[]): 
 export async function clearAllData(): Promise<void> {
     const db = getDb()
     db.transaction(() => {
+        db.prepare('DELETE FROM media_files').run()
+        db.prepare('DELETE FROM medias').run()
         db.prepare('DELETE FROM volume_files').run()
         db.prepare('DELETE FROM volumes').run()
         db.prepare('DELETE FROM torrent_files').run()
         db.prepare('DELETE FROM torrents').run()
     })()
+}
+
+// ─── Medias ──────────────────────────────────────────────────────────────────
+
+interface MediaRow {
+    id: string; volume_id: string; media_no: number; media_type: string;
+    content_title: string | null; description: string | null;
+    is_deleted: number; updated_at: number;
+}
+
+function rowToMedia(row: MediaRow, fileIds: string[]): Media {
+    return {
+        id: row.id,
+        volume_id: row.volume_id,
+        media_no: row.media_no,
+        media_type: row.media_type as MediaType,
+        content_title: row.content_title ?? undefined,
+        description: row.description ?? undefined,
+        torrent_file_ids: fileIds,
+        is_deleted: Boolean(row.is_deleted),
+        updated_at: row.updated_at,
+    }
+}
+
+function getMediaFileIds(mediaId: string): string[] {
+    const rows = getDb().prepare('SELECT file_id FROM media_files WHERE media_id = ?').all(mediaId) as {file_id: string}[]
+    return rows.map(r => r.file_id)
+}
+
+export async function getMediasByVolume(volumeId: string): Promise<Media[]> {
+    const db = getDb()
+    const rows = db.prepare('SELECT * FROM medias WHERE volume_id = ? AND is_deleted = 0 ORDER BY media_no ASC')
+        .all(volumeId) as MediaRow[]
+
+    return rows.map(row => {
+        const fileIds = getMediaFileIds(row.id)
+        return rowToMedia(row, fileIds)
+    })
+}
+
+export async function saveMedia(volumeId: string, files: string[], data: Partial<Media>): Promise<void> {
+    const db = getDb()
+    const ts = now()
+    const run = db.transaction(() => {
+        const existing = db.prepare(
+            'SELECT id FROM medias WHERE volume_id = ? AND media_no = ? AND media_type = ? AND is_deleted = 0'
+        ).get(volumeId, data.media_no, data.media_type) as {id: string} | undefined
+
+        const mediaId = existing?.id ?? generateId()
+
+        if (existing) {
+            db.prepare(`
+                UPDATE medias SET content_title = ?, description = ?, updated_at = ?
+                WHERE id = ?
+            `).run(data.content_title ?? null, data.description ?? null, ts, mediaId)
+        } else {
+            db.prepare(`
+                INSERT INTO medias (id, volume_id, media_no, media_type, content_title, description, is_deleted, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+            `).run(mediaId, volumeId, data.media_no ?? 0, data.media_type ?? 'bd', data.content_title ?? null, data.description ?? null, ts)
+        }
+
+        db.prepare('DELETE FROM media_files WHERE media_id = ?').run(mediaId)
+        const insMF = db.prepare('INSERT OR IGNORE INTO media_files (media_id, file_id) VALUES (?, ?)')
+        for (const fileId of files) insMF.run(mediaId, fileId)
+    })
+    run()
+}
+
+export function deleteStaleMedias(volumeId: string, keepMedias: {media_no: number; media_type: MediaType}[]): void {
+    const db = getDb()
+    const ts = now()
+    if (keepMedias.length === 0) {
+        db.prepare('UPDATE medias SET is_deleted = 1, updated_at = ? WHERE volume_id = ? AND is_deleted = 0').run(ts, volumeId)
+        return
+    }
+    // 构建复合条件
+    const conditions = keepMedias.map(m => '(media_no = ? AND media_type = ?)').join(' OR ')
+    const params: (number | string)[] = []
+    for (const m of keepMedias) {
+        params.push(m.media_no, m.media_type)
+    }
+    db.prepare(
+        `UPDATE medias SET is_deleted = 1, updated_at = ? WHERE volume_id = ? AND is_deleted = 0 AND NOT (${conditions})`
+    ).run(ts, volumeId, ...params)
 }
