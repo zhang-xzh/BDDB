@@ -110,11 +110,9 @@ db.exec(`
     CREATE TABLE IF NOT EXISTS volumes (
         id           TEXT PRIMARY KEY,
         torrent_id   TEXT NOT NULL REFERENCES torrents(id),
-        type         TEXT,
         volume_no    INTEGER NOT NULL,
         catalog_no   TEXT NOT NULL,
         volume_name  TEXT,
-        media_type   TEXT,
         is_deleted   INTEGER NOT NULL DEFAULT 0,
         updated_at   INTEGER NOT NULL
     );
@@ -126,6 +124,25 @@ db.exec(`
         PRIMARY KEY (volume_id, file_id)
     );
     CREATE INDEX IF NOT EXISTS idx_volume_files_file ON volume_files(file_id);
+
+    CREATE TABLE IF NOT EXISTS medias (
+        id              TEXT PRIMARY KEY,
+        volume_id       TEXT NOT NULL REFERENCES volumes(id),
+        media_no        INTEGER NOT NULL,
+        media_type      TEXT NOT NULL,
+        content_title   TEXT,
+        description     TEXT,
+        is_deleted      INTEGER NOT NULL DEFAULT 0,
+        updated_at      INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_medias_volume ON medias(volume_id, is_deleted);
+
+    CREATE TABLE IF NOT EXISTS media_files (
+        media_id TEXT NOT NULL REFERENCES medias(id),
+        file_id  TEXT NOT NULL REFERENCES torrent_files(id),
+        PRIMARY KEY (media_id, file_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_media_files_file ON media_files(file_id);
 `)
 
 // ─── Guard: skip if data already exists ──────────────────────────────────────
@@ -139,6 +156,8 @@ if (existing > 0 && !force) {
 if (force && existing > 0) {
     console.log('[migrate] --force: wiping existing data...')
     db.transaction(() => {
+        db.prepare('DELETE FROM media_files').run()
+        db.prepare('DELETE FROM medias').run()
         db.prepare('DELETE FROM volume_files').run()
         db.prepare('DELETE FROM volumes').run()
         db.prepare('DELETE FROM torrent_files').run()
@@ -213,13 +232,15 @@ const insTorrentFile = db.prepare(`
 `)
 
 const insVolume = db.prepare(`
-    INSERT OR IGNORE INTO volumes (id, torrent_id, type, volume_no, catalog_no, volume_name, media_type, is_deleted, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT OR IGNORE INTO volumes (id, torrent_id, volume_no, catalog_no, volume_name, is_deleted, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
 `)
 
 const insVolumeFile = db.prepare(
     'INSERT OR IGNORE INTO volume_files (volume_id, file_id) VALUES (?, ?)'
 )
+
+// medias 表无旧数据，无需迁移
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
@@ -276,8 +297,8 @@ db.transaction(() => {
     for (const v of volumes) {
         if (!validTorrentIds.has(v.torrent_id)) continue
         insVolume.run(
-            v.id, v.torrent_id, v.type ?? null, v.volume_no,
-            v.catalog_no, v.volume_name ?? null, v.media_type ?? null,
+            v.id, v.torrent_id, v.volume_no,
+            v.catalog_no, v.volume_name ?? null,
             v.is_deleted ? 1 : 0, v.updated_at,
         )
         volumeCount++
@@ -295,5 +316,7 @@ console.log(`  torrents:     ${torrentCount}`)
 console.log(`  files:        ${fileCount}${skippedFiles ? ` (${skippedFiles} skipped, no name)` : ''}`)
 console.log(`  volumes:      ${volumeCount}`)
 console.log(`  volume_files: ${volumeFileCount}`)
+console.log(`  medias:       0 (新表，无旧数据)`)
+console.log(`  media_files:  0 (新表，无旧数据)`)
 
 db.close()

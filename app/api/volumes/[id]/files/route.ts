@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
 import {NextRequest, NextResponse} from 'next/server';
-import {getDb} from '@/lib/db/connection';
+import {getDb} from '@/lib/db';
 
 type FileRow = {
     id: string; name: string; size: number | null; progress: number | null;

@@ -1,8 +1,7 @@
 export const runtime = 'nodejs';
 
 import {NextRequest, NextResponse} from 'next/server';
-import {getVolumesByTorrent, saveVolume, deleteStaleVolumes} from '@/lib/db';
-import {getDb} from '@/lib/db/connection';
+import {getVolumesByTorrent, saveVolume, deleteStaleVolumes, getDb} from '@/lib/db';
 
 type VolumeRow = {
     id: string; torrent_id: string; volume_no: number;

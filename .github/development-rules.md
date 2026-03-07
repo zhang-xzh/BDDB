@@ -7,54 +7,37 @@
 - Frontend/backend/storage use **same types** from `lib/db/schema.ts`
 - Field names must be **identical** across all layers
 - **Never create duplicate types** in other files
-- Always import types from `@/lib/db/schema`
+- Always import types from `@/lib/db` (re-exports schema)
 
 ## Storage Conventions
 
 ### Architecture
 
-- **Storage**: In-memory Maps + JSON files (no SQL database)
-- **Entry point**: `lib/db/store.ts` — `ensureInit()` loads data on first call
+- **Storage**: SQLite via `better-sqlite3` (WAL mode, single file `data/bddb.sqlite`)
+- **Connection**: `lib/db/connection.ts` — `getDb()` returns a global singleton
 - **Pattern**: Repository pattern in `lib/db/repository.ts`
 - **Required fields**: All records must include `is_deleted: boolean` and `synced_at: number`
 
-### File Layout
+### Accessing the Database
 
-```
-data/torrents/{hash}.json   ← TorrentRecord (metadata + files[])
-data/volumes.json           ← Volume[]
-```
-
-### Atomic Writes
-
-Always write via `.tmp` + rename to prevent corruption:
+Always import from `@/lib/db` — never import directly from `@/lib/db/connection`:
 
 ```typescript
-await fs.writeFile(`${path}.tmp`, JSON.stringify(data));
-await fs.rename(`${path}.tmp`, path);
-// use writeTorrent() / writeVolumes() from lib/db/store.ts
-```
+import {getDb, getAllTorrents, saveVolume} from '@/lib/db';
 
-### Accessing the Store
+// Raw SQL when repository functions don't cover the use case
+const db = getDb();
+const rows = db.prepare('SELECT * FROM torrents WHERE is_deleted = 0').all();
 
-```typescript
-import { ensureInit, byHash, volumesMap } from '@/lib/db/store';
-
-// Always await ensureInit() before accessing Maps
-await ensureInit();
-const record = byHash.get(hash);
-```
-
-### Repository Pattern
-
-Use functions from `lib/db/repository.ts` — never access store Maps directly from API routes:
-
-```typescript
-import { getAllTorrents, saveVolume } from '@/lib/db/repository';
-
+// Prefer repository functions when available
 const torrents = await getAllTorrents();
 await saveVolume(torrentId, fileIds, data);
 ```
+
+### WAL Checkpoint
+
+The `store/flush` API triggers a WAL checkpoint (`PASSIVE` mode) to merge WAL into the main database file.
+SQLite WAL writes are durable without checkpoint — checkpoint is optional maintenance.
 
 ## API Conventions
 
@@ -152,8 +135,9 @@ npm run lint     # ESLint
 ## Key Reference Files
 
 - `lib/db/schema.ts` — Type definitions (single source of truth)
-- `lib/db/store.ts` — In-memory Maps + file I/O primitives
+- `lib/db/connection.ts` — SQLite connection + schema init
 - `lib/db/repository.ts` — CRUD operations
-- `lib/db/index.ts` — Entry point
+- `lib/db/index.ts` — Entry point (import everything from here via `@/lib/db`)
 - `lib/api.ts` — Frontend API utilities
+- `lib/format.ts` — Shared utilities (PAGE_SIZE, formatSize, buildTree, FlatTree)
 - `lib/qb.ts` — qBittorrent client + sync logic

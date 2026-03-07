@@ -5,14 +5,14 @@ This file provides context and guidelines for GitHub Copilot when working with t
 ## Project Overview
 
 BDDB is a Next.js 16 + React 19 + TypeScript torrent/disc management system for organizing qBittorrent downloads into
-disc/BOX volumes. It uses an **in-memory store with JSON file persistence** and Ant Design 6 for the UI.
+disc/BOX volumes. It uses **SQLite (better-sqlite3, WAL mode)** for persistence and Ant Design 6 for the UI.
 
 ### Tech Stack
 
 - **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript 5.9
 - **UI Library**: Ant Design 6 + @ant-design/icons
-- **Storage**: In-memory Map + JSON files (no database dependency)
+- **Storage**: SQLite via `better-sqlite3` (WAL mode, single file `data/bddb.sqlite`)
 - **qBittorrent Client**: @ctrl/qbittorrent
 - **ID Generation**: nanoid
 
@@ -23,7 +23,7 @@ C:\APP\BDDB\
 ├── app/                    # Next.js App Router
 │   ├── api/                # API routes
 │   │   ├── qb/             # qBittorrent APIs
-│   │   ├── store/          # Store management APIs (flush)
+│   │   ├── store/          # Store management APIs (WAL checkpoint)
 │   │   ├── torrents/       # Torrent management APIs
 │   │   └── volumes/        # Volume management APIs
 │   ├── config/             # Configuration page
@@ -31,69 +31,55 @@ C:\APP\BDDB\
 │   ├── layout.tsx          # Root layout (Ant Design ConfigProvider)
 │   └── page.tsx            # Home page (torrent list)
 ├── components/             # React components
-│   ├── DiscEditor/         # Disc editor components
-│   ├── home/               # Home page UI components + hooks
-│   └── layout/             # Layout shell components
 ├── lib/                    # Utility libraries
 │   ├── db/                 # Storage module
-│   │   ├── index.ts        # Entry point (re-exports)
-│   │   ├── store.ts        # In-memory Maps + file I/O
+│   │   ├── index.ts        # Entry point (re-exports schema + repository + getDb)
+│   │   ├── connection.ts   # SQLite connection + schema init (getDb)
 │   │   ├── repository.ts   # Data access layer (CRUD)
 │   │   └── schema.ts       # TypeScript type definitions
-│   ├── api.ts              # Frontend API utilities
-│   ├── api-server.ts       # Server-side API response utilities
-│   └── qb.ts               # qBittorrent client wrapper
+│   ├── api.ts              # Frontend API utilities (fetchApi, postApi)
+│   ├── format.ts           # Shared utilities (PAGE_SIZE, formatSize, buildTree)
+│   └── qb.ts               # qBittorrent client wrapper + sync logic
 └── data/                   # Local data directory
-    ├── torrents/           # One JSON file per torrent ({hash}.json)
-    └── volumes.json        # All volumes in one file
+    └── bddb.sqlite         # SQLite database
 ```
 
 ## Storage Architecture
 
-### In-Memory Store (`lib/db/store.ts`)
+### SQLite Database (`lib/db/connection.ts`)
 
-All data is loaded into memory at startup and persisted to JSON files on write.
-
-```typescript
-// In-memory Maps
-byHash: Map<string, TorrentRecord>  // hash → torrent+files
-byId:   Map<string, TorrentRecord>  // id → torrent+files
-fileIndex: Map<string, string>      // fileId → torrentHash
-volumesMap: Map<string, Volume>     // id → volume
-```
-
-**Always call `ensureInit()` before accessing Maps** — it loads data from disk on first call (lazy, singleton).
-
-### File Layout
-
-```
-data/torrents/{hash}.json   ← TorrentRecord (torrent metadata + files[])
-data/volumes.json           ← Volume[] (all volumes)
-```
-
-### Atomic Writes
-
-All writes use `write to .tmp → fs.rename` to prevent corruption:
+A single SQLite file at `data/bddb.sqlite`. The connection is a global singleton (reused across requests in the
+same Node.js process). Schema is auto-created on first connection.
 
 ```typescript
-await fs.writeFile(`${filePath}.tmp`, JSON.stringify(data));
-await fs.rename(`${filePath}.tmp`, filePath);
+import {getDb} from '@/lib/db';
+
+const db = getDb();
+const rows = db.prepare('SELECT * FROM torrents WHERE is_deleted = 0').all();
 ```
 
-### TorrentRecord Structure
+**Always import `getDb` from `@/lib/db`** — never import directly from `@/lib/db/connection`.
 
-Each `{hash}.json` contains:
+### Tables
+
+| Table           | Description                                       |
+|-----------------|---------------------------------------------------|
+| `torrents`      | Torrent metadata (flat QB fields)                 |
+| `torrent_files` | Files belonging to a torrent                      |
+| `volumes`       | Disc/BOX volume metadata                          |
+| `volume_files`  | Many-to-many: volume ↔ torrent_files              |
+| `medias`        | Media entries within a volume                     |
+| `media_files`   | Many-to-many: media ↔ torrent_files               |
+
+### Repository Pattern
+
+Use functions from `lib/db/repository.ts` — prefer them over raw SQL in API routes:
 
 ```typescript
-interface TorrentRecord {
-  id: string;
-  hash: string;
-  added_on: number;
-  qb_torrent: QbTorrent;    // full QB metadata
-  is_deleted: boolean;
-  synced_at: number;
-  files: StoredFile[];       // embedded, no separate table
-}
+import {getAllTorrents, saveVolume} from '@/lib/db';
+
+const torrents = await getAllTorrents();
+await saveVolume(torrentId, fileIds, data);
 ```
 
 ## Type System
@@ -103,34 +89,21 @@ interface TorrentRecord {
 - **All types are defined in `lib/db/schema.ts`**
 - Frontend, backend, and storage use the **same types**
 - **Never create duplicate types** in other files
-- Always import from `@/lib/db/schema`
+- Always import from `@/lib/db` (re-exports schema)
 
 ### Core Types
 
-| Type            | Description                           |
-|-----------------|---------------------------------------|
-| `TorrentRecord` | File storage format (torrent + files) |
-| `Torrent`       | API/frontend view of a torrent        |
-| `StoredFile`    | File embedded in TorrentRecord        |
-| `TorrentFile`   | API/frontend view of a file           |
-| `Volume`        | Disc/BOX metadata                     |
-
-### Volume Fields (only used fields retained)
-
-```typescript
-interface Volume {
-  id: string;
-  torrent_id: string;
-  torrent_file_ids: string[];
-  type?: 'volume' | 'box';
-  volume_no: number;
-  catalog_no: string;
-  volume_name?: string;
-  media_type?: 'DVD' | 'BD';
-  is_deleted: boolean;
-  updated_at: number;
-}
-```
+| Type            | Description                              |
+|-----------------|------------------------------------------|
+| `TorrentRecord` | Torrent + embedded files (for upsert)    |
+| `Torrent`       | API/frontend view of a torrent           |
+| `StoredFile`    | File record (in torrent_files table)     |
+| `Volume`        | Disc/BOX metadata                        |
+| `VolumeForm`    | Form data for volume editing             |
+| `Media`         | Media entry within a volume              |
+| `MediaForm`     | Form data for media editing              |
+| `NodeData`      | Per-tree-node assignment state           |
+| `FileItem`      | Simplified file for editor tree display  |
 
 ## API Conventions
 
@@ -237,8 +210,9 @@ QB_HOST=localhost:18000    # qBittorrent address
 ## Key Files Reference
 
 - `lib/db/schema.ts` — Type definitions (single source of truth)
-- `lib/db/store.ts` — In-memory Maps + file I/O primitives
+- `lib/db/connection.ts` — SQLite connection + schema init
 - `lib/db/repository.ts` — CRUD operations
-- `lib/db/index.ts` — Entry point
+- `lib/db/index.ts` — Entry point (import everything from here via `@/lib/db`)
 - `lib/api.ts` — Frontend API utilities
+- `lib/format.ts` — Shared utilities (PAGE_SIZE, formatSize, buildTree, FlatTree)
 - `lib/qb.ts` — qBittorrent client + sync logic

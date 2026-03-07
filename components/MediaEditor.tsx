@@ -9,6 +9,7 @@ import React, {
 } from 'react'
 import type {FileItem, MediaType, Media, MediaForm, NodeData} from '@/lib/db'
 import {fetchApi, postApi} from '@/lib/api'
+import {buildTree, FlatTree} from '@/lib/format'
 import {
     Button,
     Card,
@@ -57,7 +58,6 @@ export interface MediaEditorContentProps {
     updateMediaForm: (no: number, form: MediaForm) => void
     resetMediaAssignments: () => void
     deleteMedia: (no: number) => void
-    onSubmit: () => void
 }
 
 interface UseMediaEditorReturn {
@@ -99,73 +99,6 @@ const MEDIA_TYPES: {value: MediaType; label: string}[] = [
     {value: 'scan', label: '扫图'},
 ]
 
-function formatSize(bytes: number): string {
-    if (bytes === 0) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i]
-}
-
-// ─── Utilities ────────────────────────────────────────────────────────────────
-
-function buildTree(fileList: FileItem[]) {
-    const root: Record<string, any> = {}
-    const flatMap = new Map<string, {parent: string | null; children: string[]; isLeaf: boolean; depth: number}>()
-    const order: string[] = []
-    const leaves: string[] = []
-    const nodeDataMap = new Map<string, NodeData>()
-    const fileToKeyMap = new Map<string, string>()
-    const expandedKeys: string[] = []
-
-    fileList.forEach(file => {
-        const parts = file.name.split('/')
-        let current = root
-        parts.forEach((part, index) => {
-            if (!current[part]) current[part] = index === parts.length - 1 ? {_file: file} : {}
-            current = current[part]
-        })
-    })
-
-    function recurse(node: Record<string, any>, parentPath = '', parentKey: string | null = null, level = 0): any[] {
-        const result: any[] = []
-        const topKeys: string[] = []
-        Object.entries(node).forEach(([key, value]) => {
-            const isFile = !!(value as any)._file
-            const file = (value as any)._file
-            const fullPath = `${parentPath}${key}`
-            const nodeDatum: NodeData = {}
-            if (file?.id) {
-                nodeDatum.files = [file.id]
-                fileToKeyMap.set(file.id, fullPath)
-            }
-            const childNodes = isFile ? [] : recurse(value as any, `${fullPath}/`, fullPath, level + 1)
-            const childKeys = childNodes.map(c => c.key as string)
-            flatMap.set(fullPath, {parent: parentKey, children: childKeys, isLeaf: isFile, depth: level})
-            nodeDataMap.set(fullPath, nodeDatum)
-            if (isFile) leaves.push(fullPath)
-            if (level === 0) topKeys.push(fullPath)
-            order.push(fullPath)
-            result.push({
-                title: `${key}${isFile ? ` (${formatSize(file.size)})` : ''}`,
-                key: fullPath,
-                children: childNodes,
-                isLeaf: isFile,
-            })
-        })
-        if (level === 0) expandedKeys.push(...topKeys)
-        return result
-    }
-
-    return {
-        treeData: recurse(root),
-        nodeData: nodeDataMap,
-        fileToKeyMap,
-        flatTree: {map: flatMap, order, leaves},
-        defaultExpandedKeys: expandedKeys,
-    }
-}
-
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
@@ -178,11 +111,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
     const [files, setFiles] = useState<FileItem[]>([])
     const [treeData, setTreeData] = useState<any[]>([])
     const [nodeData, setNodeData] = useState<Map<string, NodeData>>(new Map())
-    const [flatTree, setFlatTree] = useState<{
-        map: Map<string, {parent: string | null; children: string[]; isLeaf: boolean; depth: number}>
-        order: string[]
-        leaves: string[]
-    }>({map: new Map(), order: [], leaves: []})
+    const [flatTree, setFlatTree] = useState<FlatTree>({map: new Map(), order: [], leaves: []})
     const [defaultExpandedKeys, setDefaultExpandedKeys] = useState<string[]>([])
     const [mediaToKeys, setMediaToKeys] = useState<Map<number, Set<string>>>(new Map())
 
@@ -761,7 +690,6 @@ export function MediaEditorContent({
                                        updateMediaForm,
                                        resetMediaAssignments,
                                        deleteMedia,
-                                       onSubmit,
                                    }: MediaEditorContentProps) {
     const titleRender = useMemo(
         () =>
