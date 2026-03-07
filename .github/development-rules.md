@@ -9,6 +9,22 @@
 - **Never create duplicate types** in other files
 - Always import types from `@/lib/db` (re-exports schema)
 
+### Core Types
+
+| Type               | Description                                         |
+|--------------------|-----------------------------------------------------|
+| `Torrent`          | Torrent record (flat QB fields + metadata)          |
+| `TorrentWithVolume`| `Torrent` extended with `hasVolumes`/`volumeCount`  |
+| `TorrentRecord`    | `Torrent` + embedded `files[]` (for upsert)         |
+| `StoredFile`       | File record (in torrent_files table)                |
+| `Volume`           | Disc/BOX metadata + optional `files[]`              |
+| `VolumeForm`       | Form data for volume editing                        |
+| `MediaType`        | `'bd' \| 'dvd' \| 'cd' \| 'scan'`                  |
+| `Media`            | Media entry within a volume                         |
+| `MediaForm`        | Form data for media editing                         |
+| `NodeData`         | Per-tree-node assignment state                      |
+| `FileItem`         | Simplified file for editor tree display             |
+
 ## Storage Conventions
 
 ### Architecture
@@ -16,7 +32,42 @@
 - **Storage**: SQLite via `better-sqlite3` (WAL mode, single file `data/bddb.sqlite`)
 - **Connection**: `lib/db/connection.ts` — `getDb()` returns a global singleton
 - **Pattern**: Repository pattern in `lib/db/repository.ts`
-- **Required fields**: All records must include `is_deleted: boolean` and `synced_at: number`
+- **Required fields**: All records must include `is_deleted: boolean` and `updated_at: number` (volumes/medias) or `synced_at: number` (torrents/files)
+
+### Repository Functions
+
+Key functions exported from `lib/db/repository.ts`:
+
+```typescript
+// Torrents
+getTorrent(hash)                          // → Torrent | null
+getTorrentByHash(hash)                    // → TorrentRecord | null
+getAllTorrents(includeDeleted?)           // → Torrent[]
+getAllTorrentsWithFiles(includeDeleted?)  // → (Torrent & {files})[]
+upsertTorrent(record: TorrentRecord)
+softDeleteTorrent(hash)
+
+// Torrent Files
+saveTorrentFiles(torrentId, files)
+getTorrentFilesAsFileItems(torrentId)    // → FileItem[]
+softDeleteTorrentFiles(torrentId)
+
+// Volumes
+getAllVolumes(torrentId?)               // → Volume[]
+getVolumesByTorrent(torrentId)         // → Volume[]
+getVolumesByFile(fileId)               // → Volume[]
+getVolumeCounts()                      // → Map<torrentId, count>
+saveVolume(torrentId, files, data)
+deleteStaleVolumes(torrentId, keepVolumeNos)
+
+// Medias
+getMediasByVolume(volumeId)            // → Media[]
+saveMedia(volumeId, files, data)
+deleteStaleMedias(volumeId, keepMedias)
+
+// Misc
+clearAllData()
+```
 
 ### Accessing the Database
 
@@ -125,6 +176,16 @@ npm run start    # Production server
 npm run lint     # ESLint
 ```
 
+## Environment Variables
+
+Configure in `.env.local`:
+
+```env
+QB_HOST=localhost:18000    # qBittorrent WebUI address
+QB_USER=admin              # qBittorrent username
+QB_PASS=password           # qBittorrent password
+```
+
 ## Code Quality Standards
 
 - **TypeScript strict mode**: Minimize `any` types
@@ -138,6 +199,6 @@ npm run lint     # ESLint
 - `lib/db/connection.ts` — SQLite connection + schema init
 - `lib/db/repository.ts` — CRUD operations
 - `lib/db/index.ts` — Entry point (import everything from here via `@/lib/db`)
-- `lib/api.ts` — Frontend API utilities
-- `lib/format.ts` — Shared utilities (PAGE_SIZE, formatSize, buildTree, FlatTree)
-- `lib/qb.ts` — qBittorrent client + sync logic
+- `lib/api.ts` — Frontend API utilities (fetchApi, postApi)
+- `lib/format.ts` — Shared utilities (PAGE_SIZE, formatSize, buildTree, FlatTree, NodePath)
+- `lib/qb.ts` — qBittorrent client (getQbClient, syncTorrentsFromQb)
