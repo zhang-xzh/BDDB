@@ -2,8 +2,6 @@ import {NextRequest, NextResponse} from 'next/server'
 import {getTorrent, getTorrentFilesAsFileItems, saveTorrentFiles} from '@/lib/db'
 import {getQbClient} from '@/lib/qb'
 
-const now = () => Math.floor(Date.now() / 1000)
-
 export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
@@ -22,12 +20,8 @@ export async function GET(request: NextRequest) {
         const qbFiles = await qb.torrentFiles(hash)
         const files = qbFiles || []
 
-        // 保存文件到数据库，使用 torrent.id
-        await saveTorrentFiles(torrent.id!, files.map(f => ({
-            qb_torrent_file: f,
-            is_deleted: 0,
-            synced_at: now(),
-        })))
+        // Save files using flat fields; upserts by (torrent_id, name) to preserve IDs
+        await saveTorrentFiles(torrent.id!, files)
 
         const dbFiles = await getTorrentFilesAsFileItems(torrent.id!)
         return NextResponse.json({success: true, data: JSON.stringify(dbFiles)})

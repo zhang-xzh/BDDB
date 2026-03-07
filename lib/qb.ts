@@ -1,7 +1,7 @@
 import {QBittorrent} from "@ctrl/qbittorrent";
 import {customAlphabet} from "nanoid";
 import type {StoredFile, TorrentRecord} from "@/lib/db";
-import {byHash, byId, ensureInit, fileIndex, writeTorrent} from "@/lib/db";
+import {getTorrentByHash, upsertTorrent} from "@/lib/db";
 
 let qbClient: QBittorrent | null = null;
 
@@ -19,7 +19,6 @@ const now = () => Math.floor(Date.now() / 1000);
 const generateId = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 16);
 
 export async function syncTorrentsFromQb() {
-    await ensureInit();
     const client = getQbClient();
 
     try {
@@ -27,43 +26,36 @@ export async function syncTorrentsFromQb() {
         const ts = now();
 
         const newTorrents: any[] = [];
-        const updatedTorrents: TorrentRecord[] = [];
+        const updatedRecords: TorrentRecord[] = [];
 
         for (const t of torrents) {
-            const qbData = {
-                hash: t.hash,
-                name: t.name,
-                size: t.size,
-                progress: t.progress * 100,
-                state: t.state,
-                num_seeds: t.num_seeds,
-                num_leechs: t.num_leechs,
-                added_on: t.added_on,
-                completion_on: t.completion_on,
-                save_path: t.save_path,
-                uploaded: t.uploaded,
-                downloaded: t.downloaded,
-                category: t.category || "",
-            };
-
-            const existing = byHash.get(t.hash);
+            const existing = await getTorrentByHash(t.hash);
             if (existing) {
-                existing.qb_torrent = qbData as any;
+                // Update flat QB fields in place
+                existing.name = t.name;
+                existing.size = t.size;
+                existing.progress = t.progress != null ? t.progress * 100 : undefined;
+                existing.state = t.state;
+                existing.num_seeds = t.num_seeds;
+                existing.num_leechs = t.num_leechs;
+                existing.completion_on = t.completion_on ?? undefined;
+                existing.save_path = t.save_path;
+                existing.uploaded = t.uploaded;
+                existing.downloaded = t.downloaded;
+                existing.category = t.category || '';
                 existing.synced_at = ts;
-                updatedTorrents.push(existing);
+                updatedRecords.push(existing);
             } else {
-                newTorrents.push({hash: t.hash, qbData, addedOn: t.added_on ?? ts});
+                newTorrents.push({hash: t.hash, qbTorrent: t, addedOn: t.added_on ?? ts});
             }
         }
 
-        // 批量写入已更新的 torrents
-        await Promise.all(updatedTorrents.map((r) => writeTorrent(r)));
+        await Promise.all(updatedRecords.map(r => upsertTorrent(r)));
 
-        // 新 torrents：并发拉取文件列表后写入
         if (newTorrents.length > 0) {
             const fileResults = await Promise.allSettled(
-                newTorrents.map((t) =>
-                    client.torrentFiles(t.hash).then((files) => ({hash: t.hash, files}))
+                newTorrents.map(t =>
+                    client.torrentFiles(t.hash).then(files => ({hash: t.hash, files}))
                 )
             );
 
@@ -75,39 +67,47 @@ export async function syncTorrentsFromQb() {
             }
 
             await Promise.all(
-                newTorrents.map(async (t) => {
-                    const files: StoredFile[] = (fileMap.get(t.hash) ?? []).map((f) => {
-                        const id = generateId();
-                        return {id, qb_torrent_file: f, is_deleted: false, synced_at: ts};
-                    });
+                newTorrents.map(async ({hash, qbTorrent, addedOn}) => {
+                    const files: StoredFile[] = (fileMap.get(hash) ?? []).map(f => ({
+                        id: generateId(),
+                        is_deleted: false,
+                        synced_at: ts,
+                        name: f.name,
+                        size: f.size,
+                        progress: f.progress,
+                        priority: f.priority,
+                        is_seed: f.is_seed,
+                        piece_range: f.piece_range ?? null,
+                        availability: f.availability,
+                    }));
 
                     const record: TorrentRecord = {
                         id: generateId(),
-                        hash: t.hash,
-                        added_on: t.addedOn,
-                        qb_torrent: t.qbData,
+                        hash,
+                        added_on: addedOn,
                         is_deleted: false,
                         synced_at: ts,
+                        name: qbTorrent.name,
+                        size: qbTorrent.size,
+                        progress: qbTorrent.progress != null ? qbTorrent.progress * 100 : undefined,
+                        state: qbTorrent.state,
+                        num_seeds: qbTorrent.num_seeds,
+                        num_leechs: qbTorrent.num_leechs,
+                        completion_on: qbTorrent.completion_on ?? undefined,
+                        save_path: qbTorrent.save_path,
+                        uploaded: qbTorrent.uploaded,
+                        downloaded: qbTorrent.downloaded,
+                        category: qbTorrent.category || '',
                         files,
                     };
 
-                    byHash.set(t.hash, record);
-                    byId.set(record.id, record);
-                    for (const f of files) fileIndex.set(f.id, t.hash);
-
-                    await writeTorrent(record);
+                    await upsertTorrent(record);
                 })
             );
         }
 
-        console.log(
-            `Sync: new=${newTorrents.length}, updated=${updatedTorrents.length}`
-        );
-        return {
-            success: true,
-            newCount: newTorrents.length,
-            updateCount: updatedTorrents.length,
-        };
+        console.log(`Sync: new=${newTorrents.length}, updated=${updatedRecords.length}`);
+        return {success: true, newCount: newTorrents.length, updateCount: updatedRecords.length};
     } catch (error: any) {
         return {success: false, error: error.message};
     }

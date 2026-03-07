@@ -26,10 +26,10 @@ function matchesFilters(torrent: TorrentWithVolume, filters: {
 }): boolean {
     const {searchText, invertSearch, filterCategory, filterHasVolumes} = filters
     if (searchText) {
-        const match = torrent.qb_torrent.name.toLowerCase().includes(searchText.toLowerCase())
+        const match = torrent.name?.toLowerCase().includes(searchText.toLowerCase())
         if (invertSearch ? match : !match) return false
     }
-    if (filterCategory !== undefined && torrent.qb_torrent.category !== filterCategory) return false
+    if (filterCategory !== undefined && torrent.category !== filterCategory) return false
     if (filterHasVolumes !== undefined && !!torrent.hasVolumes !== filterHasVolumes) return false
     return true
 }
@@ -44,7 +44,7 @@ function useTorrentListView(torrents: TorrentWithVolume[]) {
     const [currentPage, setCurrentPage] = useState(1)
 
     const categories = useMemo(() =>
-            Array.from(new Set(torrents.map(t => t.qb_torrent.category).filter((c): c is string => Boolean(c)))),
+            Array.from(new Set(torrents.map(t => t.category).filter((c): c is string => Boolean(c)))),
         [torrents])
 
     const filteredTorrents = useMemo(() =>
@@ -88,8 +88,8 @@ function useTorrentEditorPanel({pagedTorrents, editor}: {
         }
         setActiveKey(newKey)
         if (newKey) {
-            const torrent = pagedTorrents.find(t => t.qb_torrent.hash === newKey)
-            if (torrent) await editor.open(torrent.qb_torrent.hash, torrent.qb_torrent.name, false)
+            const torrent = pagedTorrents.find(t => t.hash === newKey)
+            if (torrent) await editor.open(torrent.hash, torrent.name, false)
         }
     }, [activeKey, editor, pagedTorrents])
 
@@ -205,11 +205,11 @@ const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume }> = ({torrent}) =>
               ellipsis 
               style={{flex: 1, color: token.colorText}}
             >
-              {torrent.qb_torrent.name}
+              {torrent.name}
             </Typography.Text>
             <Flex style={{width: 200, flexShrink: 0, overflow: 'hidden'}}>
-                {torrent.qb_torrent.category
-                    ? <Tag color="blue" style={{margin: 0, maxWidth: '100%'}}>{torrent.qb_torrent.category}</Tag>
+                {torrent.category
+                    ? <Tag color="blue" style={{margin: 0, maxWidth: '100%'}}>{torrent.category}</Tag>
                     : <Typography.Text 
                         type="secondary"
                         style={{color: token.colorTextSecondary}}
@@ -227,7 +227,7 @@ const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume }> = ({torrent}) =>
                 color: token.colorTextSecondary
               }}
             >
-                {formatSize(torrent.qb_torrent.size)}
+                {formatSize(torrent.size ?? 0)}
             </Typography.Text>
         </Flex>
     )
@@ -250,9 +250,9 @@ const TorrentCollapseList: React.FC<{
 }> = ({pagedTorrents, activeKey, onChange, onCancel, editor}) => {
     const collapseItems = useMemo(() =>
             pagedTorrents.map(torrent => ({
-                key: torrent.qb_torrent.hash,
+                key: torrent.hash,
                 label: <TorrentRowLabel torrent={torrent}/>,
-                children: activeKey === torrent.qb_torrent.hash ? (
+                children: activeKey === torrent.hash ? (
                     <DiscEditorContent
                         loading={editor.loading} saving={editor.saving} files={editor.files}
                         treeData={editor.treeData} nodeData={editor.nodeData}
