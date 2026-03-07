@@ -313,7 +313,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
     }, [])
 
     const updateVolumeForm = useCallback((vol: number, form: VolumeForm) =>
-        setVolumeForms(prev => ({...prev, [vol]: {...form, type: 'volume'}})), [])
+        setVolumeForms(prev => ({...prev, [vol]: {...form}})), [])
 
     const resetAll = useCallback(() => {
         resetSnapshots()
@@ -391,7 +391,6 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
                         newVolumeForms[vn] = {
                             catalog_no: vol.catalog_no || '',
                             volume_name: vol.volume_name || '',
-                            type: vol.type
                         }
                         vol.torrent_file_ids?.forEach((fid: string) => {
                             if (!fileToVolMap.has(fid)) fileToVolMap.set(fid, [])
@@ -496,7 +495,6 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
             const result = await postApi('/api/volumes', {
                 torrent_id: torrentId,
                 volumes: selectedVolumes.map(vn => ({
-                    type: volumeForms[vn]?.type,
                     volume_no: vn, sort_order: vn,
                     volume_name: (volumeForms[vn]?.volume_name || '').trim(),
                     catalog_no: (volumeForms[vn]?.catalog_no || '').trim(),
@@ -553,13 +551,13 @@ function VolumeRow({vol, label, volumeForms, onVolumeFormChange, onDeleteVolume,
             <Typography.Text strong style={{minWidth: 60, display: 'inline-block'}}>{label}</Typography.Text>
             <Input
                 value={form.catalog_no}
-                onChange={e => onVolumeFormChange(vol, {...form, catalog_no: e.target.value, type: 'volume'})}
+                onChange={e => onVolumeFormChange(vol, {...form, catalog_no: e.target.value})}
                 placeholder="型番" style={{width: 120}}
                 status={submitted && !form.catalog_no.trim() ? 'error' : undefined}
             />
             <Input
                 value={form.volume_name}
-                onChange={e => onVolumeFormChange(vol, {...form, volume_name: e.target.value, type: 'volume'})}
+                onChange={e => onVolumeFormChange(vol, {...form, volume_name: e.target.value})}
                 placeholder="标题" style={{width: 700}}
                 status={submitted && !form.volume_name.trim() ? 'error' : undefined}
             />

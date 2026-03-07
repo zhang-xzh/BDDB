@@ -1,12 +1,14 @@
 export const runtime = 'nodejs';
 
 import {NextRequest, NextResponse} from 'next/server';
-import {getAllVolumes, getAllTorrentsWithFiles, getVolumesByTorrent, saveVolume, deleteStaleVolumes, type Volume} from '@/lib/db';
+import {getVolumesByTorrent, saveVolume, deleteStaleVolumes} from '@/lib/db';
+import {getDb} from '@/lib/db/connection';
 
-interface VolumeWithFiles extends Volume {
-    torrent_name?: string;
-    files?: any[];
-}
+type VolumeRow = {
+    id: string; torrent_id: string; volume_no: number;
+    catalog_no: string; volume_name: string | null;
+    is_deleted: number; updated_at: number;
+};
 
 export async function GET(request: NextRequest) {
     try {
@@ -18,29 +20,22 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({success: true, data: JSON.stringify(volumes)});
         }
 
-        // 全量列表：关联 torrent 名称和文件信息
-        const [volumes, torrents] = await Promise.all([
-            getAllVolumes(),
-            getAllTorrentsWithFiles(),
-        ]);
+        // 全量列表：只返回 volume 元数据，文件按需展开时单独查询
+        const db = getDb();
+        const volumeRows = db.prepare(
+            'SELECT * FROM volumes WHERE is_deleted = 0 ORDER BY volume_no ASC'
+        ).all() as VolumeRow[];
 
-        // 以 torrent 内部 ID 为 key 建立索引（修正原先以 hash 为 key 的 Bug）
-        const torrentMap = new Map<string, any>();
-        const filesMap = new Map<string, any[]>();
-        for (const t of torrents) {
-            torrentMap.set(t.id!, t);
-            if (t.files) filesMap.set(t.id!, t.files);
-        }
-
-        const result: VolumeWithFiles[] = volumes.map(v => {
-            const torrent = torrentMap.get(v.torrent_id);
-            const files = filesMap.get(v.torrent_id) ?? [];
-            return {
-                ...v,
-                torrent_name: torrent?.name,
-                files: files.filter((f: any) => v.torrent_file_ids.includes(f.id)),
-            };
-        });
+        const result = volumeRows.map(v => ({
+            id: v.id,
+            torrent_id: v.torrent_id,
+            volume_no: v.volume_no,
+            catalog_no: v.catalog_no,
+            volume_name: v.volume_name ?? undefined,
+            is_deleted: Boolean(v.is_deleted),
+            updated_at: v.updated_at,
+            torrent_file_ids: [] as string[],
+        }));
 
         return NextResponse.json({success: true, data: JSON.stringify(result)});
     } catch (error) {
@@ -57,7 +52,6 @@ export async function POST(request: NextRequest) {
         const {torrent_id, volumes} = body as {
             torrent_id: string;
             volumes: Array<{
-                type?: 'volume' | 'box';
                 volume_no: number;
                 volume_name?: string;
                 catalog_no: string;
@@ -71,7 +65,6 @@ export async function POST(request: NextRequest) {
 
         for (const v of volumes) {
             await saveVolume(torrent_id, v.files, {
-                type: v.type,
                 volume_no: v.volume_no,
                 catalog_no: v.catalog_no,
                 volume_name: v.volume_name,

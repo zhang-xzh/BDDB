@@ -82,19 +82,17 @@ export interface Volume {
     id: string
     torrent_id: string
     torrent_file_ids: string[]
-    type?: 'volume' | 'box'
     volume_no: number
     catalog_no: string
     volume_name?: string
-    media_type?: 'DVD' | 'BD'
     is_deleted: boolean
     updated_at: number
+    files?: StoredFile[]
 }
 
 export interface VolumeForm {
     catalog_no: string
     volume_name: string
-    type?: 'volume' | 'box'
 }
 
 export interface NodeData {

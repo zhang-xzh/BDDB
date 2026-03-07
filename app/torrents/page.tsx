@@ -1,12 +1,11 @@
 "use client";
 
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {Card, Collapse, Divider, Empty, Flex, Input, Pagination, Select, Space, Spin, Switch, Tag, theme, Typography} from "antd";
+import {Card, Collapse, Empty, Flex, Input, Pagination, Select, Space, Spin, Switch, Tag, theme, Typography} from "antd";
 import {CheckCircleOutlined, CloseCircleOutlined} from "@ant-design/icons";
 import type {TorrentWithVolume} from "@/lib/db";
 import {fetchApi} from "@/lib/api";
-import {useDiscEditor} from "@/components/DiscEditor";
-import {DiscEditorContent} from "@/components/DiscEditor";
+import {DiscEditorContent, useDiscEditor} from "@/components/DiscEditor";
 
 // ─── Constants & Utilities ────────────────────────────────────────────────────
 
@@ -118,29 +117,29 @@ const TorrentFiltersBar: React.FC<{
       }) => {
     const {token} = theme.useToken()
     return (
-    <Card>
-        <Space wrap>
-            <Input.Search
-                value={searchText} onChange={e => onSearchTextChange(e.target.value)}
-                placeholder="搜索种子" style={{width: 250}} allowClear
-                suffix={
-                    <Switch checked={invertSearch} onChange={onInvertSearchChange}
-                            size="small" checkedChildren="反向" unCheckedChildren="反向"/>
-                }
-            />
-            <Select allowClear placeholder="类别" style={{width: 250}} value={filterCategory}
-                    onChange={onCategoryChange} options={categories.map(c => ({label: c, value: c}))}/>
-            <Select allowClear placeholder="是否处理" style={{width: 150}} value={filterHasVolumes}
-                    onChange={onHasVolumesChange}
-                    options={[{label: '已处理', value: true}, {label: '未处理', value: false}]}/>
-            <Typography.Text 
-              type="secondary"
-              style={{color: token.colorTextSecondary}}
-            >
-              共 {total} 条
-            </Typography.Text>
-        </Space>
-    </Card>
+        <Card>
+            <Space wrap>
+                <Input.Search
+                    value={searchText} onChange={e => onSearchTextChange(e.target.value)}
+                    placeholder="搜索种子" style={{width: 250}} allowClear
+                    suffix={
+                        <Switch checked={invertSearch} onChange={onInvertSearchChange}
+                                size="small" checkedChildren="反向" unCheckedChildren="反向"/>
+                    }
+                />
+                <Select allowClear placeholder="类别" style={{width: 250}} value={filterCategory}
+                        onChange={onCategoryChange} options={categories.map(c => ({label: c, value: c}))}/>
+                <Select allowClear placeholder="是否处理" style={{width: 150}} value={filterHasVolumes}
+                        onChange={onHasVolumesChange}
+                        options={[{label: '已处理', value: true}, {label: '未处理', value: false}]}/>
+                <Typography.Text
+                    type="secondary"
+                    style={{color: token.colorTextSecondary}}
+                >
+                    共 {total} 条
+                </Typography.Text>
+            </Space>
+        </Card>
     )
 }
 
@@ -151,42 +150,42 @@ const TorrentListHeader: React.FC = () => {
             padding: '12px 16px',
             background: token.colorFillAlter,
         }}>
-            <Typography.Text 
-              strong 
-              style={{
-                width: 56, 
-                flexShrink: 0,
-                color: token.colorTextHeading
-              }}
+            <Typography.Text
+                strong
+                style={{
+                    width: 56,
+                    flexShrink: 0,
+                    color: token.colorTextHeading
+                }}
             >
-              卷
+                卷
             </Typography.Text>
-            <Typography.Text 
-              strong 
-              style={{flex: 1, color: token.colorTextHeading}}
+            <Typography.Text
+                strong
+                style={{flex: 1, color: token.colorTextHeading}}
             >
-              名称
+                名称
             </Typography.Text>
-            <Typography.Text 
-              strong 
-              style={{
-                width: 200, 
-                flexShrink: 0,
-                color: token.colorTextHeading
-              }}
+            <Typography.Text
+                strong
+                style={{
+                    width: 200,
+                    flexShrink: 0,
+                    color: token.colorTextHeading
+                }}
             >
-              类别
+                类别
             </Typography.Text>
-            <Typography.Text 
-              strong 
-              style={{
-                width: 72, 
-                flexShrink: 0, 
-                textAlign: 'right',
-                color: token.colorTextHeading
-              }}
+            <Typography.Text
+                strong
+                style={{
+                    width: 72,
+                    flexShrink: 0,
+                    textAlign: 'right',
+                    color: token.colorTextHeading
+                }}
             >
-              大小
+                大小
             </Typography.Text>
         </Flex>
     )
@@ -201,31 +200,31 @@ const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume }> = ({torrent}) =>
                     ? <Tag icon={<CheckCircleOutlined/>} color="success" style={{margin: 0}}>{torrent.volumeCount}</Tag>
                     : <Tag icon={<CloseCircleOutlined/>} color="default" style={{margin: 0}}/>}
             </Flex>
-            <Typography.Text 
-              ellipsis 
-              style={{flex: 1, color: token.colorText}}
+            <Typography.Text
+                ellipsis
+                style={{flex: 1, color: token.colorText}}
             >
-              {torrent.name}
+                {torrent.name}
             </Typography.Text>
             <Flex style={{width: 200, flexShrink: 0, overflow: 'hidden'}}>
                 {torrent.category
                     ? <Tag color="blue" style={{margin: 0, maxWidth: '100%'}}>{torrent.category}</Tag>
-                    : <Typography.Text 
+                    : <Typography.Text
                         type="secondary"
                         style={{color: token.colorTextSecondary}}
-                      >
+                    >
                         —
-                      </Typography.Text>}
+                    </Typography.Text>}
             </Flex>
-            <Typography.Text 
-              type="secondary" 
-              style={{
-                width: 72, 
-                flexShrink: 0, 
-                textAlign: 'right', 
-                fontSize: 12,
-                color: token.colorTextSecondary
-              }}
+            <Typography.Text
+                type="secondary"
+                style={{
+                    width: 72,
+                    flexShrink: 0,
+                    textAlign: 'right',
+                    fontSize: 12,
+                    color: token.colorTextSecondary
+                }}
             >
                 {formatSize(torrent.size ?? 0)}
             </Typography.Text>
@@ -273,6 +272,7 @@ const TorrentCollapseList: React.FC<{
 
     return (
         <Collapse
+            expandIconPlacement={"end"}
             bordered={false} accordion activeKey={activeKey} onChange={onChange}
             items={collapseItems}
         />

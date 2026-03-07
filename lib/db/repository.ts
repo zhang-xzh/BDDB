@@ -35,8 +35,8 @@ interface FileRow {
 }
 
 interface VolumeRow {
-    id: string; torrent_id: string; type: string | null; volume_no: number; catalog_no: string
-    volume_name: string | null; media_type: string | null; is_deleted: number; updated_at: number
+    id: string; torrent_id: string; volume_no: number; catalog_no: string
+    volume_name: string | null; is_deleted: number; updated_at: number
 }
 
 // ─── Row converters ───────────────────────────────────────────────────────────
@@ -112,18 +112,17 @@ function rowToStoredFile(row: FileRow): StoredFile {
     }
 }
 
-function rowToVolume(row: VolumeRow, fileIds: string[]): Volume {
+function rowToVolume(row: VolumeRow, fileIds: string[], files?: StoredFile[]): Volume {
     return {
         id: row.id,
         torrent_id: row.torrent_id,
-        type: row.type as Volume['type'],
         volume_no: row.volume_no,
         catalog_no: row.catalog_no,
         volume_name: row.volume_name ?? undefined,
-        media_type: row.media_type as Volume['media_type'],
         is_deleted: Boolean(row.is_deleted),
         updated_at: row.updated_at,
         torrent_file_ids: fileIds,
+        ...(files !== undefined ? {files} : {}),
     }
 }
 
@@ -347,20 +346,35 @@ export async function softDeleteTorrentFiles(torrentId: string): Promise<void> {
 // ─── Volumes ──────────────────────────────────────────────────────────────────
 
 export async function getVolumesByTorrent(torrentId: string): Promise<Volume[]> {
-    const rows = getDb()
-        .prepare('SELECT * FROM volumes WHERE torrent_id = ? AND is_deleted = 0 ORDER BY volume_no ASC')
+    const db = getDb()
+    const rows = db.prepare('SELECT * FROM volumes WHERE torrent_id = ? AND is_deleted = 0 ORDER BY volume_no ASC')
         .all(torrentId) as VolumeRow[]
-    return rows.map(row => rowToVolume(row, getVolumeFileIds(row.id)))
+    
+    // 直接从 volume_files 表查询每个 volume 的文件详情
+    return rows.map(row => {
+        const fileIds = getVolumeFileIds(row.id)
+        const fileRows = db.prepare('SELECT tf.* FROM torrent_files tf INNER JOIN volume_files vf ON tf.id = vf.file_id WHERE vf.volume_id = ? AND tf.is_deleted = 0')
+            .all(row.id) as FileRow[]
+        return rowToVolume(row, fileIds, fileRows.map(rowToStoredFile))
+    })
 }
 
 export async function getVolumesByFile(fileId: string): Promise<Volume[]> {
-    const rows = getDb().prepare(`
+    const db = getDb()
+    const rows = db.prepare(`
         SELECT v.* FROM volumes v
         INNER JOIN volume_files vf ON vf.volume_id = v.id
         WHERE vf.file_id = ? AND v.is_deleted = 0
         ORDER BY v.volume_no ASC
     `).all(fileId) as VolumeRow[]
-    return rows.map(row => rowToVolume(row, getVolumeFileIds(row.id)))
+    
+    // 直接从 volume_files 表查询每个 volume 的文件详情
+    return rows.map(row => {
+        const fileIds = getVolumeFileIds(row.id)
+        const fileRows = db.prepare('SELECT tf.* FROM torrent_files tf INNER JOIN volume_files vf ON tf.id = vf.file_id WHERE vf.volume_id = ? AND tf.is_deleted = 0')
+            .all(row.id) as FileRow[]
+        return rowToVolume(row, fileIds, fileRows.map(rowToStoredFile))
+    })
 }
 
 export async function getAllVolumes(torrentId?: string): Promise<Volume[]> {
@@ -369,7 +383,14 @@ export async function getAllVolumes(torrentId?: string): Promise<Volume[]> {
         ? db.prepare('SELECT * FROM volumes WHERE is_deleted = 0 AND torrent_id = ? ORDER BY volume_no ASC').all(torrentId)
         : db.prepare('SELECT * FROM volumes WHERE is_deleted = 0').all()
     ) as VolumeRow[]
-    return rows.map(row => rowToVolume(row, getVolumeFileIds(row.id)))
+    
+    // 直接从 volume_files 表查询每个 volume 的文件详情
+    return rows.map(row => {
+        const fileIds = getVolumeFileIds(row.id)
+        const fileRows = db.prepare('SELECT tf.* FROM torrent_files tf INNER JOIN volume_files vf ON tf.id = vf.file_id WHERE vf.volume_id = ? AND tf.is_deleted = 0')
+            .all(row.id) as FileRow[]
+        return rowToVolume(row, fileIds, fileRows.map(rowToStoredFile))
+    })
 }
 
 export function getVolumeCounts(): Map<string, number> {
@@ -393,14 +414,14 @@ export async function saveVolume(torrentId: string, files: string[], data: Parti
 
         if (existing) {
             db.prepare(`
-                UPDATE volumes SET type = ?, catalog_no = ?, volume_name = ?, media_type = ?, updated_at = ?
+                UPDATE volumes SET catalog_no = ?, volume_name = ?, updated_at = ?
                 WHERE id = ?
-            `).run(data.type ?? null, data.catalog_no ?? '', data.volume_name ?? null, data.media_type ?? null, ts, volumeId)
+            `).run(data.catalog_no ?? '', data.volume_name ?? null, ts, volumeId)
         } else {
             db.prepare(`
-                INSERT INTO volumes (id, torrent_id, type, volume_no, catalog_no, volume_name, media_type, is_deleted, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
-            `).run(volumeId, torrentId, data.type ?? null, data.volume_no ?? 0, data.catalog_no ?? '', data.volume_name ?? null, data.media_type ?? null, ts)
+                INSERT INTO volumes (id, torrent_id, volume_no, catalog_no, volume_name, is_deleted, updated_at)
+                VALUES (?, ?, ?, ?, ?, 0, ?)
+            `).run(volumeId, torrentId, data.volume_no ?? 0, data.catalog_no ?? '', data.volume_name ?? null, ts)
         }
 
         db.prepare('DELETE FROM volume_files WHERE volume_id = ?').run(volumeId)

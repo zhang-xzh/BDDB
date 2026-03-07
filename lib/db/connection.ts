@@ -99,11 +99,9 @@ function initSchema(db: Database.Database): void {
         CREATE TABLE IF NOT EXISTS volumes (
             id           TEXT PRIMARY KEY,
             torrent_id   TEXT NOT NULL REFERENCES torrents(id),
-            type         TEXT,
             volume_no    INTEGER NOT NULL,
             catalog_no   TEXT NOT NULL,
             volume_name  TEXT,
-            media_type   TEXT,
             is_deleted   INTEGER NOT NULL DEFAULT 0,
             updated_at   INTEGER NOT NULL
         );
