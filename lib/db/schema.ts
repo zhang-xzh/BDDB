@@ -93,6 +93,8 @@ export interface Volume {
 export interface VolumeForm {
     catalog_no: string
     volume_name: string
+    type?: 'volume' | 'box'
+    media_type?: 'BD' | 'DVD'
 }
 
 export type MediaType = 'bd' | 'dvd' | 'cd' | 'scan'

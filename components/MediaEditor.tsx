@@ -1,28 +1,10 @@
 'use client'
 
-import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from 'react'
-import type {FileItem, MediaType, Media, MediaForm, NodeData} from '@/lib/db'
+import React, {useCallback, useEffect, useMemo, useRef, useState,} from 'react'
+import type {FileItem, Media, MediaForm, MediaType, NodeData} from '@/lib/db'
 import {fetchApi, postApi} from '@/lib/api'
-import {buildTree, FlatTree} from '@/lib/format'
-import {
-    Button,
-    Card,
-    Empty,
-    Input,
-    message,
-    Select,
-    Space,
-    Spin,
-    Switch,
-    Tree,
-    Typography,
-} from 'antd'
+import {buildTree, FlatTree} from '@/lib/utils'
+import {Button, Card, Empty, Input, message, Select, Space, Spin, Switch, Tree, Typography,} from 'antd'
 import {DeleteOutlined} from '@ant-design/icons'
 import type {DataNode} from 'antd/es/tree'
 
@@ -92,7 +74,7 @@ interface UseMediaEditorReturn {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const MEDIA_TYPES: {value: MediaType; label: string}[] = [
+const MEDIA_TYPES: { value: MediaType; label: string }[] = [
     {value: 'bd', label: 'BD'},
     {value: 'dvd', label: 'DVD'},
     {value: 'cd', label: 'CD'},

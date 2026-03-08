@@ -3,23 +3,8 @@
 import React, {forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState,} from 'react'
 import type {FileItem, NodeData, VolumeForm} from '@/lib/db'
 import {fetchApi, postApi} from '@/lib/api'
-import {buildTree, FlatTree} from '@/lib/format'
-import {
-    Button,
-    Card,
-    Cascader,
-    Empty,
-    Input,
-    InputNumber,
-    message,
-    Modal,
-    Select,
-    Space,
-    Spin,
-    Switch,
-    Tree,
-    Typography,
-} from 'antd'
+import {buildTree, FlatTree} from '@/lib/utils'
+import {Button, Card, Cascader, Empty, Input, InputNumber, message, Modal, Select, Space, Spin, Switch, Tree, Typography,} from 'antd'
 import {DeleteOutlined} from '@ant-design/icons'
 import type {DataNode} from 'antd/es/tree'
 

@@ -11,19 +11,19 @@
 
 ### Core Types
 
-| Type               | Description                                         |
-|--------------------|-----------------------------------------------------|
-| `Torrent`          | Torrent record (flat QB fields + metadata)          |
-| `TorrentWithVolume`| `Torrent` extended with `hasVolumes`/`volumeCount`  |
-| `TorrentRecord`    | `Torrent` + embedded `files[]` (for upsert)         |
-| `StoredFile`       | File record (in torrent_files table)                |
-| `Volume`           | Disc/BOX metadata + optional `files[]`              |
-| `VolumeForm`       | Form data for volume editing                        |
-| `MediaType`        | `'bd' \| 'dvd' \| 'cd' \| 'scan'`                  |
-| `Media`            | Media entry within a volume                         |
-| `MediaForm`        | Form data for media editing                         |
-| `NodeData`         | Per-tree-node assignment state                      |
-| `FileItem`         | Simplified file for editor tree display             |
+| Type                | Description                                        |
+|---------------------|----------------------------------------------------|
+| `Torrent`           | Torrent record (flat QB fields + metadata)         |
+| `TorrentWithVolume` | `Torrent` extended with `hasVolumes`/`volumeCount` |
+| `TorrentRecord`     | `Torrent` + embedded `files[]` (for upsert)        |
+| `StoredFile`        | File record (in torrent_files table)               |
+| `Volume`            | Disc/BOX metadata + optional `files[]`             |
+| `VolumeForm`        | Form data for volume editing                       |
+| `MediaType`         | `'bd' \| 'dvd' \| 'cd' \| 'scan'`                  |
+| `Media`             | Media entry within a volume                        |
+| `MediaForm`         | Form data for media editing                        |
+| `NodeData`          | Per-tree-node assignment state                     |
+| `FileItem`          | Simplified file for editor tree display            |
 
 ## Storage Conventions
 
@@ -200,5 +200,5 @@ QB_PASS=password           # qBittorrent password
 - `lib/db/repository.ts` — CRUD operations
 - `lib/db/index.ts` — Entry point (import everything from here via `@/lib/db`)
 - `lib/api.ts` — Frontend API utilities (fetchApi, postApi)
-- `lib/format.ts` — Shared utilities (PAGE_SIZE, formatSize, buildTree, FlatTree, NodePath)
+- `lib/utils.ts` — Shared utilities (PAGE_SIZE, formatSize, buildTree, FlatTree, NodePath)
 - `lib/qb.ts` — qBittorrent client (getQbClient, syncTorrentsFromQb)

@@ -6,7 +6,7 @@ import {CheckCircleOutlined, CloseCircleOutlined} from "@ant-design/icons";
 import type {Volume} from "@/lib/db";
 import {fetchApi} from "@/lib/api";
 import MediaEditorContent, {useMediaEditor} from '@/components/MediaEditor';
-import {PAGE_SIZE} from "@/lib/format";
+import {PAGE_SIZE} from "@/lib/utils";
 import ListPagination from "@/components/ListPagination";
 import {useEditorPanel} from "@/components/useEditorPanel";
 import CollapsePageList, {ExpandBlocker, ListHeader} from "@/components/CollapsePageList";
@@ -78,7 +78,6 @@ function useVolumeListView(volumes: VolumeWithMedia[]) {
 }
 
 
-
 // ─── Components ───────────────────────────────────────────────────────────────
 
 const VolumeFiltersBar: React.FC<{
@@ -91,9 +90,9 @@ const VolumeFiltersBar: React.FC<{
     onInvertTitleChange: (v: boolean) => void
     onFilterHasMediaChange: (v: boolean | undefined) => void
 }> = ({
-    searchCatalogNo, searchTitle, invertTitle, filterHasMedia, total,
-    onSearchCatalogNoChange, onSearchTitleChange, onInvertTitleChange, onFilterHasMediaChange
-}) => {
+          searchCatalogNo, searchTitle, invertTitle, filterHasMedia, total,
+          onSearchCatalogNoChange, onSearchTitleChange, onInvertTitleChange, onFilterHasMediaChange
+      }) => {
     const {token} = theme.useToken()
     return (
         <Card>
@@ -170,8 +169,6 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithMedia; isExpanded: boolean }>
 }
 
 
-
-
 const VolumePage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [volumes, setVolumes] = useState<VolumeWithMedia[]>([]);
@@ -238,7 +235,7 @@ const VolumePage: React.FC = () => {
                     onFilterHasMediaChange={setFilterHasMedia}
                 />
                 <Card>
-                    <Empty description={hasActiveFilters ? "无匹配结果" : "暂无卷数据"} />
+                    <Empty description={hasActiveFilters ? "无匹配结果" : "暂无卷数据"}/>
                 </Card>
             </Flex>
         )

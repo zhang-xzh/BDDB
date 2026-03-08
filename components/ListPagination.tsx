@@ -1,6 +1,6 @@
 import React from 'react'
 import {Flex, Pagination} from 'antd'
-import {PAGE_SIZE} from '@/lib/format'
+import {PAGE_SIZE} from '@/lib/utils'
 
 const ListPagination: React.FC<{
     currentPage: number

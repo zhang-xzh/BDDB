@@ -6,7 +6,7 @@ import {CheckCircleOutlined, CloseCircleOutlined} from "@ant-design/icons";
 import type {TorrentWithVolume} from "@/lib/db";
 import {fetchApi} from "@/lib/api";
 import {DiscEditorContent, useDiscEditor} from "@/components/DiscEditor";
-import {PAGE_SIZE, formatSize} from "@/lib/format";
+import {formatSize, PAGE_SIZE} from "@/lib/utils";
 import ListPagination from "@/components/ListPagination";
 import {useEditorPanel} from "@/components/useEditorPanel";
 import CollapsePageList, {ExpandBlocker, ListHeader} from "@/components/CollapsePageList";
@@ -62,7 +62,6 @@ function useTorrentListView(torrents: TorrentWithVolume[]) {
         currentPage, setCurrentPage, categories, filteredTorrents, pagedTorrents,
     }
 }
-
 
 
 // ─── Components ───────────────────────────────────────────────────────────────
