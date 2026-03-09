@@ -3,7 +3,7 @@
 import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {Card, Empty, Flex, Input, Select, Space, Spin, Switch, Tag, theme, Typography} from "antd";
 import {CheckCircleOutlined, CloseCircleOutlined} from "@ant-design/icons";
-import type {Volume, Media} from "@/lib/mongodb";
+import type {Volume} from "@/lib/mongodb";
 import {fetchApi} from "@/lib/api";
 import MediaEditorContent, {useMediaEditor} from '@/components/MediaEditor';
 import {PAGE_SIZE} from "@/lib/utils";
@@ -176,20 +176,9 @@ const VolumePage: React.FC = () => {
     const refreshVolumes = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetchApi<Volume[]>("/api/volumes");
+            const res = await fetchApi<VolumeWithMedia[]>("/api/volumes");
             if (res.success && res.data) {
-                const loadedVolumes = res.data;
-                const volumesWithMedia = await Promise.all(
-                    loadedVolumes.map(async (v) => {
-                        const mediaRes = await fetchApi<Media[]>(`/api/volumes/${v._id}/medias`);
-                        let mediaCount = 0;
-                        if (mediaRes?.success && mediaRes.data) {
-                            mediaCount = mediaRes.data.length;
-                        }
-                        return {...v, mediaCount} as VolumeWithMedia;
-                    })
-                );
-                setVolumes(volumesWithMedia);
+                setVolumes(res.data);
             }
         } catch (err) {
             console.error("获取卷数据失败:", err);

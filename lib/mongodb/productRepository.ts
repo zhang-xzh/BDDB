@@ -109,7 +109,27 @@ export async function getProductByModelNumber(modelNumber: string): Promise<Mong
 }
 
 /**
- * 根据标题搜索产品
+ * 根据型番列表批量查询产品（用于 volume 列表关联）
+ * @param modelNumbers 型番数组 (= bddb_volumes.catalog_no)
+ */
+export async function getProductsByModelNumbers(modelNumbers: string[]): Promise<Map<string, MongoProduct>> {
+    try {
+        const collection = getProductsCollection()
+        const products = await collection
+            .find({'attributes.型番': {$in: modelNumbers}})
+            .toArray()
+        const map = new Map<string, MongoProduct>()
+        for (const p of products) {
+            if (p.attributes.型番) map.set(p.attributes.型番, p)
+        }
+        return map
+    } catch (error) {
+        console.error('[mongodb] getProductsByModelNumbers error:', error)
+        return new Map()
+    }
+}
+
+
  * @param title 标题关键词
  * @param limit 返回数量限制
  */

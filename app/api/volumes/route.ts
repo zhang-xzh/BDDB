@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
 import {NextRequest, NextResponse} from 'next/server';
-import {getVolumesByTorrent, saveVolumeCompat as saveVolume, deleteStaleVolumes, getAllVolumes} from '@/lib/mongodb';
+import {getVolumesByTorrent, saveVolumeCompat as saveVolume, deleteStaleVolumes, getAllVolumes, getMediaCountsByVolume} from '@/lib/mongodb';
 
 export async function GET(request: NextRequest) {
     try {
@@ -18,13 +18,17 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({success: true, data: result});
         }
 
-        const allVolumes = await getAllVolumes();
-        const result = allVolumes.map(v => ({
-            ...v,
-            _id: v._id.toString(),
-            torrent_id: v.torrent_id.toString(),
-            file_ids: v.file_ids.map(id => id.toString()),
-        }));
+        const [allVolumes, mediaCounts] = await Promise.all([getAllVolumes(), getMediaCountsByVolume()]);
+        const result = allVolumes.map(v => {
+            const id = v._id.toString()
+            return {
+                ...v,
+                _id: id,
+                torrent_id: v.torrent_id.toString(),
+                file_ids: v.file_ids.map(id => id.toString()),
+                mediaCount: mediaCounts.get(id) ?? 0,
+            }
+        });
 
         return NextResponse.json({success: true, data: result});
     } catch (error) {

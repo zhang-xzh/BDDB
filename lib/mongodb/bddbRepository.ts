@@ -149,7 +149,7 @@ export async function getAllTorrents(includeDeleted = false): Promise<BddbTorren
     try {
         const collection = getTorrentsCollection()
         const filter: Filter<BddbTorrent> = includeDeleted ? {} : {is_deleted: false}
-        return await collection.find(filter).sort({added_on: -1}).toArray()
+        return await collection.find(filter, {projection: {files: 0}}).sort({added_on: -1}).toArray() as BddbTorrent[]
     } catch (error) {
         console.error('[mongodb] getAllTorrents error:', error)
         return []
@@ -498,6 +498,27 @@ export async function getVolumeCounts(): Promise<Map<string, number>> {
 }
 
 // ─── 媒体相关 ─────────────────────────────────────────────────────────────────
+
+/**
+ * 获取所有 volume 的媒体数量（聚合，用于列表页）
+ */
+export async function getMediaCountsByVolume(): Promise<Map<string, number>> {
+    try {
+        const collection = getMediasCollection()
+        const result = await collection.aggregate([
+            {$match: {is_deleted: false}},
+            {$group: {_id: '$volume_id', count: {$sum: 1}}},
+        ]).toArray()
+        const counts = new Map<string, number>()
+        for (const item of result) {
+            counts.set(item._id.toString(), item.count)
+        }
+        return counts
+    } catch (error) {
+        console.error('[mongodb] getMediaCountsByVolume error:', error)
+        return new Map()
+    }
+}
 
 /**
  * 根据 volume_id 获取媒体列表（不包含软删除）
