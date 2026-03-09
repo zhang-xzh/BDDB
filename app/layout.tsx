@@ -2,10 +2,12 @@
 
 import React, {useEffect, useState} from 'react'
 import {App, Button, ConfigProvider, Divider, Layout, Menu, theme, Typography} from 'antd'
+import SiderContent from '@/components/SiderContent'
 import {MoonOutlined, SunOutlined} from '@ant-design/icons'
 import {usePathname, useRouter} from 'next/navigation'
 import zhCN from 'antd/locale/zh_CN'
 import './globals.css'
+import Sider from "antd/es/layout/Sider";
 
 const {Header, Content, Footer} = Layout
 const {Title, Text} = Typography
@@ -48,18 +50,26 @@ function AppLayout({children, isDark, onToggle}: {
                         onClick={onToggle}
                     />
                 </Header>
-
-                <Content
-                    style={{
-                        margin: 24,
+                <Layout>
+                    <Sider width="25%" style={{
+                        margin: '24px 12px 24px 24px',
                         padding: 24,
                         background: token.colorBgContainer,
                         borderRadius: token.borderRadiusLG,
-                    }}
-                >
-                    {children}
-                </Content>
-
+                    }}>
+                        <SiderContent/>
+                    </Sider>
+                    <Content
+                        style={{
+                            margin: '24px 24px 24px 12px',
+                            padding: 24,
+                            background: token.colorBgContainer,
+                            borderRadius: token.borderRadiusLG,
+                        }}
+                    >
+                        {children}
+                    </Content>
+                </Layout>
                 <Footer style={{textAlign: 'center', background: token.colorBgContainer}}>
                     <Text type="secondary">
                         BDDB - Next.js Version © {new Date().getFullYear()}
