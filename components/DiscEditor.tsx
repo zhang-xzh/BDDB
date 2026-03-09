@@ -1,7 +1,7 @@
 'use client'
 
 import React, {forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState,} from 'react'
-import type {FileItem, NodeData, VolumeForm} from '@/lib/db'
+import type {FileItem, NodeData, VolumeForm, TorrentWithVolume, Volume} from '@/lib/mongodb'
 import {fetchApi, postApi} from '@/lib/api'
 import {buildTree, FlatTree} from '@/lib/utils'
 import {Button, Card, Cascader, Empty, Input, InputNumber, message, Modal, Select, Space, Spin, Switch, Tree, Typography,} from 'antd'
@@ -240,27 +240,27 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
         resetAll()
         try {
             const [torrentResult, dbFilesResult] = await Promise.all([
-                fetchApi<string>(`/api/qb/torrents/info?hash=${torrentHash}`),
-                fetchApi<string>(`/api/torrents/files?hash=${torrentHash}`),
+                fetchApi<TorrentWithVolume[]>(`/api/qb/torrents/info?hash=${torrentHash}`),
+                fetchApi<FileItem[]>(`/api/torrents/files?hash=${torrentHash}`),
             ])
             if (!torrentResult?.success || !torrentResult.data) {
                 setLoading(false);
                 return
             }
-            const torrent = JSON.parse(torrentResult.data)?.[0]
+            const torrent = torrentResult.data?.[0]
             if (!torrent) {
                 setLoading(false);
                 return
             }
 
-            const tid = torrent.id
+            const tid = torrent._id
             setTorrentId(tid)
-            const volumesPromise = tid != null ? fetchApi<string>(`/api/volumes?torrent_id=${tid}`) : Promise.resolve(null)
+            const volumesPromise = tid != null ? fetchApi<Volume[]>(`/api/volumes?torrent_id=${tid}`) : Promise.resolve(null)
 
-            let loadedFiles: FileItem[] = dbFilesResult?.success && dbFilesResult.data ? JSON.parse(dbFilesResult.data) : []
+            let loadedFiles: FileItem[] = dbFilesResult?.success && dbFilesResult.data ? dbFilesResult.data : []
             if (loadedFiles.length === 0 || syncFiles) {
-                const r = await fetchApi<string>(`/api/qb/torrents/files?hash=${torrentHash}`)
-                if (r?.success && r.data) loadedFiles = JSON.parse(r.data)
+                const r = await fetchApi<FileItem[]>(`/api/qb/torrents/files?hash=${torrentHash}`)
+                if (r?.success && r.data) loadedFiles = r.data
             }
             if (loadedFiles.length === 0) {
                 setLoading(false);
@@ -285,7 +285,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
 
             const volResult = await volumesPromise
             if (volResult?.success && volResult.data) {
-                const volumes = JSON.parse(volResult.data)
+                const volumes = volResult.data
                 if (volumes?.length > 0) {
                     const newVolumeForms: Record<number, VolumeForm> = {}
                     const fileToVolMap = new Map<string, number[]>()
@@ -296,7 +296,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
                             catalog_no: vol.catalog_no || '',
                             volume_name: vol.volume_name || '',
                         }
-                        vol.torrent_file_ids?.forEach((fid: string) => {
+                        vol.file_ids?.forEach((fid: string) => {
                             if (!fileToVolMap.has(fid)) fileToVolMap.set(fid, [])
                             fileToVolMap.get(fid)!.push(vn)
                         })

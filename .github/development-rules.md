@@ -4,23 +4,22 @@
 
 ### Type Consistency
 
-- Frontend/backend/storage use **same types** from `lib/db/schema.ts`
+- Frontend/backend/storage use **same types** from `lib/mongodb/bddbRepository.ts`
 - Field names must be **identical** across all layers
 - **Never create duplicate types** in other files
-- Always import types from `@/lib/db` (re-exports schema)
+- Always import types from `@/lib/mongodb`
 
 ### Core Types
 
 | Type                | Description                                        |
 |---------------------|----------------------------------------------------|
-| `Torrent`           | Torrent record (flat QB fields + metadata)         |
+| `BddbTorrent`       | Torrent record (flat QB fields + metadata)         |
 | `TorrentWithVolume` | `Torrent` extended with `hasVolumes`/`volumeCount` |
-| `TorrentRecord`     | `Torrent` + embedded `files[]` (for upsert)        |
-| `StoredFile`        | File record (in torrent_files table)               |
-| `Volume`            | Disc/BOX metadata + optional `files[]`             |
+| `BddbTorrentFile`   | Embedded file record in torrent.files              |
+| `BddbVolume`        | Disc/BOX metadata                                   |
 | `VolumeForm`        | Form data for volume editing                       |
 | `MediaType`         | `'bd' \| 'dvd' \| 'cd' \| 'scan'`                  |
-| `Media`             | Media entry within a volume                        |
+| `BddbMedia`         | Media entry within a volume                        |
 | `MediaForm`         | Form data for media editing                        |
 | `NodeData`          | Per-tree-node assignment state                     |
 | `FileItem`          | Simplified file for editor tree display            |
@@ -29,40 +28,39 @@
 
 ### Architecture
 
-- **Storage**: SQLite via `better-sqlite3` (WAL mode, single file `data/bddb.sqlite`)
-- **Connection**: `lib/db/connection.ts` — `getDb()` returns a global singleton
-- **Pattern**: Repository pattern in `lib/db/repository.ts`
+- **Storage**: MongoDB via `mongodb` driver
+- **Connection**: `lib/mongodb/connection.ts` — `getMongoClient()` returns a global singleton
+- **Pattern**: Repository pattern in `lib/mongodb/bddbRepository.ts`
 - **Required fields**: All records must include `is_deleted: boolean` and `updated_at: number` (volumes/medias) or `synced_at: number` (torrents/files)
 
 ### Repository Functions
 
-Key functions exported from `lib/db/repository.ts`:
+Key functions exported from `lib/mongodb/bddbRepository.ts`:
 
 ```typescript
 // Torrents
 getTorrent(hash)                          // → Torrent | null
-getTorrentByHash(hash)                    // → TorrentRecord | null
-getAllTorrents(includeDeleted?)           // → Torrent[]
-getAllTorrentsWithFiles(includeDeleted?)  // → (Torrent & {files})[]
-upsertTorrent(record: TorrentRecord)
+getTorrentByHash(hash)                    // → BddbTorrent | null
+getAllTorrents(includeDeleted?)           // → BddbTorrent[]
+upsertTorrent(record: BddbTorrent)
 softDeleteTorrent(hash)
 
 // Torrent Files
-saveTorrentFiles(torrentId, files)
-getTorrentFilesAsFileItems(torrentId)    // → FileItem[]
+saveTorrentFiles(torrentId, files)        // updates embedded files
+getTorrentFilesAsFileItems(torrentId)     // → FileItem[]
 softDeleteTorrentFiles(torrentId)
 
 // Volumes
-getAllVolumes(torrentId?)               // → Volume[]
-getVolumesByTorrent(torrentId)         // → Volume[]
-getVolumesByFile(fileId)               // → Volume[]
+getAllVolumes(torrentId?)              // → BddbVolume[]
+getVolumesByTorrentId(torrentId)       // → BddbVolume[]
+getVolumesByFileId(fileId)             // → BddbVolume[]
 getVolumeCounts()                      // → Map<torrentId, count>
-saveVolume(torrentId, files, data)
+saveVolumeCompat(torrentId, files, data)
 deleteStaleVolumes(torrentId, keepVolumeNos)
 
 // Medias
-getMediasByVolume(volumeId)            // → Media[]
-saveMedia(volumeId, files, data)
+getMediasByVolumeId(volumeId)          // → BddbMedia[]
+saveMediaCompat(volumeId, files, data)
 deleteStaleMedias(volumeId, keepMedias)
 
 // Misc
@@ -71,24 +69,22 @@ clearAllData()
 
 ### Accessing the Database
 
-Always import from `@/lib/db` — never import directly from `@/lib/db/connection`:
+Always import from `@/lib/mongodb`:
 
 ```typescript
-import {getDb, getAllTorrents, saveVolume} from '@/lib/db';
+import {getMongoCollection, getAllTorrents, saveVolumeCompat} from '@/lib/mongodb';
 
-// Raw SQL when repository functions don't cover the use case
-const db = getDb();
-const rows = db.prepare('SELECT * FROM torrents WHERE is_deleted = 0').all();
+const torrentsCollection = getMongoCollection('bddb_torrents');
+const rows = await torrentsCollection.find({is_deleted: false}).toArray();
 
 // Prefer repository functions when available
 const torrents = await getAllTorrents();
-await saveVolume(torrentId, fileIds, data);
+await saveVolumeCompat(torrentId, fileIds, data);
 ```
 
-### WAL Checkpoint
+### Store Flush API
 
-The `store/flush` API triggers a WAL checkpoint (`PASSIVE` mode) to merge WAL into the main database file.
-SQLite WAL writes are durable without checkpoint — checkpoint is optional maintenance.
+The `store/flush` API is a no-op in MongoDB mode and returns success for compatibility.
 
 ## API Conventions
 
@@ -190,15 +186,14 @@ QB_PASS=password           # qBittorrent password
 
 - **TypeScript strict mode**: Minimize `any` types
 - **Error boundaries**: Always handle potential errors
-- **Type safety**: Use type assertions from `lib/db/schema.ts`
+- **Type safety**: Use type assertions from `lib/mongodb/bddbRepository.ts`
 - **Consistency**: Follow existing patterns in the codebase
 
 ## Key Reference Files
 
-- `lib/db/schema.ts` — Type definitions (single source of truth)
-- `lib/db/connection.ts` — SQLite connection + schema init
-- `lib/db/repository.ts` — CRUD operations
-- `lib/db/index.ts` — Entry point (import everything from here via `@/lib/db`)
+- `lib/mongodb/bddbRepository.ts` — Type definitions + CRUD operations
+- `lib/mongodb/connection.ts` — MongoDB connection helpers
+- `lib/mongodb/index.ts` — Entry point (import everything from here via `@/lib/mongodb`)
 - `lib/api.ts` — Frontend API utilities (fetchApi, postApi)
 - `lib/utils.ts` — Shared utilities (PAGE_SIZE, formatSize, buildTree, FlatTree, NodePath)
 - `lib/qb.ts` — qBittorrent client (getQbClient, syncTorrentsFromQb)

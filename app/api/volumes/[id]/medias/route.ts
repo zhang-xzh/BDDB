@@ -1,8 +1,8 @@
 export const runtime = 'nodejs';
 
 import {NextRequest, NextResponse} from 'next/server';
-import {getMediasByVolume, saveMedia, deleteStaleMedias} from '@/lib/db';
-import type {MediaType} from '@/lib/db';
+import {getMediasByVolume, saveMediaCompat as saveMedia, deleteStaleMedias} from '@/lib/mongodb';
+import type {MediaType} from '@/lib/mongodb';
 
 export async function GET(
     request: NextRequest,
@@ -11,7 +11,13 @@ export async function GET(
     try {
         const {id: volumeId} = await params;
         const medias = await getMediasByVolume(volumeId);
-        return NextResponse.json({success: true, data: JSON.stringify(medias)});
+        const result = medias.map(m => ({
+            ...m,
+            _id: m._id.toString(),
+            volume_id: m.volume_id.toString(),
+            file_ids: m.file_ids.map(id => id.toString()),
+        }))
+        return NextResponse.json({success: true, data: result});
     } catch (error) {
         return NextResponse.json(
             {success: false, error: error instanceof Error ? error.message : 'Unknown error'},
@@ -50,7 +56,7 @@ export async function POST(
             });
         }
 
-        deleteStaleMedias(
+        await deleteStaleMedias(
             volumeId,
             medias.map(m => ({media_no: m.media_no, media_type: m.media_type}))
         );

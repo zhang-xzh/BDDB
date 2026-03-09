@@ -1,5 +1,5 @@
 import {NextRequest, NextResponse} from 'next/server'
-import {getTorrent, getTorrentFilesAsFileItems, saveTorrentFiles} from '@/lib/db'
+import {getTorrent, getTorrentFilesAsFileItems, saveTorrentFiles} from '@/lib/mongodb'
 import {getQbClient} from '@/lib/qb'
 
 export const runtime = 'nodejs'
@@ -20,11 +20,10 @@ export async function GET(request: NextRequest) {
         const qbFiles = await qb.torrentFiles(hash)
         const files = qbFiles || []
 
-        // Save files using flat fields; upserts by (torrent_id, name) to preserve IDs
-        await saveTorrentFiles(torrent.id!, files)
+        await saveTorrentFiles(torrent._id, files)
 
-        const dbFiles = await getTorrentFilesAsFileItems(torrent.id!)
-        return NextResponse.json({success: true, data: JSON.stringify(dbFiles)})
+        const dbFiles = await getTorrentFilesAsFileItems(torrent._id)
+        return NextResponse.json({success: true, data: dbFiles})
     } catch (error: any) {
         return NextResponse.json({success: false, error: error.message})
     }

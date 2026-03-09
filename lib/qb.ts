@@ -1,7 +1,7 @@
 import {QBittorrent} from "@ctrl/qbittorrent";
-import {customAlphabet} from "nanoid";
-import type {StoredFile, TorrentRecord} from "@/lib/db";
-import {getTorrentByHash, upsertTorrent} from "@/lib/db";
+import type {BddbTorrent, BddbTorrentFile} from "@/lib/mongodb";
+import {getTorrentByHash, upsertTorrent} from "@/lib/mongodb";
+import {ObjectId} from "mongodb";
 
 let qbClient: QBittorrent | null = null;
 
@@ -16,7 +16,6 @@ export function getQbClient() {
 }
 
 const now = () => Math.floor(Date.now() / 1000);
-const generateId = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 16);
 
 export async function syncTorrentsFromQb() {
     const client = getQbClient();
@@ -26,15 +25,14 @@ export async function syncTorrentsFromQb() {
         const ts = now();
 
         const newTorrents: any[] = [];
-        const updatedRecords: TorrentRecord[] = [];
+        const updatedRecords: BddbTorrent[] = [];
 
         for (const t of torrents) {
             const existing = await getTorrentByHash(t.hash);
             if (existing) {
-                // Update flat QB fields in place
                 existing.name = t.name;
                 existing.size = t.size;
-                existing.progress = t.progress != null ? t.progress * 100 : undefined;
+                existing.progress = t.progress != null ? t.progress * 100 : existing.progress;
                 existing.state = t.state;
                 existing.num_seeds = t.num_seeds;
                 existing.num_leechs = t.num_leechs;
@@ -68,25 +66,27 @@ export async function syncTorrentsFromQb() {
 
             await Promise.all(
                 newTorrents.map(async ({hash, qbTorrent, addedOn}) => {
-                    const files: StoredFile[] = (fileMap.get(hash) ?? []).map(f => ({
-                        id: generateId(),
-                        is_deleted: false,
-                        synced_at: ts,
+                    const files: BddbTorrentFile[] = (fileMap.get(hash) ?? []).map(f => ({
+                        _id: new ObjectId(),
                         name: f.name,
                         size: f.size,
                         progress: f.progress,
                         priority: f.priority,
                         is_seed: f.is_seed,
-                        piece_range: f.piece_range ?? null,
+                        piece_range: f.piece_range ?? [0, 0],
                         availability: f.availability,
-                    }));
+                        created_at: ts,
+                        updated_at: ts,
+                    } as BddbTorrentFile));
 
-                    const record: TorrentRecord = {
-                        id: generateId(),
+                    const record = {
+                        _id: new ObjectId(),
                         hash,
                         added_on: addedOn,
                         is_deleted: false,
                         synced_at: ts,
+                        created_at: ts,
+                        updated_at: ts,
                         name: qbTorrent.name,
                         size: qbTorrent.size,
                         progress: qbTorrent.progress != null ? qbTorrent.progress * 100 : undefined,
@@ -99,7 +99,7 @@ export async function syncTorrentsFromQb() {
                         downloaded: qbTorrent.downloaded,
                         category: qbTorrent.category || '',
                         files,
-                    };
+                    } as BddbTorrent;
 
                     await upsertTorrent(record);
                 })

@@ -1,5 +1,5 @@
 import {NextRequest, NextResponse} from 'next/server'
-import {getTorrent, softDeleteTorrent, softDeleteTorrentFiles} from '@/lib/db'
+import {getTorrent, softDeleteTorrent, softDeleteTorrentFiles} from '@/lib/mongodb'
 
 export const runtime = 'nodejs'
 
@@ -11,10 +11,9 @@ export async function POST(request: NextRequest) {
         }
         await softDeleteTorrent(hash)
 
-        // 获取 torrent id 再删除文件
         const torrent = await getTorrent(hash)
-        if (torrent?.id) {
-            await softDeleteTorrentFiles(torrent.id)
+        if (torrent?._id) {
+            await softDeleteTorrentFiles(torrent._id)
         }
 
         return NextResponse.json({success: true, data: 'deleted'})

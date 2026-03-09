@@ -3,7 +3,7 @@
 import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {Card, Empty, Flex, Input, Select, Space, Spin, Switch, Tag, theme, Typography} from "antd";
 import {CheckCircleOutlined, CloseCircleOutlined} from "@ant-design/icons";
-import type {Volume} from "@/lib/db";
+import type {Volume, Media} from "@/lib/mongodb";
 import {fetchApi} from "@/lib/api";
 import MediaEditorContent, {useMediaEditor} from '@/components/MediaEditor';
 import {PAGE_SIZE} from "@/lib/utils";
@@ -176,16 +176,15 @@ const VolumePage: React.FC = () => {
     const refreshVolumes = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetchApi<string>("/api/volumes");
+            const res = await fetchApi<Volume[]>("/api/volumes");
             if (res.success && res.data) {
-                const loadedVolumes = JSON.parse(res.data) as Volume[];
+                const loadedVolumes = res.data;
                 const volumesWithMedia = await Promise.all(
                     loadedVolumes.map(async (v) => {
-                        const mediaRes = await fetchApi<string>(`/api/volumes/${v.id}/medias`);
+                        const mediaRes = await fetchApi<Media[]>(`/api/volumes/${v._id}/medias`);
                         let mediaCount = 0;
                         if (mediaRes?.success && mediaRes.data) {
-                            const medias = JSON.parse(mediaRes.data) as any[];
-                            mediaCount = medias.length;
+                            mediaCount = mediaRes.data.length;
                         }
                         return {...v, mediaCount} as VolumeWithMedia;
                     })
@@ -209,8 +208,8 @@ const VolumePage: React.FC = () => {
     const editor = useMediaEditor(refreshVolumes);
     const {activeKey, handleCollapseChange, closeForPageChange} = useEditorPanel({
         pagedItems: pagedVolumes,
-        getItemKey: v => v.id,
-        openItem: v => editor.open(v.id, v.volume_no, v.catalog_no),
+        getItemKey: v => v._id,
+        openItem: v => editor.open(v._id, v.volume_no, v.catalog_no),
         editor,
     });
 
@@ -259,7 +258,7 @@ const VolumePage: React.FC = () => {
                     <VolumeListHeader/>
                     <CollapsePageList
                         items={pagedVolumes}
-                        getKey={v => v.id}
+                        getKey={v => v._id}
                         activeKey={activeKey}
                         onChange={handleCollapseChange}
                         renderLabel={(v, isExpanded) => <VolumeRowLabel volume={v} isExpanded={isExpanded}/>}

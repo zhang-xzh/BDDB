@@ -1,42 +1,32 @@
 export const runtime = 'nodejs';
 
 import {NextRequest, NextResponse} from 'next/server';
-import {getVolumesByTorrent, saveVolume, deleteStaleVolumes, getDb} from '@/lib/db';
-
-type VolumeRow = {
-    id: string; torrent_id: string; volume_no: number;
-    catalog_no: string; volume_name: string | null;
-    is_deleted: number; updated_at: number;
-};
+import {getVolumesByTorrent, saveVolumeCompat as saveVolume, deleteStaleVolumes, getAllVolumes} from '@/lib/mongodb';
 
 export async function GET(request: NextRequest) {
     try {
         const torrentId = request.nextUrl.searchParams.get('torrent_id');
 
-        // DiscEditor: 按 torrent_id 查询该 torrent 的所有 volumes
         if (torrentId) {
             const volumes = await getVolumesByTorrent(torrentId);
-            return NextResponse.json({success: true, data: JSON.stringify(volumes)});
+            const result = volumes.map(v => ({
+                ...v,
+                _id: v._id.toString(),
+                torrent_id: v.torrent_id.toString(),
+                file_ids: v.file_ids.map(id => id.toString()),
+            }))
+            return NextResponse.json({success: true, data: result});
         }
 
-        // 全量列表：只返回 volume 元数据，文件按需展开时单独查询
-        const db = getDb();
-        const volumeRows = db.prepare(
-            'SELECT * FROM volumes WHERE is_deleted = 0 ORDER BY volume_no ASC'
-        ).all() as VolumeRow[];
-
-        const result = volumeRows.map(v => ({
-            id: v.id,
-            torrent_id: v.torrent_id,
-            volume_no: v.volume_no,
-            catalog_no: v.catalog_no,
-            volume_name: v.volume_name ?? undefined,
-            is_deleted: Boolean(v.is_deleted),
-            updated_at: v.updated_at,
-            torrent_file_ids: [] as string[],
+        const allVolumes = await getAllVolumes();
+        const result = allVolumes.map(v => ({
+            ...v,
+            _id: v._id.toString(),
+            torrent_id: v.torrent_id.toString(),
+            file_ids: v.file_ids.map(id => id.toString()),
         }));
 
-        return NextResponse.json({success: true, data: JSON.stringify(result)});
+        return NextResponse.json({success: true, data: result});
     } catch (error) {
         return NextResponse.json(
             {success: false, error: error instanceof Error ? error.message : 'Unknown error'},
@@ -70,7 +60,7 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        deleteStaleVolumes(torrent_id, volumes.map(v => v.volume_no));
+        await deleteStaleVolumes(torrent_id, volumes.map(v => v.volume_no));
 
         return NextResponse.json({success: true});
     } catch (error) {

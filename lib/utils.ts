@@ -1,4 +1,4 @@
-import type {FileItem, NodeData} from '@/lib/db'
+import type {FileItem, NodeData} from '@/lib/mongodb'
 
 export const PAGE_SIZE = 100
 

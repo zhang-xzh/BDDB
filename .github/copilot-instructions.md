@@ -5,16 +5,16 @@ This file provides context and guidelines for GitHub Copilot when working with t
 ## Project Overview
 
 BDDB is a Next.js 16 + React 19 + TypeScript torrent/disc management system for organizing qBittorrent downloads into
-disc/BOX volumes. It uses **SQLite (better-sqlite3, WAL mode)** for persistence and Ant Design 6 for the UI.
+disc/BOX volumes. It uses **MongoDB** for persistence and Ant Design 6 for the UI.
 
 ### Tech Stack
 
 - **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript 5.9
 - **UI Library**: Ant Design 6 + @ant-design/icons
-- **Storage**: SQLite via `better-sqlite3` (WAL mode, single file `data/bddb.sqlite`)
+- **Storage**: MongoDB via `mongodb` driver
 - **qBittorrent Client**: @ctrl/qbittorrent
-- **ID Generation**: nanoid
+- **ID**: MongoDB ObjectId
 
 ### Project Structure
 
@@ -23,7 +23,7 @@ BDDB/
 ├── app/                    # Next.js App Router
 │   ├── api/                # API routes
 │   │   ├── qb/torrents/    # qBittorrent proxy APIs (sync/info/files/delete/rebuild)
-│   │   ├── store/flush/    # WAL checkpoint API
+│   │   ├── store/flush/    # Persistence flush no-op API
 │   │   ├── torrents/files/ # Torrent file query API
 │   │   └── volumes/        # Volume & media management APIs
 │   ├── config/             # Configuration page
@@ -43,77 +43,72 @@ BDDB/
 │   ├── ListPagination.tsx
 │   └── useEditorPanel.ts   # Shared editor panel hook
 ├── lib/                    # Utility libraries
-│   ├── db/                 # Storage module
-│   │   ├── index.ts        # Entry point (re-exports schema + repository + getDb)
-│   │   ├── connection.ts   # SQLite connection + schema init (getDb)
-│   │   ├── repository.ts   # Data access layer (CRUD)
-│   │   └── schema.ts       # TypeScript type definitions
+│   ├── mongodb/            # MongoDB storage module
+│   │   ├── index.ts        # Entry point (re-exports connection + repositories)
+│   │   ├── connection.ts   # MongoDB connection helpers
+│   │   ├── bddbRepository.ts # BDDB CRUD + types
+│   │   └── productRepository.ts # Product-related repository
 │   ├── api.ts              # Frontend API utilities (fetchApi, postApi)
 │   ├── utils.ts           # Shared utilities (PAGE_SIZE, formatSize, buildTree, FlatTree, NodePath)
 │   └── qb.ts               # qBittorrent client wrapper + sync logic
-└── data/                   # Local data directory
-    └── bddb.sqlite         # SQLite database
+└── data/                   # Local data directory (optional)
 ```
 
 ## Storage Architecture
 
-### SQLite Database (`lib/db/connection.ts`)
+### MongoDB Database (`lib/mongodb/connection.ts`)
 
-A single SQLite file at `data/bddb.sqlite`. The connection is a global singleton (reused across requests in the
-same Node.js process). Schema is auto-created on first connection.
+MongoDB connection is managed via a global singleton `MongoClient`.
 
 ```typescript
-import {getDb} from '@/lib/db';
+import {getMongoCollection} from '@/lib/mongodb';
 
-const db = getDb();
-const rows = db.prepare('SELECT * FROM torrents WHERE is_deleted = 0').all();
+const torrents = getMongoCollection('bddb_torrents');
+const rows = await torrents.find({is_deleted: false}).toArray();
 ```
 
-**Always import `getDb` from `@/lib/db`** — never import directly from `@/lib/db/connection`.
+**Always import from `@/lib/mongodb`** — do not use removed `@/lib/db`.
 
 ### Tables
 
 | Table           | Description                          |
 |-----------------|--------------------------------------|
 | `torrents`      | Torrent metadata (flat QB fields)    |
-| `torrent_files` | Files belonging to a torrent         |
-| `volumes`       | Disc/BOX volume metadata             |
-| `volume_files`  | Many-to-many: volume ↔ torrent_files |
-| `medias`        | Media entries within a volume        |
-| `media_files`   | Many-to-many: media ↔ torrent_files  |
+| embedded `files` in `bddb_torrents` | Files belonging to a torrent |
+| `bddb_volumes`  | Disc/BOX volume metadata             |
+| `bddb_medias`   | Media entries within a volume        |
 
 ### Repository Pattern
 
-Use functions from `lib/db/repository.ts` — prefer them over raw SQL in API routes:
+Use functions from `lib/mongodb/bddbRepository.ts` — prefer them over ad-hoc queries in API routes:
 
 ```typescript
-import {getAllTorrents, saveVolume} from '@/lib/db';
+import {getAllTorrents, saveVolumeCompat} from '@/lib/mongodb';
 
 const torrents = await getAllTorrents();
-await saveVolume(torrentId, fileIds, data);
+await saveVolumeCompat(torrentId, fileIds, data);
 ```
 
 ## Type System
 
 ### Single Source of Truth
 
-- **All types are defined in `lib/db/schema.ts`**
+- **All types are defined in `lib/mongodb/bddbRepository.ts`**
 - Frontend, backend, and storage use the **same types**
 - **Never create duplicate types** in other files
-- Always import from `@/lib/db` (re-exports schema)
+- Always import from `@/lib/mongodb`
 
 ### Core Types
 
 | Type                | Description                                        |
 |---------------------|----------------------------------------------------|
-| `Torrent`           | Torrent record (flat QB fields + metadata)         |
-| `TorrentWithVolume` | `Torrent` extended with `hasVolumes`/`volumeCount` |
-| `TorrentRecord`     | `Torrent` + embedded `files[]` (for upsert)        |
-| `StoredFile`        | File record (in torrent_files table)               |
-| `Volume`            | Disc/BOX metadata + optional `files[]`             |
+| `BddbTorrent`       | Torrent record (QB fields + metadata + files[])    |
+| `TorrentWithVolume` | Frontend torrent view with volume summary           |
+| `BddbTorrentFile`   | Embedded file record inside torrent                 |
+| `BddbVolume`        | Disc/BOX volume metadata                            |
 | `VolumeForm`        | Form data for volume editing                       |
 | `MediaType`         | `'bd' \| 'dvd' \| 'cd' \| 'scan'`                  |
-| `Media`             | Media entry within a volume                        |
+| `BddbMedia`         | Media entry within a volume                        |
 | `MediaForm`         | Form data for media editing                        |
 | `NodeData`          | Per-tree-node assignment state                     |
 | `FileItem`          | Simplified file for editor tree display            |
@@ -224,10 +219,9 @@ QB_PASS=password           # qBittorrent password
 
 ## Key Files Reference
 
-- `lib/db/schema.ts` — Type definitions (single source of truth)
-- `lib/db/connection.ts` — SQLite connection + schema init
-- `lib/db/repository.ts` — CRUD operations
-- `lib/db/index.ts` — Entry point (import everything from here via `@/lib/db`)
+- `lib/mongodb/bddbRepository.ts` — BDDB type definitions + CRUD operations
+- `lib/mongodb/connection.ts` — MongoDB connection helpers
+- `lib/mongodb/index.ts` — Entry point (import everything from here via `@/lib/mongodb`)
 - `lib/api.ts` — Frontend API utilities (fetchApi, postApi)
 - `lib/utils.ts` — Shared utilities (PAGE_SIZE, formatSize, buildTree, FlatTree, NodePath)
 - `lib/qb.ts` — qBittorrent client (getQbClient, syncTorrentsFromQb)

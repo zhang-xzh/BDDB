@@ -1,7 +1,7 @@
 'use client'
 
 import React, {useCallback, useEffect, useMemo, useRef, useState,} from 'react'
-import type {FileItem, Media, MediaForm, MediaType, NodeData} from '@/lib/db'
+import type {FileItem, Media, MediaForm, MediaType, NodeData} from '@/lib/mongodb'
 import {fetchApi, postApi} from '@/lib/api'
 import {buildTree, FlatTree} from '@/lib/utils'
 import {Button, Card, Empty, Input, message, Select, Space, Spin, Switch, Tree, Typography,} from 'antd'
@@ -309,10 +309,10 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
         resetAll()
 
         try {
-            const filesResult = await fetchApi<string>(`/api/volumes/${volumeId}/files`)
+            const filesResult = await fetchApi<FileItem[]>(`/api/volumes/${volumeId}/files`)
             let loadedFiles: FileItem[] = []
             if (filesResult?.success && filesResult.data) {
-                loadedFiles = JSON.parse(filesResult.data)
+                loadedFiles = filesResult.data
             }
 
             if (loadedFiles.length === 0) {
@@ -330,9 +330,9 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
             let snapNodeData = nd
             let snapMediaForms: Record<number, MediaForm> = {}
 
-            const mediaResult = await fetchApi<string>(`/api/volumes/${volumeId}/medias`)
+            const mediaResult = await fetchApi<Media[]>(`/api/volumes/${volumeId}/medias`)
             if (mediaResult?.success && mediaResult.data) {
-                const medias = JSON.parse(mediaResult.data) as Media[]
+                const medias = mediaResult.data
                 if (medias.length > 0) {
                     const newMediaForms: Record<number, MediaForm> = {}
                     const fileToMediaMap = new Map<string, number[]>()
@@ -343,7 +343,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
                             content_title: m.content_title || '',
                             description: m.description || '',
                         }
-                        m.torrent_file_ids?.forEach(fid => {
+                        m.file_ids?.forEach(fid => {
                             if (!fileToMediaMap.has(fid)) fileToMediaMap.set(fid, [])
                             fileToMediaMap.get(fid)!.push(m.media_no)
                         })

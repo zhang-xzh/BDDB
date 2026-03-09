@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, Space, Input, Radio, Typography, Button } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
-import type { VolumeForm } from "@/lib/db/schema";
+import type { VolumeForm } from "@/lib/mongodb";
 
 interface VolumeFormListProps {
   selectedVolumes: number[];

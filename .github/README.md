@@ -28,7 +28,7 @@ Detailed coding standards, conventions, and best practices for the project:
 - Type consistency requirements
 - API response formats
 - Component patterns
-- Database conventions with SQLite optimization
+- Database conventions with MongoDB patterns
 - Performance targets and best practices
 - Error handling guidelines
 
@@ -40,7 +40,7 @@ Detailed coding standards, conventions, and best practices for the project:
 
 In-depth technical documentation for database operations:
 
-- SQLite type binding constraints
+- MongoDB document and ObjectId conventions
 - JSON serialization patterns
 - Query optimization with JSON1 functions
 - Performance benchmarks and optimization strategies
@@ -83,8 +83,8 @@ Quick reference for project structure and setup:
 
 ### Quick Tips
 
-- **Ask specific questions**: "How should I serialize a Volume object for SQLite?"
-- **Reference files**: "Follow the pattern in lib/db/repository.ts"
+- **Ask specific questions**: "How should I serialize a Volume document for MongoDB?"
+- **Reference files**: "Follow the pattern in lib/mongodb/bddbRepository.ts"
 - **Request examples**: "Show me an example of a batch transaction for torrents"
 
 ## File Organization

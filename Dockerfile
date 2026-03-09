@@ -37,7 +37,10 @@ WORKDIR /app
 # 设置环境变量
 ENV NODE_ENV=production \
     PORT=3000 \
-    HOSTNAME=0.0.0.0
+    HOSTNAME=0.0.0.0 \
+    MONGO_HOST=mongodb \
+    MONGO_PORT=27017 \
+    MONGO_DB_PROD=bddb_prod
 
 # 复制 standalone 构建产物
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
@@ -46,12 +49,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # 复制必要的 node_modules (standalone 模式不会自动复制所有依赖)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@ctrl/qbittorrent ./node_modules/@ctrl/qbittorrent
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@seald-io/nedb ./node_modules/@seald-io/nedb
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/nanoid ./node_modules/nanoid
-
-# 创建数据目录并设置权限
-RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
-
-VOLUME /app/data
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/mongodb ./node_modules/mongodb
 
 # 切换到非 root 用户
 USER nextjs
