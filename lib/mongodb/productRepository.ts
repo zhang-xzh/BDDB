@@ -240,7 +240,20 @@ export async function getProductsByScenario(
 }
 
 /**
+ * 判断搜索词是否适合使用全文索引
+ * 纯数字（商品ID）、型番格式、过短的词用正则匹配
+ */
+function shouldUseTextSearch(search: string): boolean {
+    const trimmed = search.trim()
+    if (trimmed.length <= 2) return false // 太短
+    if (/^\d+$/.test(trimmed)) return false // 纯数字（商品ID）
+    if (/^[A-Za-z0-9-]+$/i.test(trimmed) && trimmed.length <= 10) return false // 可能是型番
+    return true
+}
+
+/**
  * 分页查询产品
+ * 支持混合搜索：常规关键词用全文索引，ID/型番等用正则匹配
  * @param query 查询参数
  */
 export async function queryProducts(query: ProductQuery): Promise<ProductResult> {
@@ -249,15 +262,25 @@ export async function queryProducts(query: ProductQuery): Promise<ProductResult>
 
         // 构建查询条件
         const filter: Record<string, any> = {}
+        let useTextSearch = false
 
         if (query.search) {
-            const regex = new RegExp(query.search, 'i')
-            filter.$or = [
-                {title: regex},
-                {product_id: regex},
-                {'attributes.管理番号': regex},
-                {'attributes.型番': regex},
-            ]
+            const search = query.search.trim()
+
+            if (shouldUseTextSearch(search)) {
+                // 使用全文搜索（性能更好，支持相关性排序）
+                filter.$text = {$search: search}
+                useTextSearch = true
+            } else {
+                // 使用正则匹配（适合ID、型番等精确匹配场景）
+                const regex = new RegExp(search, 'i')
+                filter.$or = [
+                    {title: regex},
+                    {product_id: regex},
+                    {'attributes.管理番号': regex},
+                    {'attributes.型番': regex},
+                ]
+            }
         }
 
         if (query.manufacturer) {
@@ -280,13 +303,24 @@ export async function queryProducts(query: ProductQuery): Promise<ProductResult>
         const skip = (page - 1) * limit
         const totalPages = Math.ceil(total / limit)
 
+        // 构建查询
+        let findQuery = collection.find(filter)
+
+        // 全文搜索时添加相关性分数并排序
+        if (useTextSearch) {
+            findQuery = findQuery.project({
+                score: {$meta: 'textScore'},
+            })
+            findQuery = findQuery.sort({
+                score: {$meta: 'textScore'},
+                product_id: -1,
+            })
+        } else {
+            findQuery = findQuery.sort({product_id: -1})
+        }
+
         // 查询数据
-        const products = await collection
-            .find(filter)
-            .skip(skip)
-            .limit(limit)
-            .sort({product_id: -1}) // 按商品ID倒序
-            .toArray()
+        const products = await findQuery.skip(skip).limit(limit).toArray()
 
         return {
             products,
