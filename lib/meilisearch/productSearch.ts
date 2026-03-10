@@ -94,9 +94,9 @@ export async function searchProducts(
 
     return {
         products,
-        total: response.estimatedTotalHits || response.totalHits || 0,
+        total: response.estimatedTotalHits ?? 0,
         page,
-        totalPages: Math.ceil((response.estimatedTotalHits || response.totalHits || 0) / limit),
+        totalPages: Math.ceil((response.estimatedTotalHits ?? 0) / limit),
     }
 }
 

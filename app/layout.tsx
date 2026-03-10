@@ -33,7 +33,7 @@ function AppLayout({children, isDark, onToggle}: {
     return (
         <App>
             <Layout style={{minHeight: '100vh'}}>
-                <Header style={{display: 'flex', alignItems: 'center', padding: '0 24px'}}>
+                <Header style={{display: 'flex', alignItems: 'center', padding: '0 24px', position: 'sticky', top: 0, zIndex: 100}}>
                     <Title level={4} style={{margin: 0, color: token.colorWhite}}>BDDB</Title>
                     <Divider orientation="vertical" style={{borderColor: token.colorSplit}}/>
                     <Menu
@@ -56,6 +56,11 @@ function AppLayout({children, isDark, onToggle}: {
                         padding: 24,
                         background: token.colorBgContainer,
                         borderRadius: token.borderRadiusLG,
+                        position: 'sticky',
+                        top: 88,
+                        alignSelf: 'flex-start',
+                        maxHeight: 'calc(100vh - 64px - 48px)',
+                        overflow: 'auto',
                     }}>
                         <SiderContent/>
                     </Sider>
@@ -70,11 +75,6 @@ function AppLayout({children, isDark, onToggle}: {
                         {children}
                     </Content>
                 </Layout>
-                <Footer style={{textAlign: 'center', background: token.colorBgContainer}}>
-                    <Text type="secondary">
-                        BDDB - Next.js Version © {new Date().getFullYear()}
-                    </Text>
-                </Footer>
             </Layout>
         </App>
     )
