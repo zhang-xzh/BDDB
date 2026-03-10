@@ -40,7 +40,8 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0 \
     MONGO_HOST=mongodb \
     MONGO_PORT=27017 \
-    MONGO_DB_PROD=bddb_prod
+    MONGO_DB_PROD=bddb_prod \
+    MEILI_HOST=http://meilisearch:7700
 
 # 复制 standalone 构建产物
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./

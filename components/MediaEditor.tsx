@@ -513,7 +513,7 @@ function MediaRow({
             <Input
                 value={form.content_title}
                 onChange={e => onMediaFormChange(no, {...form, content_title: e.target.value})}
-                placeholder="内容标题"
+                placeholder="内容"
                 style={{width: 300}}
             />
             <Input

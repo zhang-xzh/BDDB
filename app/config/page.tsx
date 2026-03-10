@@ -2,13 +2,12 @@
 
 import React, {useCallback, useState} from 'react'
 import {Button, Card, Col, Divider, Flex, message, Modal, Row, Space, Typography} from 'antd'
-import {ReloadOutlined, SaveOutlined, SettingOutlined, SyncOutlined} from '@ant-design/icons'
+import {ReloadOutlined, SettingOutlined, SyncOutlined} from '@ant-design/icons'
 import {postApi} from '@/lib/api'
 
 const ConfigPage: React.FC = () => {
     const [syncing, setSyncing] = useState(false)
     const [rebuilding, setRebuilding] = useState(false)
-    const [flushing, setFlushing] = useState(false)
 
     // 同步 qBittorrent
     const syncTorrents = useCallback(async () => {
@@ -43,24 +42,6 @@ const ConfigPage: React.FC = () => {
             message.error('重建失败')
         } finally {
             setRebuilding(false)
-        }
-    }, [])
-
-    // 手动写入所有数据到磁盘
-    const flushStore = useCallback(async () => {
-        setFlushing(true)
-        try {
-            const data = await postApi('/api/store/flush') as any
-            if (data?.success) {
-                message.success(data?.message || '写入完成')
-            } else {
-                message.error(data?.error || '写入失败')
-            }
-        } catch (error) {
-            console.error('写入失败:', error)
-            message.error('写入失败')
-        } finally {
-            setFlushing(false)
         }
     }, [])
 
@@ -105,23 +86,6 @@ const ConfigPage: React.FC = () => {
                                 </Button>
                             </Flex>
 
-                            <Divider/>
-
-                            <Flex vertical gap="small">
-                                <Typography.Title level={3} style={{marginTop: 0}}>手动写入</Typography.Title>
-                                <Typography.Paragraph style={{color: '#666', fontSize: '14px'}}>
-                                    将内存中的所有数据强制写入磁盘。正常情况下每次操作后自动写入，此按钮用于应急保存。
-                                </Typography.Paragraph>
-                                <Button
-                                    onClick={flushStore}
-                                    loading={flushing}
-                                    icon={<SaveOutlined/>}
-                                    size="large"
-                                    block
-                                >
-                                    {flushing ? '写入中...' : '写入磁盘'}
-                                </Button>
-                            </Flex>
                         </Space>
                     </Card>
                 </Col>
