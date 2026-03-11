@@ -259,9 +259,7 @@ const TorrentsPage: React.FC = () => {
         return (
             <Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
                 {filterBar}
-                <Card
-                    // variant="outlined"
-                >
+                <Card>
                     <CardContent sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, py: 4}}>
                         <InboxIcon sx={{fontSize: 48, color: 'text.disabled'}}/>
                         <Typography color="text.secondary">
@@ -286,10 +284,7 @@ const TorrentsPage: React.FC = () => {
                         <CircularProgress/>
                     </Box>
                 )}
-                <Card
-                    // variant="outlined"
-                    sx={{p: 0}}>
-                    <TorrentListHeader/>
+                <Card sx={{p: 0}}>
                     <CollapsePageList
                         items={pagedTorrents}
                         getKey={t => t.hash}

@@ -31,26 +31,7 @@ const SiderContent: React.FC = () => {
     const [loadingMore, setLoadingMore] = useState(false)
     const [searchResult, setSearchResult] = useState<SearchResponse | null>(null)
     const [hasMore, setHasMore] = useState(false)
-    const [activeKey, setActiveKey] = useState<string | string[]>([])
     const scrollContainerRef = useRef<HTMLDivElement>(null)
-
-    // 切换展开/收起
-    const toggleExpand = (key: string) => {
-        setActiveKey(prev => {
-            const prevKeys = Array.isArray(prev) ? prev : [prev]
-            if (prevKeys.includes(key)) {
-                return prevKeys.filter(k => k !== key)
-            } else {
-                return [...prevKeys, key]
-            }
-        })
-    }
-
-    // 检查是否已展开
-    const isExpanded = (key: string) => {
-        const keys = Array.isArray(activeKey) ? activeKey : [activeKey]
-        return keys.includes(key)
-    }
 
     const handleSearch = async () => {
         if (!searchText.trim()) return
@@ -178,20 +159,11 @@ const SiderContent: React.FC = () => {
                             <Typography variant="caption" color="text.secondary" sx={{px: 1, display: 'block', mb: 1}}>
                                 共找到 {searchResult.total} 个结果{hasMore && '（滚动加载更多）'}
                             </Typography>
-                            {products.map((product, index) => {
-                                const key = product.product_id || String(index)
-                                const expanded = isExpanded(key)
+                            {products.map((product) => {
                                 const thumbnailUrl = product.images?.[0]
                                 const releaseDate = formatDate(product.release_date)
                                 return (
-                                    <Accordion
-                                        key={key}
-                                        expanded={expanded}
-                                        onChange={() => toggleExpand(key)}
-                                        disableGutters
-                                        elevation={0}
-                                        sx={{'&:before': {display: 'none'}, borderBottom: '1px solid', borderColor: 'divider'}}
-                                    >
+                                    <Accordion>
                                         <AccordionSummary expandIcon={<ExpandMoreIcon/>} sx={{px: 1, alignItems: 'flex-start'}}>
                                             <Box sx={{display: 'flex', gap: 1.5, alignItems: 'flex-start', width: '100%'}}>
                                                 {/* 缩略图 */}
