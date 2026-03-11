@@ -6,22 +6,23 @@ import {CheckCircleOutlined, CloseCircleOutlined} from "@ant-design/icons";
 import type {TorrentWithVolume} from "@/lib/mongodb";
 import {fetchApi} from "@/lib/api";
 import {DiscEditorContent, useDiscEditor} from "@/components/DiscEditor";
-import {formatSize, PAGE_SIZE} from "@/lib/utils";
+import {PAGE_SIZE} from "@/lib/utils";
 import ListPagination from "@/components/ListPagination";
 import {useEditorPanel} from "@/components/useEditorPanel";
 import CollapsePageList, {ExpandBlocker, ListHeader} from "@/components/CollapsePageList";
 
 function matchesFilters(torrent: TorrentWithVolume, filters: {
     searchText: string; invertSearch: boolean
-    filterCategory?: string; filterHasVolumes?: boolean
+    filterCategory?: string; filterHasVolumes?: boolean; filterState?: string
 }): boolean {
-    const {searchText, invertSearch, filterCategory, filterHasVolumes} = filters
+    const {searchText, invertSearch, filterCategory, filterHasVolumes, filterState} = filters
     if (searchText) {
         const match = torrent.name?.toLowerCase().includes(searchText.toLowerCase())
         if (invertSearch ? match : !match) return false
     }
     if (filterCategory !== undefined && torrent.category !== filterCategory) return false
     if (filterHasVolumes !== undefined && !!torrent.hasVolumes !== filterHasVolumes) return false
+    if (filterState !== undefined && torrent.state !== filterState) return false
     return true
 }
 
@@ -32,10 +33,15 @@ function useTorrentListView(torrents: TorrentWithVolume[]) {
     const [invertSearch, setInvertSearch] = useState(false)
     const [filterCategory, setFilterCategory] = useState<string | undefined>(undefined)
     const [filterHasVolumes, setFilterHasVolumes] = useState<boolean | undefined>(undefined)
+    const [filterState, setFilterState] = useState<string | undefined>(undefined)
     const [currentPage, setCurrentPage] = useState(1)
 
     const categories = useMemo(() =>
             Array.from(new Set(torrents.map(t => t.category).filter((c): c is string => Boolean(c)))),
+        [torrents])
+
+    const states = useMemo(() =>
+            Array.from(new Set(torrents.map(t => t.state).filter((s): s is string => Boolean(s)))),
         [torrents])
 
     const filteredTorrents = useMemo(() =>
@@ -43,9 +49,10 @@ function useTorrentListView(torrents: TorrentWithVolume[]) {
                 searchText,
                 invertSearch,
                 filterCategory,
-                filterHasVolumes
+                filterHasVolumes,
+                filterState
             })),
-        [torrents, searchText, invertSearch, filterCategory, filterHasVolumes])
+        [torrents, searchText, invertSearch, filterCategory, filterHasVolumes, filterState])
 
     const pagedTorrents = useMemo(() => {
         const start = (currentPage - 1) * PAGE_SIZE
@@ -54,12 +61,12 @@ function useTorrentListView(torrents: TorrentWithVolume[]) {
 
     useEffect(() => {
         setCurrentPage(1)
-    }, [searchText, invertSearch, filterCategory, filterHasVolumes])
+    }, [searchText, invertSearch, filterCategory, filterHasVolumes, filterState])
 
     return {
         searchText, setSearchText, invertSearch, setInvertSearch,
         filterCategory, setFilterCategory, filterHasVolumes, setFilterHasVolumes,
-        currentPage, setCurrentPage, categories, filteredTorrents, pagedTorrents,
+        filterState, setFilterState, currentPage, setCurrentPage, categories, states, filteredTorrents, pagedTorrents,
     }
 }
 
@@ -67,13 +74,14 @@ function useTorrentListView(torrents: TorrentWithVolume[]) {
 // ─── Components ───────────────────────────────────────────────────────────────
 
 const TorrentFiltersBar: React.FC<{
-    searchText: string; invertSearch: boolean; filterCategory?: string; filterHasVolumes?: boolean
-    categories: string[]; total: number
+    searchText: string; invertSearch: boolean; filterCategory?: string; filterHasVolumes?: boolean; filterState?: string
+    categories: string[]; states: string[]; total: number
     onSearchTextChange: (v: string) => void; onInvertSearchChange: (v: boolean) => void
     onCategoryChange: (v: string | undefined) => void; onHasVolumesChange: (v: boolean | undefined) => void
+    onStateChange: (v: string | undefined) => void
 }> = ({
-          searchText, invertSearch, filterCategory, filterHasVolumes, categories, total,
-          onSearchTextChange, onInvertSearchChange, onCategoryChange, onHasVolumesChange
+          searchText, invertSearch, filterCategory, filterHasVolumes, filterState, categories, states, total,
+          onSearchTextChange, onInvertSearchChange, onCategoryChange, onHasVolumesChange, onStateChange
       }) => {
     const {token} = theme.useToken()
     return (
@@ -87,9 +95,11 @@ const TorrentFiltersBar: React.FC<{
                                 size="small" checkedChildren="反向" unCheckedChildren="反向"/>
                     }
                 />
-                <Select allowClear placeholder="类别" style={{width: 250}} value={filterCategory}
+                <Select allowClear placeholder="类别" style={{width: 200}} value={filterCategory}
                         onChange={onCategoryChange} options={categories.map(c => ({label: c, value: c}))}/>
-                <Select allowClear placeholder="是否处理" style={{width: 150}} value={filterHasVolumes}
+                <Select allowClear placeholder="状态" style={{width: 150}} value={filterState}
+                        onChange={onStateChange} options={states.map(s => ({label: s, value: s}))}/>
+                <Select allowClear placeholder="是否处理" style={{width: 120}} value={filterHasVolumes}
                         onChange={onHasVolumesChange}
                         options={[{label: '已处理', value: true}, {label: '未处理', value: false}]}/>
                 <Typography.Text
@@ -108,7 +118,7 @@ const TorrentListHeader: React.FC = () => (
         {label: '卷', style: {width: 56, flexShrink: 0}},
         {label: '名称', style: {flex: 1}},
         {label: '类别', style: {width: 200, flexShrink: 0}},
-        {label: '大小', style: {width: 72, flexShrink: 0, textAlign: 'right'}},
+        {label: '状态', style: {width: 100, flexShrink: 0, textAlign: 'right'}},
     ]}/>
 )
 
@@ -141,14 +151,14 @@ const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume; isExpanded: boolea
                 <Typography.Text
                     type="secondary"
                     style={{
-                        width: 72,
+                        width: 100,
                         flexShrink: 0,
                         textAlign: 'right',
                         fontSize: 12,
                         color: token.colorTextSecondary
                     }}
                 >
-                    {formatSize(torrent.size ?? 0)}
+                    {torrent.state || '—'}
                 </Typography.Text>
             </Flex>
         </ExpandBlocker>
@@ -181,9 +191,12 @@ const TorrentsPage: React.FC = () => {
         setFilterCategory,
         filterHasVolumes,
         setFilterHasVolumes,
+        filterState,
+        setFilterState,
         currentPage,
         setCurrentPage,
         categories,
+        states,
         filteredTorrents,
         pagedTorrents,
     } = useTorrentListView(torrents);
@@ -198,7 +211,7 @@ const TorrentsPage: React.FC = () => {
         fetchTorrents();
     }, [fetchTorrents]);
 
-    const hasActiveFilters = !!searchText || filterCategory !== undefined || filterHasVolumes !== undefined
+    const hasActiveFilters = !!searchText || filterCategory !== undefined || filterHasVolumes !== undefined || filterState !== undefined
 
     if (filteredTorrents.length === 0 && !loading) {
         return (
@@ -208,12 +221,15 @@ const TorrentsPage: React.FC = () => {
                     invertSearch={invertSearch}
                     filterCategory={filterCategory}
                     filterHasVolumes={filterHasVolumes}
+                    filterState={filterState}
                     categories={categories}
+                    states={states}
                     total={0}
                     onSearchTextChange={setSearchText}
                     onInvertSearchChange={setInvertSearch}
                     onCategoryChange={setFilterCategory}
                     onHasVolumesChange={setFilterHasVolumes}
+                    onStateChange={setFilterState}
                 />
                 <Card>
                     <Empty description={hasActiveFilters ? "无匹配结果" : "暂无种子数据"}/>
@@ -229,12 +245,15 @@ const TorrentsPage: React.FC = () => {
                 invertSearch={invertSearch}
                 filterCategory={filterCategory}
                 filterHasVolumes={filterHasVolumes}
+                filterState={filterState}
                 categories={categories}
+                states={states}
                 total={filteredTorrents.length}
                 onSearchTextChange={setSearchText}
                 onInvertSearchChange={setInvertSearch}
                 onCategoryChange={setFilterCategory}
                 onHasVolumesChange={setFilterHasVolumes}
+                onStateChange={setFilterState}
             />
             <Spin spinning={loading}>
                 <Card styles={{body: {padding: 0}}}>

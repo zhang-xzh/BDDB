@@ -73,6 +73,15 @@ async function updateIndexSettings(index: any): Promise<void> {
             'product_id',
             'release_date',
         ],
+        // 排序规则：将 exactness 提前，优先匹配完整型号
+        rankingRules: [
+            'words',
+            'exactness',
+            'typo',
+            'proximity',
+            'attribute',
+            'sort',
+        ],
         // 中日文分词配置
         synonyms: {},
         // 停用词（可选）
