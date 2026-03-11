@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useCallback, useEffect, useMemo, useState} from "react";
-import {Box, Card, CardContent, Chip, CircularProgress, MenuItem, Select, Switch, TextField, Tooltip, Typography,} from "@mui/material";
+import {Box, Card, CardContent, Chip, CircularProgress, FormControl, InputLabel, MenuItem, Select, Switch, TextField, Tooltip, Typography,} from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import InboxIcon from "@mui/icons-material/Inbox";
@@ -91,7 +91,7 @@ const TorrentFiltersBar: React.FC<{
             <TextField
                 value={searchText}
                 onChange={e => onSearchTextChange(e.target.value)}
-                placeholder="搜索种子"
+                label="搜索种子"
                 size="small"
                 sx={{width: 250}}
                 slotProps={{
@@ -108,40 +108,43 @@ const TorrentFiltersBar: React.FC<{
                     },
                 }}
             />
-            <Select
-                displayEmpty
-                size="small"
-                value={filterCategory ?? NONE}
-                onChange={e => onCategoryChange(e.target.value === NONE ? undefined : e.target.value as string)}
-                sx={{width: 200}}
-            >
-                <MenuItem value={NONE}><em>类别</em></MenuItem>
-                {categories.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-            </Select>
-            <Select
-                displayEmpty
-                size="small"
-                value={filterState ?? NONE}
-                onChange={e => onStateChange(e.target.value === NONE ? undefined : e.target.value as string)}
-                sx={{width: 150}}
-            >
-                <MenuItem value={NONE}><em>状态</em></MenuItem>
-                {states.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-            </Select>
-            <Select
-                displayEmpty
-                size="small"
-                value={filterHasVolumes === undefined ? NONE : String(filterHasVolumes)}
-                onChange={e => {
-                    const v = e.target.value
-                    onHasVolumesChange(v === NONE ? undefined : v === 'true')
-                }}
-                sx={{width: 150}}
-            >
-                <MenuItem value={NONE}><em>是否处理</em></MenuItem>
-                <MenuItem value="true">已处理</MenuItem>
-                <MenuItem value="false">未处理</MenuItem>
-            </Select>
+            <FormControl size="small" sx={{width: 200}}>
+                <InputLabel>类别</InputLabel>
+                <Select
+                    value={filterCategory ?? NONE}
+                    onChange={e => onCategoryChange(e.target.value === NONE ? undefined : e.target.value as string)}
+                    label="类别"
+                >
+                    <MenuItem value={NONE}><em>全部</em></MenuItem>
+                    {categories.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+                </Select>
+            </FormControl>
+            <FormControl size="small" sx={{width: 150}}>
+                <InputLabel>状态</InputLabel>
+                <Select
+                    value={filterState ?? NONE}
+                    onChange={e => onStateChange(e.target.value === NONE ? undefined : e.target.value as string)}
+                    label="状态"
+                >
+                    <MenuItem value={NONE}><em>全部</em></MenuItem>
+                    {states.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+                </Select>
+            </FormControl>
+            <FormControl size="small" sx={{width: 150}}>
+                <InputLabel>是否处理</InputLabel>
+                <Select
+                    value={filterHasVolumes === undefined ? NONE : String(filterHasVolumes)}
+                    onChange={e => {
+                        const v = e.target.value
+                        onHasVolumesChange(v === NONE ? undefined : v === 'true')
+                    }}
+                    label="是否处理"
+                >
+                    <MenuItem value={NONE}><em>全部</em></MenuItem>
+                    <MenuItem value="true">已处理</MenuItem>
+                    <MenuItem value="false">未处理</MenuItem>
+                </Select>
+            </FormControl>
             <Typography variant="body2" color="text.secondary">共 {total} 条</Typography>
         </Box>
     )
@@ -284,7 +287,7 @@ const TorrentsPage: React.FC = () => {
                         <CircularProgress/>
                     </Box>
                 )}
-                <Card sx={{p: 0}}>
+                <Card>
                     <CollapsePageList
                         items={pagedTorrents}
                         getKey={t => t.hash}

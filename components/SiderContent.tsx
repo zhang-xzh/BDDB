@@ -163,7 +163,7 @@ const SiderContent: React.FC = () => {
                                 const thumbnailUrl = product.images?.[0]
                                 const releaseDate = formatDate(product.release_date)
                                 return (
-                                    <Accordion>
+                                    <Accordion key={product.model_number ?? product.title} variant="outlined" disableGutters>
                                         <AccordionSummary expandIcon={<ExpandMoreIcon/>} sx={{px: 1, alignItems: 'flex-start'}}>
                                             <Box sx={{display: 'flex', gap: 1.5, alignItems: 'flex-start', width: '100%'}}>
                                                 {/* 缩略图 */}

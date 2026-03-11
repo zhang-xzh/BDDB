@@ -7,7 +7,7 @@ import {buildTree, FlatTree} from '@/lib/utils'
 import {
     Divider, Box, Card, CardContent, CardHeader, Chip, CircularProgress,
     FormControl, FormControlLabel, IconButton, InputLabel, MenuItem, ListSubheader, Paper, Radio, RadioGroup, Rating, Select, Stack, Switch,
-    TextField, Tooltip, Typography, useTheme,
+    TextField, Tooltip, Typography,
 } from '@mui/material'
 import {SimpleTreeView} from '@mui/x-tree-view/SimpleTreeView'
 import {TreeItem} from '@mui/x-tree-view/TreeItem'
@@ -580,7 +580,6 @@ function TreeNodeContent({
                              getNodeVolume, getNodeShared, getNodeSharedVolumes,
                              onVolumeChange, onSharedVolumeChange, onToggleShared,
                          }: TreeNodeContentProps) {
-    const theme = useTheme()
     const isShared = getNodeShared(nodeKey)
     const volumeNo = getNodeVolume(nodeKey)
     const sharedVolumes = getNodeSharedVolumes(nodeKey)
@@ -591,16 +590,12 @@ function TreeNodeContent({
         ? `第${v}卷`
         : `作品${Math.floor(v / 1000)}-第${v % 1000}卷`
 
-    const mixedSx = isMixed ? {
-        '& .MuiOutlinedInput-notchedOutline': {borderColor: theme.palette.warning.main},
-    } : {}
-
     const mixedRenderValue = (val: number | '') => isMixed
         ? <Stack direction="row" spacing={0.5} alignItems="center">
             <CallSplitIcon sx={{fontSize: 14, color: 'warning.main'}}/>
             <Typography variant="caption" color="warning.main">混合</Typography>
           </Stack>
-        : val === '' ? <em style={{opacity: 0.4}}>卷号</em> : <Typography variant="caption">{fmtVol(val as number)}</Typography>
+        : val === '' ? <em>卷号</em> : <Typography variant="caption">{fmtVol(val as number)}</Typography>
 
     const renderSelector = () => {
         if (worksCount === 1) {
@@ -613,7 +608,7 @@ function TreeNodeContent({
                         size="small"
                         displayEmpty
                         renderValue={vals => (vals as number[]).length === 0
-                            ? <em style={{opacity: 0.4}}>卷号</em>
+                            ? <em>卷号</em>
                             : (vals as number[]).map(v => `第${v}卷`).join(', ')}
                         sx={{minWidth: 150, flexShrink: 0}}
                         MenuProps={{PaperProps: {style: {maxHeight: 300}}}}
@@ -628,8 +623,9 @@ function TreeNodeContent({
                     onChange={e => onVolumeChange(nodeKey, e.target.value === '' ? null : e.target.value as number)}
                     size="small"
                     displayEmpty
+                    color={isMixed ? 'warning' : undefined}
                     renderValue={mixedRenderValue}
-                    sx={{minWidth: 100, flexShrink: 0, ...mixedSx}}
+                    sx={{minWidth: 100, flexShrink: 0}}
                     MenuProps={{PaperProps: {style: {maxHeight: 300}}}}
                 >
                     <MenuItem value=""><em>清除</em></MenuItem>
@@ -647,7 +643,7 @@ function TreeNodeContent({
                     size="small"
                     displayEmpty
                     renderValue={vals => (vals as number[]).length === 0
-                        ? <em style={{opacity: 0.4}}>作品/卷（多选）</em>
+                        ? <em>作品/卷（多选）</em>
                         : (vals as number[]).map(v => `作品${Math.floor(v / 1000)}-第${v % 1000}卷`).join(', ')}
                     sx={{minWidth: 200, flexShrink: 0}}
                     MenuProps={{PaperProps: {style: {maxHeight: 300}}}}
@@ -661,15 +657,16 @@ function TreeNodeContent({
                 <CallSplitIcon sx={{fontSize: 14, color: 'warning.main'}}/>
                 <Typography variant="caption" color="warning.main">混合</Typography>
               </Stack>
-            : val === '' ? <em style={{opacity: 0.4}}>作品/卷</em> : <Typography variant="caption">{fmtVol(val as number)}</Typography>
+            : val === '' ? <em>作品/卷</em> : <Typography variant="caption">{fmtVol(val as number)}</Typography>
         return (
             <Select<number | ''>
                 value={volumeNo ?? ''}
                 onChange={e => onVolumeChange(nodeKey, e.target.value === '' ? null : e.target.value as number)}
                 size="small"
                 displayEmpty
+                color={isMixed ? 'warning' : undefined}
                 renderValue={mixedRenderValueMulti}
-                sx={{width: 160, flexShrink: 0, ...mixedSx}}
+                sx={{width: 160, flexShrink: 0}}
                 MenuProps={{PaperProps: {style: {maxHeight: 300}}}}
             >
                 <MenuItem value=""><em>清除</em></MenuItem>

@@ -61,7 +61,7 @@ interface UseMediaEditorReturn {
     loadMoreMedias: () => void
     mediaForms: Record<number, MediaForm>
     open: (volumeId: string, volumeNo?: number, catalogNo?: string) => Promise<void>
-    handleSubmit: () => Promise<void>
+    handleSubmit: () => Promise<boolean>
     hasChanges: () => boolean
     onMediaNoChange: (key: string, mediaNo: number | null) => void
     onSharedMediaChange: (key: string, medias: number[]) => void
@@ -317,8 +317,8 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
         }
     }, [resetAll, setInitialSnapshots])
 
-    const handleSubmit = useCallback(async () => {
-        if (volumeInfo == null) return
+    const handleSubmit = useCallback(async (): Promise<boolean> => {
+        if (volumeInfo == null) return false
         setSaving(true)
         try {
             const mediaMap: Record<number, string[]> = {}
@@ -342,12 +342,14 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
                     files: mediaMap[m] || [],
                 })),
             })
-            if (!result?.success) { enqueueSnackbar(result?.error || '保存失败', {variant: 'error'}); return }
+            if (!result?.success) { enqueueSnackbar(result?.error || '保存失败', {variant: 'error'}); return false }
             enqueueSnackbar('保存成功', {variant: 'success'})
             onSave?.()
+            return true
         } catch (err) {
             console.error('保存失败:', err)
             enqueueSnackbar('保存失败', {variant: 'error'})
+            return false
         } finally {
             setSaving(false)
         }
@@ -489,8 +491,8 @@ function TreeNodeContent({
                         </Select>
                     </FormControl>
                 ) : (
-                    <FormControl size="small" sx={{width: 80, flexShrink: 0}}>
-                        <InputLabel sx={isIndeterminate ? {color: 'warning.main'} : undefined}>序号</InputLabel>
+                    <FormControl size="small" sx={{width: 80, flexShrink: 0}} color={isIndeterminate ? 'warning' : undefined}>
+                        <InputLabel>序号</InputLabel>
                         <Select<number | ''>
                             value={isIndeterminate ? '' : (displayMediaNo ?? '')}
                             onChange={e => onMediaNoChange(nodeKey, e.target.value === '' ? null : e.target.value as number)}

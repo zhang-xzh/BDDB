@@ -95,7 +95,7 @@ export default function RootLayout({children}: Readonly<{children: React.ReactNo
 
     return (
         <html lang="zh-CN">
-        <body style={{margin: 0, padding: 0}}>
+        <body>
         <ThemeProvider theme={muiTheme}>
             <CssBaseline/>
             <SnackbarProvider maxSnack={3} anchorOrigin={{vertical: 'top', horizontal: 'center'}}>

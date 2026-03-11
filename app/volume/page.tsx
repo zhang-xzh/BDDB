@@ -2,8 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    Box, Card, CardContent, Chip, CircularProgress,Tooltip,
-    FormControl, InputLabel, MenuItem, Select, Switch, TextField, Typography,
+    Box, Card, CardContent, Chip, CircularProgress, FormControl, InputLabel, Tooltip,
+    MenuItem, Select, Switch, TextField, Typography,
 } from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
@@ -101,65 +101,53 @@ const VolumeFiltersBar: React.FC<{
     onSearchCatalogNoChange, onSearchTitleChange, onInvertTitleChange, onFilterHasMediaChange
 }) => {
         return (
-            <Card variant="outlined">
-                <CardContent>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
-                        <TextField
-                            value={searchCatalogNo}
-                            onChange={e => onSearchCatalogNoChange(e.target.value)}
-                            label="搜索编号"
-                            size="small"
-                            sx={{ width: 200 }}
-                        />
-                        <TextField
-                            value={searchTitle}
-                            onChange={e => onSearchTitleChange(e.target.value)}
-                            label="搜索标题"
-                            size="small"
-                            sx={{ width: 300 }}
-                            slotProps={{
-                                input: {
-                                    endAdornment: (
-                                        <Tooltip title="反向">
-                                            <Switch
-                                                checked={invertTitle}
-                                                onChange={e => onInvertTitleChange(e.target.checked)}
-                                                size="small"
-                                            />
-                                        </Tooltip>
-                                    ),
-                                },
-                            }}
-                        />
-                        <FormControl size="small" sx={{ width: 150 }}>
-                            <InputLabel>是否添加</InputLabel>
-                            <Select
-                                value={filterHasMedia === undefined ? NONE : String(filterHasMedia)}
-                                onChange={e => {
-                                    const v = e.target.value
-                                    onFilterHasMediaChange(v === NONE ? undefined : v === 'true')
-                                }}
-                                label="是否添加"
-                            >
-                                <MenuItem value={NONE}><em>全部</em></MenuItem>
-                                <MenuItem value="true">已添加</MenuItem>
-                                <MenuItem value="false">未添加</MenuItem>
-                            </Select>
-                        </FormControl>
-                        <Typography variant="body2" color="text.secondary">共 {total} 条</Typography>
-                    </Box>
-                </CardContent>
-            </Card>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
+                <TextField
+                    value={searchCatalogNo}
+                    onChange={e => onSearchCatalogNoChange(e.target.value)}
+                    label="搜索编号"
+                    size="small"
+                    sx={{ width: 200 }}
+                />
+                <TextField
+                    value={searchTitle}
+                    onChange={e => onSearchTitleChange(e.target.value)}
+                    label="搜索标题"
+                    size="small"
+                    sx={{ width: 300 }}
+                    slotProps={{
+                        input: {
+                            endAdornment: (
+                                <Tooltip title="反向">
+                                    <Switch
+                                        checked={invertTitle}
+                                        onChange={e => onInvertTitleChange(e.target.checked)}
+                                        size="small"
+                                    />
+                                </Tooltip>
+                            ),
+                        },
+                    }}
+                />
+                <FormControl size="small" sx={{ width: 150 }}>
+                    <InputLabel>是否添加</InputLabel>
+                    <Select
+                        value={filterHasMedia === undefined ? NONE : String(filterHasMedia)}
+                        onChange={e => {
+                            const v = e.target.value
+                            onFilterHasMediaChange(v === NONE ? undefined : v === 'true')
+                        }}
+                        label="是否添加"
+                    >
+                        <MenuItem value={NONE}><em>全部</em></MenuItem>
+                        <MenuItem value="true">已添加</MenuItem>
+                        <MenuItem value="false">未添加</MenuItem>
+                    </Select>
+                </FormControl>
+                <Typography variant="body2" color="text.secondary">共 {total} 条</Typography>
+            </Box>
         )
     }
-
-const VolumeListHeader: React.FC = () => (
-    <ListHeader columns={[
-        { label: '媒体', style: { width: 56, flexShrink: 0 } },
-        { label: '编号', style: { width: 120, flexShrink: 0 } },
-        { label: '名称', style: { flex: 1 } },
-    ]} />
-)
 
 const VolumeRowLabel: React.FC<{ volume: VolumeWithMedia; isExpanded: boolean }> = ({ volume, isExpanded }) => {
     return (
@@ -274,8 +262,7 @@ const VolumePage: React.FC = () => {
                         <CircularProgress />
                     </Box>
                 )}
-                <Card variant="outlined" sx={{ p: 0 }}>
-                    <VolumeListHeader />
+                <Card>
                     <CollapsePageList
                         items={pagedVolumes}
                         getKey={v => v._id}
