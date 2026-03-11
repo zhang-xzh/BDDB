@@ -157,7 +157,7 @@ export async function GET() {
 - Do **not** add `'use client'` to every child component by default if it is only imported inside an existing client
   boundary
 - Use React 19 hooks: `useState`, `useEffect`, `useCallback`, `useRef`
-- Use Ant Design 6 components
+- Use MUI (Material UI) components
 - **No direct DOM manipulation**
 
 ### File Consolidation — Fewer Files is Better
@@ -176,16 +176,18 @@ export async function GET() {
   600 lines.
 - Keep `app/page.tsx` and `app/layout.tsx` as thin composition/orchestration layers.
 
-### Styling — Ant Design First
+### Styling — MUI First
 
-- **Ant Design components and their built-in props are the highest priority** for layout and styling
-- Target **zero custom CSS** and **zero raw `<div>`** — use Ant Design layout primitives instead:
-    - `<Flex>` / `<Space>` for alignment and gaps
-    - `<Row>` / `<Col>` for grid layout
-    - `<Typography.Text>`, `<Typography.Title>` for text
-    - `style` prop only as last resort for values Ant Design doesn't expose
-- Never write a `<div>` when an Ant Design component (`Card`, `Flex`, `Space`, `Layout`, etc.) can serve the same
+- **MUI components and their built-in props are the highest priority** for layout and styling
+- Target **zero custom CSS** and **zero raw `<div>`** — use MUI layout primitives instead:
+    - `<Box sx={{display:'flex'}}>` / `<Stack>` for alignment and gaps
+    - `<Grid>` for grid layout
+    - `<Typography>` for text
+    - `sx` prop only as last resort for values MUI doesn't expose via props
+- Never write a `<div>` when a MUI component (`Card`, `Stack`, `Box`, `Paper`, etc.) can serve the same
   purpose
+- Prefer MUI component props over `sx` hacks targeting internal class names (e.g. use `color="warning"` not `sx={{'& .MuiOutlinedInput-notchedOutline': ...}}`)
+- Use `variant="outlined"` / `disableGutters` / `color` props instead of manual border or color overrides
 
 ## Naming Conventions
 
