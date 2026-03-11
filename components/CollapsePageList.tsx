@@ -53,12 +53,27 @@ function CollapsePageList<T>({items, getKey, activeKey, onChange, renderLabel, r
                     <Accordion
                         key={key}
                         expanded={isExpanded}
-                        onChange={(_, expanded) => onChange(expanded ? key : '')}
+                        onChange={() => onChange(key)}
                         disableGutters
                         elevation={0}
-                        sx={{'&:before': {display: 'none'}, borderBottom: '1px solid', borderColor: 'divider'}}
+                        square
+                        sx={{
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            '&:not(:last-child)': {borderBottom: 0},
+                            '&::before': {display: 'none'},
+                        }}
                     >
-                        <AccordionSummary expandIcon={<ExpandMoreIcon/>} sx={{px: 2, minHeight: 48}}>
+                        <AccordionSummary
+                            expandIcon={<ExpandMoreIcon/>}
+                            sx={{
+                                flexDirection: 'row-reverse',
+                                px: 2,
+                                minHeight: 48,
+                                '& .MuiAccordionSummary-expandIconWrapper': {marginLeft: 0},
+                                '& .MuiAccordionSummary-content': {marginLeft: 1},
+                            }}
+                        >
                             {renderLabel(item, isExpanded)}
                         </AccordionSummary>
                         <AccordionDetails sx={{p: 0}}>

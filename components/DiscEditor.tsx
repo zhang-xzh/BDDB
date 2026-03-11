@@ -1,20 +1,117 @@
-﻿'use client'
+'use client'
 
 import React, {useCallback, useEffect, useMemo, useRef, useState,} from 'react'
 import type {FileItem, NodeData, VolumeForm, TorrentWithVolume, Volume} from '@/lib/mongodb'
 import {fetchApi, postApi} from '@/lib/api'
 import {buildTree, FlatTree} from '@/lib/utils'
 import {
-    Box, Card, CardContent, CardHeader, CircularProgress,
-    IconButton, MenuItem, ListSubheader, Select, Switch,
-    TextField, Tooltip, Typography,
+    Divider, Box, Card, CardContent, CardHeader, Chip, CircularProgress,
+    FormControl, FormControlLabel, IconButton, InputLabel, MenuItem, ListSubheader, Paper, Radio, RadioGroup, Rating, Select, Stack, Switch,
+    TextField, Tooltip, Typography, useTheme,
 } from '@mui/material'
 import {SimpleTreeView} from '@mui/x-tree-view/SimpleTreeView'
 import {TreeItem} from '@mui/x-tree-view/TreeItem'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import FolderOpenIcon from '@mui/icons-material/FolderOpen'
+import CallSplitIcon from '@mui/icons-material/CallSplit'
 import InboxIcon from '@mui/icons-material/Inbox'
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile'
 import {useSnackbar} from 'notistack'
-import {VolumeFormList} from './DiscEditor/VolumeFormList'
+const VISIBLE_VOLUMES = 20
+// ─── VolumeFormList ──────────────────────────────────────────────────────────
+
+interface VolumeFormListProps {
+    selectedVolumes: number[]
+    volumeForms: Record<number, VolumeForm>
+    onVolumeFormChange: (vol: number, form: VolumeForm) => void
+    onDeleteVolume: (vol: number) => void
+    worksCount: number
+    submitted?: boolean
+}
+
+const getVolumeForm = (
+    volumeForms: Record<number, VolumeForm>,
+    vol: number,
+): VolumeForm => volumeForms[vol] || {catalog_no: '', volume_name: ''}
+
+function VolumeRow({vol, label, volumeForms, onVolumeFormChange, onDeleteVolume, submitted}: {
+    vol: number; label: string
+    volumeForms: Record<number, VolumeForm>
+    onVolumeFormChange: (vol: number, form: VolumeForm) => void
+    onDeleteVolume: (vol: number) => void
+    submitted?: boolean
+}) {
+    const form = getVolumeForm(volumeForms, vol)
+    const catalogNoError = submitted && !form.catalog_no.trim()
+    const volumeNameError = submitted && !form.volume_name.trim()
+    return (
+        <Box sx={{display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap'}}>
+            <Typography variant="body2" fontWeight={500} sx={{minWidth: 60}}>{label}</Typography>
+            <TextField
+                size="small" value={form.catalog_no} label="型番"
+                onChange={e => onVolumeFormChange(vol, {...form, catalog_no: e.target.value})}
+                error={catalogNoError} sx={{width: 150}}
+            />
+            <TextField
+                size="small" value={form.volume_name} label="标题"
+                onChange={e => onVolumeFormChange(vol, {...form, volume_name: e.target.value})}
+                error={volumeNameError} sx={{width: 700}}
+            />
+            <IconButton size="small" color="error" onClick={() => onDeleteVolume(vol)}>
+                <DeleteOutlineIcon fontSize="small"/>
+            </IconButton>
+        </Box>
+    )
+}
+
+function VolumeFormList({selectedVolumes, volumeForms, onVolumeFormChange, onDeleteVolume, worksCount, submitted}: VolumeFormListProps) {
+    if (selectedVolumes.length === 0) return null
+
+    if (worksCount === 1) {
+        return (
+            <Card variant="outlined">
+                <CardHeader title="卷信息" titleTypographyProps={{variant: 'body2', fontWeight: 600}} sx={{py: 1, px: 1.5}}/>
+                <CardContent sx={{pt: 0, pb: '8px !important', px: 1.5, display: 'flex', flexDirection: 'column', gap: 1}}>
+                    {selectedVolumes.map(vol => (
+                        <VolumeRow key={vol} vol={vol} label={`第${vol}卷`} volumeForms={volumeForms} onVolumeFormChange={onVolumeFormChange} onDeleteVolume={onDeleteVolume} submitted={submitted}/>
+                    ))}
+                </CardContent>
+            </Card>
+        )
+    }
+
+    const groups: Record<number, number[]> = {}
+    selectedVolumes.forEach(encoded => {
+        const workIdx = Math.floor(encoded / 1000)
+        const volNo = encoded % 1000
+        if (!groups[workIdx]) groups[workIdx] = []
+        groups[workIdx].push(volNo)
+    })
+
+    return (
+        <Card variant="outlined">
+            <CardHeader title="卷信息" titleTypographyProps={{variant: 'body2', fontWeight: 600}} sx={{py: 1, px: 1.5}}/>
+            <CardContent sx={{pt: 0, pb: '8px !important', px: 1.5, display: 'flex', flexDirection: 'column', gap: 2}}>
+                {Object.entries(groups).sort(([a], [b]) => Number(a) - Number(b)).map(([workIdxStr, vols]) => {
+                    const workIdx = Number(workIdxStr)
+                    return (
+                        <Box key={workIdx}>
+                            <Typography variant="body2" fontWeight={700} sx={{mb: 1}}>作品 {workIdx}</Typography>
+                            <Box sx={{pl: 2, display: 'flex', flexDirection: 'column', gap: 1}}>
+                                {vols.sort((a, b) => a - b).map(volNo => {
+                                    const encoded = workIdx * 1000 + volNo
+                                    return (
+                                        <VolumeRow key={encoded} vol={encoded} label={`第${volNo}卷`} volumeForms={volumeForms} onVolumeFormChange={onVolumeFormChange} onDeleteVolume={onDeleteVolume} submitted={submitted}/>
+                                    )
+                                })}
+                            </Box>
+                        </Box>
+                    )
+                })}
+            </CardContent>
+        </Card>
+    )
+}
 
 export interface DiscEditorRef {
     open: (torrentHash: string, name?: string, syncFiles?: boolean) => Promise<void>
@@ -32,13 +129,12 @@ export interface UseDiscEditorReturn {
     nodeData: Map<string, NodeData>
     defaultExpandedKeys: string[]
     selectedVolumes: number[]
-    visibleVolumes: number
-    loadMoreVolumes: () => void
     worksCount: number
     setWorksCount: (n: number) => void
     setVolumeToKeys: (v: Map<number, Set<string>>) => void
     open: (torrentHash: string, name?: string, syncFiles?: boolean) => Promise<void>
-    handleSubmit: () => Promise<void>
+    submitted: boolean
+    handleSubmit: () => Promise<boolean>
     handleCancel: () => void
     hasChanges: () => boolean
     onVolumeChange: (key: string, volumeNo: number | null) => void
@@ -59,10 +155,9 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
     const [visible, setVisible] = useState(false)
     const [saving, setSaving] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [submitted, setSubmitted] = useState(false)
     const [torrentName, setTorrentName] = useState('')
     const [torrentId, setTorrentId] = useState<string | null>(null)
-    const [visibleVolumes, setVisibleVolumes] = useState(20)
-    const loadMoreVolumes = useCallback(() => setVisibleVolumes(v => v + 10), [])
     const [worksCount, setWorksCount] = useState(1)
     const [volumeForms, setVolumeForms] = useState<Record<number, VolumeForm>>({})
     const [files, setFiles] = useState<FileItem[]>([])
@@ -230,6 +325,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
 
     const resetAll = useCallback(() => {
         resetSnapshots()
+        setSubmitted(false)
         setVolumeForms({});
         setFiles([]);
         setTreeData([]);
@@ -380,12 +476,13 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
         }
     }, [resetAll, setInitialSnapshots])
 
-    const handleSubmit = useCallback(async () => {
-        if (torrentId == null) return
+    const handleSubmit = useCallback(async (): Promise<boolean> => {
+        if (torrentId == null) return false
+        setSubmitted(true)
         const hasError = selectedVolumes.some(v => !volumeForms[v]?.catalog_no?.trim() || !volumeForms[v]?.volume_name?.trim())
         if (hasError) {
             enqueueSnackbar('请填写所有卷的型番和标题', {variant: 'error'});
-            return
+            return false
         }
         setSaving(true)
         try {
@@ -416,14 +513,16 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
             })
             if (!result?.success) {
                 enqueueSnackbar(result?.error || '保存失败', {variant: 'error'});
-                return
+                return false
             }
             enqueueSnackbar('保存成功', {variant: 'success'})
             setVisible(false)
             onSave?.()
+            return true
         } catch (err) {
             console.error('保存失败:', err);
             enqueueSnackbar('保存失败', {variant: 'error'})
+            return false
         } finally {
             setSaving(false)
         }
@@ -433,9 +532,9 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
 
     return {
         visible, loading, saving, torrentName, torrentId, volumeForms, files,
-        treeData, nodeData, defaultExpandedKeys, selectedVolumes, visibleVolumes,
-        loadMoreVolumes, worksCount, setWorksCount, setVolumeToKeys,
-        open, handleSubmit, handleCancel, hasChanges,
+        treeData, nodeData, defaultExpandedKeys, selectedVolumes,
+        worksCount, setWorksCount, setVolumeToKeys,
+        open, submitted, handleSubmit, handleCancel, hasChanges,
         onVolumeChange, onSharedVolumeChange, onToggleShared,
         getNodeVolume, getNodeShared, getNodeSharedVolumes,
         updateVolumeForm, resetVolumeAssignments, deleteVolume,
@@ -447,9 +546,9 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
 interface TreeNodeContentProps {
     title: string;
     nodeKey: string;
+    isLeaf: boolean;
+    isMixed: boolean;
     worksCount: number;
-    visibleVolumes: number
-    loadMoreVolumes: () => void
     getNodeVolume: (key: string) => number | undefined
     getNodeShared: (key: string) => boolean
     getNodeSharedVolumes: (key: string) => number[]
@@ -477,20 +576,31 @@ function buildMenuItems(worksCount: number, visibleVolumes: number): React.React
 }
 
 function TreeNodeContent({
-                             title, nodeKey, worksCount, visibleVolumes, loadMoreVolumes,
+                             title, nodeKey, isLeaf, isMixed, worksCount,
                              getNodeVolume, getNodeShared, getNodeSharedVolumes,
                              onVolumeChange, onSharedVolumeChange, onToggleShared,
                          }: TreeNodeContentProps) {
+    const theme = useTheme()
     const isShared = getNodeShared(nodeKey)
     const volumeNo = getNodeVolume(nodeKey)
     const sharedVolumes = getNodeSharedVolumes(nodeKey)
 
-    const menuItems = useMemo(() => buildMenuItems(worksCount, visibleVolumes), [worksCount, visibleVolumes])
+    const menuItems = useMemo(() => buildMenuItems(worksCount, VISIBLE_VOLUMES), [worksCount])
 
-    const handleScroll = (e: React.UIEvent<HTMLUListElement>) => {
-        const {scrollTop, scrollHeight, clientHeight} = e.currentTarget
-        if (scrollHeight - scrollTop - clientHeight < 20) loadMoreVolumes()
-    }
+    const fmtVol = (v: number) => worksCount === 1
+        ? `第${v}卷`
+        : `作品${Math.floor(v / 1000)}-第${v % 1000}卷`
+
+    const mixedSx = isMixed ? {
+        '& .MuiOutlinedInput-notchedOutline': {borderColor: theme.palette.warning.main},
+    } : {}
+
+    const mixedRenderValue = (val: number | '') => isMixed
+        ? <Stack direction="row" spacing={0.5} alignItems="center">
+            <CallSplitIcon sx={{fontSize: 14, color: 'warning.main'}}/>
+            <Typography variant="caption" color="warning.main">混合</Typography>
+          </Stack>
+        : val === '' ? <em style={{opacity: 0.4}}>卷号</em> : <Typography variant="caption">{fmtVol(val as number)}</Typography>
 
     const renderSelector = () => {
         if (worksCount === 1) {
@@ -502,9 +612,11 @@ function TreeNodeContent({
                         onChange={e => onSharedVolumeChange(nodeKey, e.target.value as number[])}
                         size="small"
                         displayEmpty
-                        renderValue={vals => (vals as number[]).length === 0 ? <em style={{opacity: 0.4}}>卷号</em> : (vals as number[]).map(v => `第${v}卷`).join(', ')}
+                        renderValue={vals => (vals as number[]).length === 0
+                            ? <em style={{opacity: 0.4}}>卷号</em>
+                            : (vals as number[]).map(v => `第${v}卷`).join(', ')}
                         sx={{minWidth: 150, flexShrink: 0}}
-                        MenuProps={{PaperProps: {onScroll: handleScroll as any, style: {maxHeight: 300}}}}
+                        MenuProps={{PaperProps: {style: {maxHeight: 300}}}}
                     >
                         {menuItems}
                     </Select>
@@ -516,16 +628,16 @@ function TreeNodeContent({
                     onChange={e => onVolumeChange(nodeKey, e.target.value === '' ? null : e.target.value as number)}
                     size="small"
                     displayEmpty
-                    renderValue={val => val === '' ? <em style={{opacity: 0.4}}>卷号</em> : `第${val}卷`}
-                    sx={{minWidth: 100, flexShrink: 0}}
-                    MenuProps={{PaperProps: {onScroll: handleScroll as any, style: {maxHeight: 300}}}}
+                    renderValue={mixedRenderValue}
+                    sx={{minWidth: 100, flexShrink: 0, ...mixedSx}}
+                    MenuProps={{PaperProps: {style: {maxHeight: 300}}}}
                 >
                     <MenuItem value=""><em>清除</em></MenuItem>
                     {menuItems}
                 </Select>
             )
         }
-        // multi-works: encoded value wi*1000+vi
+        // multi-works
         if (isShared) {
             return (
                 <Select<number[]>
@@ -538,21 +650,27 @@ function TreeNodeContent({
                         ? <em style={{opacity: 0.4}}>作品/卷（多选）</em>
                         : (vals as number[]).map(v => `作品${Math.floor(v / 1000)}-第${v % 1000}卷`).join(', ')}
                     sx={{minWidth: 200, flexShrink: 0}}
-                    MenuProps={{PaperProps: {onScroll: handleScroll as any, style: {maxHeight: 300}}}}
+                    MenuProps={{PaperProps: {style: {maxHeight: 300}}}}
                 >
                     {menuItems}
                 </Select>
             )
         }
+        const mixedRenderValueMulti = (val: number | '') => isMixed
+            ? <Stack direction="row" spacing={0.5} alignItems="center">
+                <CallSplitIcon sx={{fontSize: 14, color: 'warning.main'}}/>
+                <Typography variant="caption" color="warning.main">混合</Typography>
+              </Stack>
+            : val === '' ? <em style={{opacity: 0.4}}>作品/卷</em> : <Typography variant="caption">{fmtVol(val as number)}</Typography>
         return (
             <Select<number | ''>
                 value={volumeNo ?? ''}
                 onChange={e => onVolumeChange(nodeKey, e.target.value === '' ? null : e.target.value as number)}
                 size="small"
                 displayEmpty
-                renderValue={val => val === '' ? <em style={{opacity: 0.4}}>作品/卷</em> : `作品${Math.floor(val as number / 1000)}-第${(val as number) % 1000}卷`}
-                sx={{width: 160, flexShrink: 0}}
-                MenuProps={{PaperProps: {onScroll: handleScroll as any, style: {maxHeight: 300}}}}
+                renderValue={mixedRenderValueMulti}
+                sx={{width: 160, flexShrink: 0, ...mixedSx}}
+                MenuProps={{PaperProps: {style: {maxHeight: 300}}}}
             >
                 <MenuItem value=""><em>清除</em></MenuItem>
                 {menuItems}
@@ -561,11 +679,17 @@ function TreeNodeContent({
     }
 
     return (
-        <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 0.5}}>
-            <Tooltip title={title}>
-                <Typography noWrap sx={{flex: 1, fontSize: '0.875rem'}}>{title}</Typography>
-            </Tooltip>
-            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0}}>
+        <Stack direction="row" alignItems="center" spacing={0.75} sx={{py: 0.25, width: '100%'}}>
+            {isLeaf
+                ? <InsertDriveFileIcon sx={{fontSize: 14, color: 'text.disabled', flexShrink: 0}}/>
+                : <FolderOpenIcon sx={{fontSize: 14, color: 'warning.main', flexShrink: 0}}/>
+            }
+            <Typography variant="body2" noWrap sx={{maxWidth: 300, flexShrink: 0}}>{title}</Typography>
+            <Stack
+                direction="row" alignItems="center" spacing={0.5} sx={{flexShrink: 0}}
+                onClick={e => e.stopPropagation()}
+                onMouseDown={e => e.stopPropagation()}
+            >
                 <Tooltip title="共享">
                     <Switch
                         size="small"
@@ -574,27 +698,40 @@ function TreeNodeContent({
                     />
                 </Tooltip>
                 {renderSelector()}
-            </Box>
-        </Box>
+            </Stack>
+        </Stack>
     )
 }
 
-function renderTreeNodes(nodes: any[], nodeContentProps: Omit<TreeNodeContentProps, 'title' | 'nodeKey'>): React.ReactNode {
-    return nodes.map((node: any) => (
-        <TreeItem
-            key={node.key}
-            itemId={node.key}
-            label={
-                <TreeNodeContent
-                    title={node.title}
-                    nodeKey={node.key}
-                    {...nodeContentProps}
-                />
-            }
-        >
-            {node.children?.length ? renderTreeNodes(node.children, nodeContentProps) : null}
-        </TreeItem>
-    ))
+function getLeafKeys(node: any): string[] {
+    if (!node.children?.length) return [node.key]
+    return node.children.flatMap(getLeafKeys)
+}
+
+function renderTreeNodes(nodes: any[], nodeContentProps: Omit<TreeNodeContentProps, 'title' | 'nodeKey' | 'isLeaf' | 'isMixed'>): React.ReactNode {
+    return nodes.map((node: any) => {
+        const leaves = getLeafKeys(node)
+        const vols = leaves.map(k => nodeContentProps.getNodeVolume(k))
+        const anySet = vols.some(v => v !== undefined)
+        const isMixed = !node.isLeaf && anySet && !vols.every(v => v === vols[0])
+        return (
+            <TreeItem
+                key={node.key}
+                itemId={node.key}
+                label={
+                    <TreeNodeContent
+                        title={node.title}
+                        nodeKey={node.key}
+                        isLeaf={!!node.isLeaf}
+                        isMixed={isMixed}
+                        {...nodeContentProps}
+                    />
+                }
+            >
+                {node.children?.length ? renderTreeNodes(node.children, nodeContentProps) : null}
+            </TreeItem>
+        )
+    })
 }
 
 // ─── DiscEditorContent ────────────────────────────────────────────────────────
@@ -607,8 +744,6 @@ interface DiscEditorContentProps {
     nodeData: Map<string, NodeData>;
     defaultExpandedKeys: string[]
     selectedVolumes: number[];
-    visibleVolumes: number;
-    loadMoreVolumes: () => void
     worksCount: number;
     setWorksCount: (n: number) => void
     volumeForms: Record<number, VolumeForm>
@@ -621,7 +756,8 @@ interface DiscEditorContentProps {
     getNodeSharedVolumes: (key: string) => number[]
     resetVolumeAssignments: () => void
     deleteVolume: (vol: number) => void
-    handleSubmit: () => void | Promise<void>
+    submitted: boolean
+    handleSubmit: () => Promise<boolean>
 }
 
 export function DiscEditorContent({
@@ -632,8 +768,6 @@ export function DiscEditorContent({
                                       nodeData,
                                       defaultExpandedKeys,
                                       selectedVolumes,
-                                      visibleVolumes,
-                                      loadMoreVolumes,
                                       worksCount,
                                       setWorksCount,
                                       volumeForms,
@@ -646,80 +780,104 @@ export function DiscEditorContent({
                                       getNodeSharedVolumes,
                                       resetVolumeAssignments,
                                       deleteVolume,
-                                      handleSubmit: externalSubmit,
+                                      submitted,
+                                      handleSubmit,
                                   }: DiscEditorContentProps) {
-    const {enqueueSnackbar} = useSnackbar()
-    const [submitted, setSubmitted] = useState(false)
-
-    const handleSubmit = () => {
-        setSubmitted(true)
-        const hasError = selectedVolumes.some(v => !volumeForms[v]?.catalog_no?.trim() || !volumeForms[v]?.volume_name?.trim())
-        if (hasError) {
-            enqueueSnackbar('请填写所有卷的型番和标题', {variant: 'error'})
-            return
-        }
-        externalSubmit()
-    }
-
-    const nodeContentProps = useMemo<Omit<TreeNodeContentProps, 'title' | 'nodeKey'>>(() => ({
-        worksCount, visibleVolumes, loadMoreVolumes,
+    const [worksHover, setWorksHover] = useState(-1)
+    const nodeContentProps = useMemo<Omit<TreeNodeContentProps, 'title' | 'nodeKey' | 'isLeaf' | 'isMixed'>>(() => ({
+        worksCount,
         getNodeVolume, getNodeShared, getNodeSharedVolumes,
         onVolumeChange, onSharedVolumeChange, onToggleShared,
-    }), [worksCount, visibleVolumes, loadMoreVolumes, getNodeVolume, getNodeShared, getNodeSharedVolumes, onVolumeChange, onSharedVolumeChange, onToggleShared])
+    }), [worksCount, getNodeVolume, getNodeShared, getNodeSharedVolumes, onVolumeChange, onSharedVolumeChange, onToggleShared])
+
+    const fmt = (v: number) => worksCount === 1 ? `第${v}卷` : `作品${Math.floor(v / 1000)}-第${v % 1000}卷`
+
+    const leafResults = useMemo(() => {
+        const keys: string[] = []
+        nodeData.forEach((data, key) => {
+            if (!data.files?.length) return
+            if (data.volume_no !== undefined || data.shared_volume_nos?.length) keys.push(key)
+        })
+        return keys.sort()
+    }, [nodeData])
 
     return (
-        <Box sx={{display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1, position: 'relative'}}>
+        <Card variant="outlined" sx={{position: 'relative', mx: 2, mt: 1, mb: 2}}>
             {loading && (
                 <Box sx={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, bgcolor: 'rgba(255,255,255,0.6)'}}>
                     <CircularProgress/>
                 </Box>
             )}
-            {files.length > 0 ? (
-                <Card variant="outlined">
-                    <CardHeader
-                        sx={{pb: 0, pt: 1, px: 1.5}}
-                        title={
-                            <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
-                                <Typography variant="body2" fontWeight={600}>文件列表</Typography>
-                                <Typography variant="body2" color="text.secondary">{files.length} 个文件</Typography>
-                                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
-                                    <Typography variant="body2">作品数</Typography>
-                                    <TextField
-                                        type="number"
-                                        size="small"
-                                        value={worksCount}
-                                        onChange={e => {
-                                            const v = Math.max(1, parseInt(e.target.value) || 1)
-                                            setWorksCount(v)
-                                            resetVolumeAssignments()
-                                        }}
-                                        inputProps={{min: 1}}
-                                        sx={{width: 70}}
-                                    />
-                                </Box>
-                            </Box>
-                        }
-                    />
-                    <CardContent sx={{pt: 0.5, px: 1.5, pb: '8px !important'}}>
-                        <SimpleTreeView defaultExpandedItems={defaultExpandedKeys}>
-                            {renderTreeNodes(treeData, nodeContentProps)}
-                        </SimpleTreeView>
-                    </CardContent>
-                </Card>
-            ) : (
-                <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, color: 'text.disabled'}}>
-                    <InboxIcon sx={{fontSize: 48, mb: 1}}/>
-                    <Typography>暂无文件数据</Typography>
-                </Box>
-            )}
-            <VolumeFormList
-                selectedVolumes={selectedVolumes}
-                volumeForms={volumeForms}
-                onVolumeFormChange={updateVolumeForm}
-                onDeleteVolume={deleteVolume}
-                worksCount={worksCount}
-                submitted={submitted}
+            <CardHeader
+                title={
+                    <Stack direction="row" alignItems="center"
+                     spacing={2}
+                    >
+                        <Typography variant="subtitle2">文件列表</Typography>
+                        <Typography variant="body2" color="text.secondary">{files.length} 个文件</Typography>
+                        <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
+                            <Typography variant="body2" color="text.secondary" sx={{whiteSpace: 'nowrap'}}>作品数</Typography>
+                            <Rating
+                                value={worksCount}
+                                max={10}
+                                onChange={(_, v) => {
+                                    if (v == null) return
+                                    setWorksCount(v)
+                                    resetVolumeAssignments()
+                                }}
+                                onChangeActive={(_, v) => setWorksHover(v)}
+                                size="small"
+                                sx={{'& .MuiRating-icon': {mx: '1px'}}}
+                                IconContainerComponent={({value: v, ...props}) => {
+                                    const active = worksHover > 0 ? worksHover : worksCount
+                                    const filled = v <= active
+                                    return (
+                                        <span {...props}>
+                                            <Box sx={{
+                                                width: 20, height: 20, borderRadius: '50%',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: 11, fontWeight: 600, lineHeight: 1,
+                                                border: '1px solid',
+                                                borderColor: filled ? 'primary.main' : 'divider',
+                                                bgcolor: filled ? 'primary.main' : 'transparent',
+                                                color: filled ? 'primary.contrastText' : 'text.disabled',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.15s',
+                                            }}>{v}</Box>
+                                        </span>
+                                    )
+                                }}
+                            />
+                        </Box>
+                    </Stack>
+                }
+            
+                sx={{pt: 2, pb: 1, px: 2}}
             />
-        </Box>
+            <CardContent sx={{pt: 0, px: 2, pb: '8px !important'}}>
+                {files.length > 0 ? (
+                    <SimpleTreeView defaultExpandedItems={defaultExpandedKeys}>
+                        {renderTreeNodes(treeData, nodeContentProps)}
+                    </SimpleTreeView>
+                ) : (
+                    <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, color: 'text.disabled'}}>
+                        <InboxIcon sx={{fontSize: 48, mb: 1}}/>
+                        <Typography>暂无文件数据</Typography>
+                    </Box>
+                )}
+            </CardContent>
+            {selectedVolumes.length > 0 && (
+                <CardContent sx={{pt: 1, px: 2, pb: '8px !important'}}>
+                    <VolumeFormList
+                        selectedVolumes={selectedVolumes}
+                        volumeForms={volumeForms}
+                        onVolumeFormChange={updateVolumeForm}
+                        onDeleteVolume={deleteVolume}
+                        worksCount={worksCount}
+                        submitted={submitted}
+                    />
+                </CardContent>
+            )}
+        </Card>
     )
 }

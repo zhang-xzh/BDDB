@@ -160,7 +160,7 @@ const SiderContent: React.FC = () => {
                 <CardContent sx={{pb: '12px !important', pt: 1.5}}>
                     <TextField
                         fullWidth size="small"
-                        placeholder="搜索产品..."
+                        label="搜索产品"
                         value={searchText}
                         onChange={e => setSearchText(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleSearch()}

@@ -6,8 +6,7 @@ import {fetchApi, postApi} from '@/lib/api'
 import {buildTree, FlatTree} from '@/lib/utils'
 import {
     Box, Card, CardContent, CardHeader, CircularProgress,
-    MenuItem, Select, Switch, TextField, Tooltip, Typography,
-    IconButton,
+    FormControl, IconButton, InputLabel, MenuItem, Select, Switch, TextField, Tooltip, Typography,
 } from '@mui/material'
 import {SimpleTreeView} from '@mui/x-tree-view/SimpleTreeView'
 import {TreeItem} from '@mui/x-tree-view/TreeItem'
@@ -383,25 +382,27 @@ function MediaRow({no, mediaForms, onMediaFormChange, onDeleteMedia}: {
     return (
         <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
             <Typography variant="body2" fontWeight={600} sx={{minWidth: 60}}>序号 {no}</Typography>
-            <Select<MediaType>
-                value={form.media_type}
-                onChange={e => onMediaFormChange(no, {...form, media_type: e.target.value as MediaType})}
-                size="small"
-                sx={{width: 100}}
-            >
-                {MEDIA_TYPES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
-            </Select>
+            <FormControl size="small" sx={{width: 100}}>
+                <InputLabel>类型</InputLabel>
+                <Select<MediaType>
+                    value={form.media_type}
+                    onChange={e => onMediaFormChange(no, {...form, media_type: e.target.value as MediaType})}
+                    label="类型"
+                >
+                    {MEDIA_TYPES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
+                </Select>
+            </FormControl>
             <TextField
                 value={form.content_title}
                 onChange={e => onMediaFormChange(no, {...form, content_title: e.target.value})}
-                placeholder="内容"
+                label="内容"
                 size="small"
                 sx={{width: 300}}
             />
             <TextField
                 value={form.description}
                 onChange={e => onMediaFormChange(no, {...form, description: e.target.value})}
-                placeholder="说明"
+                label="说明"
                 size="small"
                 sx={{width: 400}}
             />
@@ -474,31 +475,34 @@ function TreeNodeContent({
                     <Switch size="small" checked={isShared} onChange={e => onToggleShared(nodeKey, e.target.checked)}/>
                 </Tooltip>
                 {isShared ? (
-                    <Select<number[]>
-                        multiple
-                        value={sharedMedias}
-                        onChange={e => onSharedMediaChange(nodeKey, e.target.value as number[])}
-                        size="small"
-                        displayEmpty
-                        renderValue={vals => (vals as number[]).length === 0 ? <em style={{opacity: 0.4}}>序号（多选）</em> : (vals as number[]).join(', ')}
-                        sx={{minWidth: 150, flexShrink: 0}}
-                        MenuProps={{PaperProps: {onScroll: handleScroll as any, style: {maxHeight: 300}}}}
-                    >
-                        {mediaNoMenuItems}
-                    </Select>
+                    <FormControl size="small" sx={{minWidth: 150, flexShrink: 0}}>
+                        <InputLabel>序号</InputLabel>
+                        <Select<number[]>
+                            multiple
+                            value={sharedMedias}
+                            onChange={e => onSharedMediaChange(nodeKey, e.target.value as number[])}
+                            label="序号"
+                            renderValue={vals => (vals as number[]).join(', ')}
+                            MenuProps={{PaperProps: {onScroll: handleScroll as any, style: {maxHeight: 300}}}}
+                        >
+                            {mediaNoMenuItems}
+                        </Select>
+                    </FormControl>
                 ) : (
-                    <Select<number | ''>
-                        value={isIndeterminate ? '' : (displayMediaNo ?? '')}
-                        onChange={e => onMediaNoChange(nodeKey, e.target.value === '' ? null : e.target.value as number)}
-                        size="small"
-                        displayEmpty
-                        renderValue={val => val === '' ? <em style={{opacity: 0.4}}>{isIndeterminate ? '不一致' : '序号'}</em> : String(val)}
-                        sx={{width: 80, flexShrink: 0}}
-                        MenuProps={{PaperProps: {onScroll: handleScroll as any, style: {maxHeight: 300}}}}
-                    >
-                        <MenuItem value=""><em>清除</em></MenuItem>
-                        {mediaNoMenuItems}
-                    </Select>
+                    <FormControl size="small" sx={{width: 80, flexShrink: 0}}>
+                        <InputLabel sx={isIndeterminate ? {color: 'warning.main'} : undefined}>序号</InputLabel>
+                        <Select<number | ''>
+                            value={isIndeterminate ? '' : (displayMediaNo ?? '')}
+                            onChange={e => onMediaNoChange(nodeKey, e.target.value === '' ? null : e.target.value as number)}
+                            label="序号"
+                            displayEmpty={isIndeterminate}
+                            renderValue={isIndeterminate ? () => <em>不一致</em> : undefined}
+                            MenuProps={{PaperProps: {onScroll: handleScroll as any, style: {maxHeight: 300}}}}
+                        >
+                            <MenuItem value=""><em>清除</em></MenuItem>
+                            {mediaNoMenuItems}
+                        </Select>
+                    </FormControl>
                 )}
             </Box>
         </Box>

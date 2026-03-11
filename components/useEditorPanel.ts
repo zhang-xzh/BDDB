@@ -2,7 +2,7 @@ import {useCallback, useState} from 'react'
 
 interface EditorActions {
     hasChanges: () => boolean
-    handleSubmit: () => Promise<void>
+    handleSubmit: () => Promise<boolean>
 }
 
 export function useEditorPanel<TItem>({
@@ -23,14 +23,20 @@ export function useEditorPanel<TItem>({
 
         // 点击已展开的项 → 保存并收起
         if (activeKey && newKey === activeKey) {
-            if (editor.hasChanges()) await editor.handleSubmit()
+            if (editor.hasChanges()) {
+                const ok = await editor.handleSubmit()
+                if (!ok) return
+            }
             setActiveKey(undefined)
             return
         }
 
         // 切换到新项 → 保存当前项，打开新项
         if (activeKey && activeKey !== newKey) {
-            if (editor.hasChanges()) await editor.handleSubmit()
+            if (editor.hasChanges()) {
+                const ok = await editor.handleSubmit()
+                if (!ok) return
+            }
         }
 
         setActiveKey(newKey)
@@ -41,7 +47,10 @@ export function useEditorPanel<TItem>({
     }, [activeKey, editor, pagedItems, getItemKey, openItem])
 
     const closeForPageChange = useCallback(async () => {
-        if (editor.hasChanges()) await editor.handleSubmit()
+        if (editor.hasChanges()) {
+            const ok = await editor.handleSubmit()
+            if (!ok) return
+        }
         setActiveKey(undefined)
     }, [editor])
 
