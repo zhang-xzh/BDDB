@@ -22,8 +22,7 @@ function matchesFilters(torrent: TorrentWithVolume, filters: {
     }
     if (filterCategory !== undefined && torrent.category !== filterCategory) return false
     if (filterHasVolumes !== undefined && !!torrent.hasVolumes !== filterHasVolumes) return false
-    if (filterState !== undefined && torrent.state !== filterState) return false
-    return true
+    return !(filterState !== undefined && torrent.state !== filterState);
 }
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
