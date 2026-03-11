@@ -1,4 +1,6 @@
-"use client";
+import pathlib
+
+content = r'''"use client";
 
 import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {
@@ -317,3 +319,8 @@ const TorrentsPage: React.FC = () => {
 };
 
 export default TorrentsPage;
+'''
+
+target = pathlib.Path(r'c:\Users\zhang\WebstormProjects\BDDB\app\torrents\page.tsx')
+target.write_text(content, encoding='utf-8')
+print(f'Done, lines: {len(content.splitlines())}')

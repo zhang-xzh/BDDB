@@ -1,11 +1,15 @@
 'use client'
 
 import React, {useCallback, useEffect, useRef, useState} from 'react'
-import {Button, Card, Collapse, Empty, Flex, Image, Input, Spin, Tag, theme, Typography} from 'antd'
-import {DownOutlined, UpOutlined} from '@ant-design/icons'
+import {
+    Accordion, AccordionDetails, AccordionSummary,
+    Box, Card, CardContent, Chip, CircularProgress,
+    IconButton, InputAdornment, TextField, Typography,
+} from '@mui/material'
+import SearchIcon from '@mui/icons-material/Search'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import InboxIcon from '@mui/icons-material/Inbox'
 import type {ProductSearchDoc} from '@/lib/meilisearch/productSearch'
-
-const {Text, Title} = Typography
 
 interface SearchResponse {
     products: ProductSearchDoc[]
@@ -26,7 +30,6 @@ interface ApiResponse {
 const PAGE_SIZE = 20
 
 const SiderContent: React.FC = () => {
-    const {token} = theme.useToken()
     const [searchText, setSearchText] = useState('')
     const [loading, setLoading] = useState(false)
     const [loadingMore, setLoadingMore] = useState(false)
@@ -136,12 +139,6 @@ const SiderContent: React.FC = () => {
         return () => container.removeEventListener('scroll', handleScroll)
     }, [loadMore])
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            handleSearch()
-        }
-    }
-
     // 格式化日期显示
     const formatDate = (dateStr?: string) => {
         if (!dateStr) return null
@@ -153,147 +150,111 @@ const SiderContent: React.FC = () => {
         }
     }
 
-    // 生成 Collapse 项
-    const collapseItems = (searchResult?.products || []).map((product, index) => {
-        const thumbnailUrl = product.images?.[0]
-        const releaseDate = formatDate(product.release_date)
-
-        return {
-            key: product.product_id || String(index),
-            label: (
-                <Flex gap={12} align="center">
-                    {/* 缩略图 - 点击放大 */}
-                    {thumbnailUrl ? (
-                        <Image
-                            src={thumbnailUrl}
-                            alt={product.title}
-                            width={60}
-                            height={60}
-                            style={{objectFit: 'cover', borderRadius: 4, flexShrink: 0}}
-                        />
-                    ) : (
-                        <div
-                            style={{
-                                width: 60,
-                                height: 60,
-                                borderRadius: 4,
-                                flexShrink: 0,
-                                background: token.colorBgTextHover,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            }}
-                        >
-                            <Text type="secondary" style={{fontSize: 10}}>无图</Text>
-                        </div>
-                    )}
-                    <Flex vertical gap={4} style={{flex: 1, minWidth: 0}}>
-                        <Text strong style={{fontSize: 14, wordBreak: 'break-word'}}>
-                            {product.title}
-                        </Text>
-                        <Flex gap={8} wrap align="center" justify="space-between">
-                            <Flex gap={8} wrap>
-                                {product.model_number && (
-                                    <Tag color="blue">{product.model_number}</Tag>
-                                )}
-                                {releaseDate && (
-                                    <Tag color="green">{releaseDate}</Tag>
-                                )}
-                            </Flex>
-                            {/* 展开/收起按钮 */}
-                            <Button
-                                type="text"
-                                size="small"
-                                icon={isExpanded(product.product_id || String(index)) ? <UpOutlined/> : <DownOutlined/>}
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    toggleExpand(product.product_id || String(index))
-                                }}
-                            />
-                        </Flex>
-                    </Flex>
-                </Flex>
-            ),
-            children: (
-                <Flex vertical gap={12}>
-                    {product.note_raw ? (
-                        <div
-                            style={{
-                                fontSize: 13,
-                                lineHeight: 1.6,
-                                color: token.colorText,
-                                background: token.colorBgTextHover,
-                                padding: 12,
-                                borderRadius: 6,
-                            }}
-                            dangerouslySetInnerHTML={{ __html: product.note_raw }}
-                        />
-                    ) : (
-                        <Text type="secondary">暂无详细说明</Text>
-                    )}
-                </Flex>
-            ),
-        }
-    })
+    // 生成产品列表项
+    const products = searchResult?.products || []
 
     return (
-        <Flex vertical gap={16}>
-            <Card style={{position: 'sticky', top: 0, zIndex: 1, background: token.colorBgContainer}}>
-                <Input.Search
-                    placeholder="搜索产品..."
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    onSearch={handleSearch}
-                    loading={loading}
-                    enterButton
-                />
+        <Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
+            {/* 搜索框 */}
+            <Card variant="outlined">
+                <CardContent sx={{pb: '12px !important', pt: 1.5}}>
+                    <TextField
+                        fullWidth size="small"
+                        placeholder="搜索产品..."
+                        value={searchText}
+                        onChange={e => setSearchText(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                        slotProps={{
+                            input: {
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        {loading
+                                            ? <CircularProgress size={16}/>
+                                            : <IconButton size="small" onClick={handleSearch}><SearchIcon fontSize="small"/></IconButton>
+                                        }
+                                    </InputAdornment>
+                                )
+                            }
+                        }}
+                    />
+                </CardContent>
             </Card>
-            <Card
-                bodyStyle={{padding: 0}}
-                style={{maxHeight: 'calc(100vh - 200px)', overflow: 'hidden'}}
-            >
-                <div
-                    ref={scrollContainerRef}
-                    style={{
-                        maxHeight: 'calc(100vh - 200px)',
-                        overflow: 'auto',
-                        padding: 24,
-                    }}
-                >
-                    {searchResult ? (
-                        (searchResult.products || []).length > 0 ? (
-                            <Flex vertical gap={8}>
-                                <Text type="secondary" style={{fontSize: 12}}>
-                                    共找到 {searchResult.total} 个结果
-                                    {hasMore && '（滚动加载更多）'}
-                                </Text>
-                                <Collapse
-                                    items={collapseItems}
-                                    activeKey={activeKey}
-                                    onChange={() => {
-                                    }}
-                                    collapsible="icon"
-                                    expandIcon={() => null}
-                                    style={{
-                                        background: token.colorBgContainer,
-                                    }}
-                                />
-                                {loadingMore && (
-                                    <Flex justify="center" style={{padding: '16px 0'}}>
-                                        <Spin size="small"/>
-                                    </Flex>
-                                )}
-                            </Flex>
-                        ) : (
-                            <Empty description="未找到相关产品" image={Empty.PRESENTED_IMAGE_SIMPLE}/>
-                        )
+
+            {/* 结果列表 */}
+            <Box ref={scrollContainerRef} sx={{overflow: 'auto', maxHeight: 'calc(100vh - 220px)'}}>
+                {searchResult ? (
+                    products.length > 0 ? (
+                        <Box>
+                            <Typography variant="caption" color="text.secondary" sx={{px: 1, display: 'block', mb: 1}}>
+                                共找到 {searchResult.total} 个结果{hasMore && '（滚动加载更多）'}
+                            </Typography>
+                            {products.map((product, index) => {
+                                const key = product.product_id || String(index)
+                                const expanded = isExpanded(key)
+                                const thumbnailUrl = product.images?.[0]
+                                const releaseDate = formatDate(product.release_date)
+                                return (
+                                    <Accordion
+                                        key={key}
+                                        expanded={expanded}
+                                        onChange={() => toggleExpand(key)}
+                                        disableGutters elevation={0}
+                                        sx={{'&:before': {display: 'none'}, borderBottom: '1px solid', borderColor: 'divider'}}
+                                    >
+                                        <AccordionSummary expandIcon={<ExpandMoreIcon/>} sx={{px: 1, alignItems: 'flex-start'}}>
+                                            <Box sx={{display: 'flex', gap: 1.5, alignItems: 'flex-start', width: '100%'}}>
+                                                {/* 缩略图 */}
+                                                {thumbnailUrl ? (
+                                                    <Box
+                                                        component="img" src={thumbnailUrl} alt={product.title}
+                                                        sx={{width: 60, height: 60, objectFit: 'cover', borderRadius: 1, flexShrink: 0}}
+                                                    />
+                                                ) : (
+                                                    <Box sx={{width: 60, height: 60, borderRadius: 1, flexShrink: 0, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                                        <Typography variant="caption" color="text.disabled">无图</Typography>
+                                                    </Box>
+                                                )}
+                                                <Box sx={{flex: 1, minWidth: 0}}>
+                                                    <Typography variant="body2" fontWeight={600} sx={{wordBreak: 'break-word'}}>
+                                                        {product.title}
+                                                    </Typography>
+                                                    <Box sx={{display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5}}>
+                                                        {product.model_number && <Chip label={product.model_number} size="small" color="primary" variant="outlined"/>}
+                                                        {releaseDate && <Chip label={releaseDate} size="small" color="success" variant="outlined"/>}
+                                                    </Box>
+                                                </Box>
+                                            </Box>
+                                        </AccordionSummary>
+                                        <AccordionDetails sx={{px: 1.5, py: 1}}>
+                                            {product.note_raw ? (
+                                                <Box
+                                                    sx={{fontSize: 13, lineHeight: 1.6, bgcolor: 'action.hover', p: 1.5, borderRadius: 1}}
+                                                    dangerouslySetInnerHTML={{__html: product.note_raw}}
+                                                />
+                                            ) : (
+                                                <Typography variant="caption" color="text.secondary">暂无详细说明</Typography>
+                                            )}
+                                        </AccordionDetails>
+                                    </Accordion>
+                                )
+                            })}
+                            {loadingMore && (
+                                <Box sx={{display: 'flex', justifyContent: 'center', py: 2}}>
+                                    <CircularProgress size={20}/>
+                                </Box>
+                            )}
+                        </Box>
                     ) : (
-                        <Text type="secondary">输入关键词搜索产品</Text>
-                    )}
-                </div>
-            </Card>
-        </Flex>
+                        <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, gap: 1}}>
+                            <InboxIcon sx={{fontSize: 40, color: 'text.disabled'}}/>
+                            <Typography variant="body2" color="text.secondary">未找到相关产品</Typography>
+                        </Box>
+                    )
+                ) : (
+                    <Typography variant="body2" color="text.secondary" sx={{px: 1}}>输入关键词搜索产品</Typography>
+                )}
+            </Box>
+        </Box>
     )
 }
 

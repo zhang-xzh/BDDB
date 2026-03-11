@@ -1,4 +1,6 @@
-'use client'
+
+# Script to write the new MediaEditor.tsx
+content = r"""'use client'
 
 import React, {useCallback, useEffect, useMemo, useRef, useState,} from 'react'
 import type {FileItem, Media, MediaForm, MediaType, NodeData} from '@/lib/mongodb'
@@ -576,3 +578,9 @@ export function MediaEditorContent({
 
 export type {UseMediaEditorReturn}
 export default MediaEditorContent
+"""
+
+with open(r'c:\Users\zhang\WebstormProjects\BDDB\components\MediaEditor.tsx', 'w', encoding='utf-8', newline='\n') as f:
+    f.write(content)
+
+print("Done, lines:", content.count('\n'))

@@ -1,4 +1,6 @@
-"use client";
+import pathlib
+
+content = r'''"use client";
 
 import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {
@@ -299,3 +301,8 @@ const VolumePage: React.FC = () => {
 };
 
 export default VolumePage;
+'''
+
+target = pathlib.Path(r'c:\Users\zhang\WebstormProjects\BDDB\app\volume\page.tsx')
+target.write_text(content, encoding='utf-8')
+print(f'Done, lines: {len(content.splitlines())}')

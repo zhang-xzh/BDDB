@@ -1,5 +1,6 @@
-import React, {type CSSProperties, type ReactNode, useMemo} from 'react'
-import {Collapse, Flex, theme, Typography} from 'antd'
+import React, {type CSSProperties, type ReactNode} from 'react'
+import {Accordion, AccordionDetails, AccordionSummary, Box, Typography, useTheme} from '@mui/material'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 
 /**
  * 行标签包装器：展开时阻止点击冒泡（防止误触收起），收起时允许点击展开。
@@ -18,16 +19,16 @@ export interface ListHeaderColumn {
 }
 
 export const ListHeader: React.FC<{ columns: ListHeaderColumn[] }> = ({columns}) => {
-    const {token} = theme.useToken()
+    const theme = useTheme()
     return (
-        <Flex align="center" gap={8} style={{padding: '12px 16px', background: token.colorFillAlter}}>
-            <div style={{width: 24, flexShrink: 0}}/>
+        <Box sx={{display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, bgcolor: theme.palette.action.hover}}>
+            <Box sx={{width: 24, flexShrink: 0}}/>
             {columns.map(col => (
-                <Typography.Text key={col.label} strong style={{color: token.colorTextHeading, ...col.style}}>
+                <Typography key={col.label} variant="body2" fontWeight={700} color="text.primary" style={col.style}>
                     {col.label}
-                </Typography.Text>
+                </Typography>
             ))}
-        </Flex>
+        </Box>
     )
 }
 
@@ -43,26 +44,30 @@ interface CollapsePageListProps<T> {
 }
 
 function CollapsePageList<T>({items, getKey, activeKey, onChange, renderLabel, renderContent}: CollapsePageListProps<T>) {
-    const collapseItems = useMemo(() =>
-            items.map(item => {
-                const key = getKey(item)
-                return {
-                    key,
-                    label: renderLabel(item, activeKey === key),
-                    children: activeKey === key ? renderContent(item) : null,
-                }
-            }),
-        [items, getKey, activeKey, renderLabel, renderContent])
-
     return (
-        <Collapse
-            expandIconPlacement="start"
-            bordered={false}
-            accordion
-            activeKey={activeKey}
-            onChange={onChange}
-            items={collapseItems}
-        />
+        <Box>
+            {items.map(item => {
+                const key = getKey(item)
+                const isExpanded = activeKey === key
+                return (
+                    <Accordion
+                        key={key}
+                        expanded={isExpanded}
+                        onChange={(_, expanded) => onChange(expanded ? key : '')}
+                        disableGutters
+                        elevation={0}
+                        sx={{'&:before': {display: 'none'}, borderBottom: '1px solid', borderColor: 'divider'}}
+                    >
+                        <AccordionSummary expandIcon={<ExpandMoreIcon/>} sx={{px: 2, minHeight: 48}}>
+                            {renderLabel(item, isExpanded)}
+                        </AccordionSummary>
+                        <AccordionDetails sx={{p: 0}}>
+                            {isExpanded ? renderContent(item) : null}
+                        </AccordionDetails>
+                    </Accordion>
+                )
+            })}
+        </Box>
     )
 }
 

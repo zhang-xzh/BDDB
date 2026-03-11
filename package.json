@@ -13,16 +13,20 @@
     "meili:clear": "tsx scripts/syncMeilisearch.ts clear"
   },
   "dependencies": {
-    "@ant-design/icons": "^6.0.0",
     "@ctrl/qbittorrent": "^9.11.2",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.9",
+    "@mui/material": "^7.3.9",
+    "@mui/x-tree-view": "^8.27.2",
     "@seald-io/nedb": "^4.1.2",
     "@types/mongodb": "^4.0.6",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "antd": "^6.3.1",
     "meilisearch": "^0.55.0",
     "mongodb": "^7.1.0",
     "next": "^16.1.6",
+    "notistack": "^3.0.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "typescript": "^5.9.3"
