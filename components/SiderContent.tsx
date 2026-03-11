@@ -1,11 +1,7 @@
 'use client'
 
 import React, {useCallback, useEffect, useRef, useState} from 'react'
-import {
-    Accordion, AccordionDetails, AccordionSummary,
-    Box, Card, CardContent, Chip, CircularProgress,
-    IconButton, InputAdornment, TextField, Typography,
-} from '@mui/material'
+import {Accordion, AccordionDetails, AccordionSummary, Box, Chip, CircularProgress, IconButton, InputAdornment, TextField, Typography,} from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import InboxIcon from '@mui/icons-material/Inbox'
@@ -155,32 +151,26 @@ const SiderContent: React.FC = () => {
 
     return (
         <Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
-            {/* 搜索框 */}
-            <Card variant="outlined">
-                <CardContent sx={{pb: '12px !important', pt: 1.5}}>
-                    <TextField
-                        fullWidth size="small"
-                        label="搜索产品"
-                        value={searchText}
-                        onChange={e => setSearchText(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                        slotProps={{
-                            input: {
-                                endAdornment: (
-                                    <InputAdornment position="end">
-                                        {loading
-                                            ? <CircularProgress size={16}/>
-                                            : <IconButton size="small" onClick={handleSearch}><SearchIcon fontSize="small"/></IconButton>
-                                        }
-                                    </InputAdornment>
-                                )
-                            }
-                        }}
-                    />
-                </CardContent>
-            </Card>
+            <TextField
+                fullWidth size="small"
+                label="搜索产品"
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                slotProps={{
+                    input: {
+                        endAdornment: (
+                            <InputAdornment position="end">
+                                {loading
+                                    ? <CircularProgress size={16}/>
+                                    : <IconButton size="small" onClick={handleSearch}><SearchIcon fontSize="small"/></IconButton>
+                                }
+                            </InputAdornment>
+                        )
+                    }
+                }}
+            />
 
-            {/* 结果列表 */}
             <Box ref={scrollContainerRef} sx={{overflow: 'auto', maxHeight: 'calc(100vh - 220px)'}}>
                 {searchResult ? (
                     products.length > 0 ? (
@@ -198,7 +188,8 @@ const SiderContent: React.FC = () => {
                                         key={key}
                                         expanded={expanded}
                                         onChange={() => toggleExpand(key)}
-                                        disableGutters elevation={0}
+                                        disableGutters
+                                        elevation={0}
                                         sx={{'&:before': {display: 'none'}, borderBottom: '1px solid', borderColor: 'divider'}}
                                     >
                                         <AccordionSummary expandIcon={<ExpandMoreIcon/>} sx={{px: 1, alignItems: 'flex-start'}}>

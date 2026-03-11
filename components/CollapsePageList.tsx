@@ -54,8 +54,8 @@ function CollapsePageList<T>({items, getKey, activeKey, onChange, renderLabel, r
                         key={key}
                         expanded={isExpanded}
                         onChange={() => onChange(key)}
-                        disableGutters
-                        elevation={0}
+                        // disableGutters
+                        // elevation={0}
                         square
                         sx={{
                             border: '1px solid',
