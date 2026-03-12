@@ -5,13 +5,17 @@ import type {FileItem, Media, MediaForm, MediaType, NodeData} from '@/lib/mongod
 import {fetchApi, postApi} from '@/lib/api'
 import {buildTree, FlatTree} from '@/lib/utils'
 import {
-    Box, Card, CardContent, CardHeader, CircularProgress,
-    FormControl, IconButton, InputLabel, MenuItem, Select, Switch, TextField, Tooltip, Typography,
+    Box, Card, CardContent, CardHeader, Checkbox, Chip, CircularProgress,
+    FormControl, IconButton, InputLabel, Menu, MenuItem, Select, Stack,
+    TextField, Tooltip, Typography,
 } from '@mui/material'
 import {SimpleTreeView} from '@mui/x-tree-view/SimpleTreeView'
 import {TreeItem} from '@mui/x-tree-view/TreeItem'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import FolderOpenIcon from '@mui/icons-material/FolderOpen'
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile'
 import InboxIcon from '@mui/icons-material/Inbox'
+import CallSplitIcon from '@mui/icons-material/CallSplit'
 import {useSnackbar} from 'notistack'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -383,7 +387,7 @@ function MediaRow({no, mediaForms, onMediaFormChange, onDeleteMedia}: {
     const form = mediaForms[no] || {media_type: 'bd', content_title: '', description: ''}
     return (
         <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
-            <Typography variant="body2" fontWeight={600} sx={{minWidth: 60}}>序号 {no}</Typography>
+            <Typography variant="body2" fontWeight={600} sx={{minWidth: 60}}>媒介 {no}</Typography>
             <FormControl size="small" sx={{width: 100}}>
                 <InputLabel>类型</InputLabel>
                 <Select<MediaType>
@@ -419,8 +423,8 @@ function MediaFormList({selectedMedias, mediaForms, onMediaFormChange, onDeleteM
     if (selectedMedias.length === 0) return null
     return (
         <Card variant="outlined">
-            <CardHeader sx={{pb: 0, pt: 1, px: 1.5}} title={<Typography variant="body2" fontWeight={600}>媒介信息</Typography>}/>
-            <CardContent sx={{pt: 0.5, px: 1.5, pb: '8px !important', display: 'flex', flexDirection: 'column', gap: 1}}>
+            <CardHeader title="媒介信息" titleTypographyProps={{variant: 'body2', fontWeight: 600}} sx={{py: 1, px: 1.5}}/>
+            <CardContent sx={{pt: 0, pb: '8px !important', px: 1.5, display: 'flex', flexDirection: 'column', gap: 1}}>
                 {selectedMedias.map(no => (
                     <MediaRow key={no} no={no} mediaForms={mediaForms} onMediaFormChange={onMediaFormChange} onDeleteMedia={onDeleteMedia}/>
                 ))}
@@ -434,6 +438,7 @@ function MediaFormList({selectedMedias, mediaForms, onMediaFormChange, onDeleteM
 interface TreeNodeContentProps {
     title: string
     nodeKey: string
+    isLeaf: boolean
     visibleMedias: number
     loadMoreMedias: () => void
     getNodeMediaNo: (key: string) => number | undefined
@@ -446,7 +451,7 @@ interface TreeNodeContentProps {
 }
 
 function TreeNodeContent({
-                             title, nodeKey, visibleMedias, loadMoreMedias,
+                             title, nodeKey, isLeaf, visibleMedias, loadMoreMedias,
                              getNodeMediaNo, getNodeShared, getNodeSharedMedias, getComputedNodeValue,
                              onMediaNoChange, onSharedMediaChange, onToggleShared,
                          }: TreeNodeContentProps) {
@@ -456,67 +461,116 @@ function TreeNodeContent({
     const computed = getComputedNodeValue(nodeKey)
     const displayMediaNo = mediaNo ?? computed.media_no
     const isIndeterminate = !computed.isConsistent
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+    const open = Boolean(anchorEl)
 
-    const mediaNoMenuItems = useMemo(() =>
-        Array.from({length: visibleMedias}, (_, i) => (
-            <MenuItem key={i + 1} value={i + 1}>{i + 1}</MenuItem>
-        )), [visibleMedias])
+    const hasValue = isShared ? sharedMedias.length > 0 : displayMediaNo !== undefined
+
+    const chipLabel = isIndeterminate
+        ? <Stack direction="row" spacing={0.5} alignItems="center">
+            <CallSplitIcon sx={{fontSize: 11}}/>
+            <span>混合</span>
+          </Stack>
+        : isShared
+            ? sharedMedias.length === 0 ? '未分配'
+                : sharedMedias.length === 1 ? `媒介 ${sharedMedias[0]}`
+                : `媒介 ${sharedMedias[0]} +${sharedMedias.length - 1}`
+            : displayMediaNo !== undefined ? `媒介 ${displayMediaNo}` : '未分配'
+
+    const menuNos = useMemo(() =>
+        Array.from({length: visibleMedias}, (_, i) => i + 1), [visibleMedias])
 
     const handleScroll = (e: React.UIEvent<HTMLUListElement>) => {
         const {scrollTop, scrollHeight, clientHeight} = e.currentTarget
         if (scrollHeight - scrollTop - clientHeight < 20) loadMoreMedias()
     }
 
+    const handleClear = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (isShared) onSharedMediaChange(nodeKey, [])
+        else onMediaNoChange(nodeKey, null)
+    }
+
     return (
-        <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 0.5}}>
-            <Tooltip title={title}>
-                <Typography noWrap sx={{flex: 1, fontSize: '0.875rem'}}>{title}</Typography>
-            </Tooltip>
-            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0}}>
-                <Tooltip title="共享">
-                    <Switch size="small" checked={isShared} onChange={e => onToggleShared(nodeKey, e.target.checked)}/>
+        <Stack direction="row" alignItems="center" spacing={0.75} sx={{py: 0.25, width: '100%'}}>
+            {isLeaf
+                ? <InsertDriveFileIcon sx={{fontSize: 14, color: 'text.disabled', flexShrink: 0}}/>
+                : <FolderOpenIcon sx={{fontSize: 14, color: 'warning.main', flexShrink: 0}}/>
+            }
+            <Typography variant="body2" noWrap sx={{maxWidth: 300, flexShrink: 0}}>{title}</Typography>
+            <Stack
+                direction="row" alignItems="center" spacing={0.5} sx={{flexShrink: 0}}
+                onClick={e => e.stopPropagation()}
+                onMouseDown={e => e.stopPropagation()}
+            >
+                <Tooltip title={isShared ? '共享模式（点击切换）' : '独占模式（点击切换）'}>
+                    <Chip
+                        size="small"
+                        label={isShared ? '共享' : '独占'}
+                        variant={isShared ? 'filled' : 'outlined'}
+                        color={isShared ? 'secondary' : 'default'}
+                        onClick={() => onToggleShared(nodeKey, !isShared)}
+                        sx={{fontSize: '0.7rem', height: 20, cursor: 'pointer', flexShrink: 0,
+                            '& .MuiChip-label': {px: '6px'}}}
+                    />
                 </Tooltip>
-                {isShared ? (
-                    <FormControl size="small" sx={{minWidth: 150, flexShrink: 0}}>
-                        <InputLabel>序号</InputLabel>
-                        <Select<number[]>
-                            multiple
-                            value={sharedMedias}
-                            onChange={e => onSharedMediaChange(nodeKey, e.target.value as number[])}
-                            label="序号"
-                            renderValue={vals => (vals as number[]).join(', ')}
-                            MenuProps={{PaperProps: {onScroll: handleScroll as any, style: {maxHeight: 300}}}}
-                        >
-                            {mediaNoMenuItems}
-                        </Select>
-                    </FormControl>
-                ) : (
-                    <FormControl size="small" sx={{width: 80, flexShrink: 0}} color={isIndeterminate ? 'warning' : undefined}>
-                        <InputLabel>序号</InputLabel>
-                        <Select<number | ''>
-                            value={isIndeterminate ? '' : (displayMediaNo ?? '')}
-                            onChange={e => onMediaNoChange(nodeKey, e.target.value === '' ? null : e.target.value as number)}
-                            label="序号"
-                            displayEmpty={isIndeterminate}
-                            renderValue={isIndeterminate ? () => <em>不一致</em> : undefined}
-                            MenuProps={{PaperProps: {onScroll: handleScroll as any, style: {maxHeight: 300}}}}
-                        >
-                            <MenuItem value=""><em>清除</em></MenuItem>
-                            {mediaNoMenuItems}
-                        </Select>
-                    </FormControl>
-                )}
-            </Box>
-        </Box>
+                <Chip
+                    size="small"
+                    label={chipLabel}
+                    variant={hasValue ? 'filled' : 'outlined'}
+                    color={isIndeterminate ? 'warning' : hasValue ? 'primary' : 'default'}
+                    onClick={e => setAnchorEl(e.currentTarget)}
+                    onDelete={hasValue ? handleClear : undefined}
+                    sx={{fontSize: '0.7rem', height: 20, flexShrink: 0, cursor: 'pointer',
+                        '& .MuiChip-label': {px: '6px'},
+                        '& .MuiChip-deleteIcon': {fontSize: '14px', mr: '2px'},
+                    }}
+                />
+                <Menu
+                    anchorEl={anchorEl}
+                    open={open}
+                    onClose={() => setAnchorEl(null)}
+                    MenuListProps={{onScroll: handleScroll as any}}
+                    PaperProps={{style: {maxHeight: 300}}}
+                >
+                    {!isShared && (
+                        <MenuItem dense onClick={() => { onMediaNoChange(nodeKey, null); setAnchorEl(null) }}>
+                            <em>清除</em>
+                        </MenuItem>
+                    )}
+                    {menuNos.map(no => {
+                        if (!isShared) return (
+                            <MenuItem key={no} dense selected={displayMediaNo === no}
+                                onClick={() => { onMediaNoChange(nodeKey, no); setAnchorEl(null) }}>
+                                媒介 {no}
+                            </MenuItem>
+                        )
+                        const checked = sharedMedias.includes(no)
+                        return (
+                            <MenuItem key={no} dense selected={checked}
+                                onClick={() => {
+                                    const next = checked
+                                        ? sharedMedias.filter(m => m !== no)
+                                        : [...sharedMedias, no]
+                                    onSharedMediaChange(nodeKey, next)
+                                }}>
+                                <Checkbox size="small" checked={checked} sx={{p: 0, mr: 1}}/>
+                                媒介 {no}
+                            </MenuItem>
+                        )
+                    })}
+                </Menu>
+            </Stack>
+        </Stack>
     )
 }
 
-function renderTreeNodes(nodes: any[], nodeContentProps: Omit<TreeNodeContentProps, 'title' | 'nodeKey'>): React.ReactNode {
+function renderTreeNodes(nodes: any[], nodeContentProps: Omit<TreeNodeContentProps, 'title' | 'nodeKey' | 'isLeaf'>): React.ReactNode {
     return nodes.map((node: any) => (
         <TreeItem
             key={node.key}
             itemId={node.key}
-            label={<TreeNodeContent title={node.title} nodeKey={node.key} {...nodeContentProps}/>}
+            label={<TreeNodeContent title={node.title} nodeKey={node.key} isLeaf={!!node.isLeaf} {...nodeContentProps}/>}
         >
             {node.children?.length ? renderTreeNodes(node.children, nodeContentProps) : null}
         </TreeItem>
@@ -532,49 +586,51 @@ export function MediaEditorContent({
                                        getNodeMediaNo, getNodeShared, getNodeSharedMedias, getComputedNodeValue,
                                        updateMediaForm, resetMediaAssignments, deleteMedia,
                                    }: MediaEditorContentProps) {
-    const nodeContentProps = useMemo<Omit<TreeNodeContentProps, 'title' | 'nodeKey'>>(() => ({
+    const nodeContentProps = useMemo<Omit<TreeNodeContentProps, 'title' | 'nodeKey' | 'isLeaf'>>(() => ({
         visibleMedias, loadMoreMedias,
         getNodeMediaNo, getNodeShared, getNodeSharedMedias, getComputedNodeValue,
         onMediaNoChange, onSharedMediaChange, onToggleShared,
     }), [visibleMedias, loadMoreMedias, getNodeMediaNo, getNodeShared, getNodeSharedMedias, getComputedNodeValue, onMediaNoChange, onSharedMediaChange, onToggleShared])
 
     return (
-        <Box sx={{display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1, position: 'relative'}}>
+        <Card variant="outlined" sx={{position: 'relative', mx: 2, mt: 1, mb: 2}}>
             {loading && (
                 <Box sx={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, bgcolor: 'rgba(255,255,255,0.6)'}}>
                     <CircularProgress/>
                 </Box>
             )}
-            {files.length > 0 ? (
-                <Card variant="outlined">
-                    <CardHeader
-                        sx={{pb: 0, pt: 1, px: 1.5}}
-                        title={
-                            <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
-                                <Typography variant="body2" fontWeight={600}>文件列表</Typography>
-                                <Typography variant="body2" color="text.secondary">{files.length} 个文件</Typography>
-                            </Box>
-                        }
-                    />
-                    <CardContent sx={{pt: 0.5, px: 1.5, pb: '8px !important'}}>
-                        <SimpleTreeView defaultExpandedItems={defaultExpandedKeys}>
-                            {renderTreeNodes(treeData, nodeContentProps)}
-                        </SimpleTreeView>
-                    </CardContent>
-                </Card>
-            ) : (
-                <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, color: 'text.disabled'}}>
-                    <InboxIcon sx={{fontSize: 48, mb: 1}}/>
-                    <Typography>暂无文件数据</Typography>
-                </Box>
-            )}
-            <MediaFormList
-                selectedMedias={selectedMedias}
-                mediaForms={mediaForms}
-                onMediaFormChange={updateMediaForm}
-                onDeleteMedia={deleteMedia}
+            <CardHeader
+                title={
+                    <Stack direction="row" alignItems="center" spacing={2}>
+                        <Typography variant="subtitle2">文件列表</Typography>
+                        <Typography variant="body2" color="text.secondary">{files.length} 个文件</Typography>
+                    </Stack>
+                }
+                sx={{pt: 2, pb: 1, px: 2}}
             />
-        </Box>
+            <CardContent sx={{pt: 0, px: 2, pb: '8px !important'}}>
+                {files.length > 0 ? (
+                    <SimpleTreeView defaultExpandedItems={defaultExpandedKeys}>
+                        {renderTreeNodes(treeData, nodeContentProps)}
+                    </SimpleTreeView>
+                ) : (
+                    <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, color: 'text.disabled'}}>
+                        <InboxIcon sx={{fontSize: 48, mb: 1}}/>
+                        <Typography>暂无文件数据</Typography>
+                    </Box>
+                )}
+            </CardContent>
+            {selectedMedias.length > 0 && (
+                <CardContent sx={{pt: 1, px: 2, pb: '8px !important'}}>
+                    <MediaFormList
+                        selectedMedias={selectedMedias}
+                        mediaForms={mediaForms}
+                        onMediaFormChange={updateMediaForm}
+                        onDeleteMedia={deleteMedia}
+                    />
+                </CardContent>
+            )}
+        </Card>
     )
 }
 

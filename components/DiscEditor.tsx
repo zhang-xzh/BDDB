@@ -17,7 +17,6 @@ import CallSplitIcon from '@mui/icons-material/CallSplit'
 import InboxIcon from '@mui/icons-material/Inbox'
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile'
 import {useSnackbar} from 'notistack'
-const VISIBLE_VOLUMES = 20
 
 // ─── VolumeFormList ──────────────────────────────────────────────────────────
 
@@ -133,6 +132,8 @@ export interface UseDiscEditorReturn {
     worksCount: number
     setWorksCount: (n: number) => void
     setVolumeToKeys: (v: Map<number, Set<string>>) => void
+    visibleVolumes: number
+    loadMoreVolumes: () => void
     open: (torrentHash: string, name?: string, syncFiles?: boolean) => Promise<void>
     submitted: boolean
     handleSubmit: () => Promise<boolean>
@@ -160,6 +161,8 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
     const [torrentName, setTorrentName] = useState('')
     const [torrentId, setTorrentId] = useState<string | null>(null)
     const [worksCount, setWorksCount] = useState(1)
+    const [visibleVolumes, setVisibleVolumes] = useState(20)
+    const loadMoreVolumes = useCallback(() => setVisibleVolumes(v => v + 10), [])
     const [volumeForms, setVolumeForms] = useState<Record<number, VolumeForm>>({})
     const [files, setFiles] = useState<FileItem[]>([])
     const [treeData, setTreeData] = useState<any[]>([])
@@ -534,7 +537,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
     return {
         visible, loading, saving, torrentName, torrentId, volumeForms, files,
         treeData, nodeData, defaultExpandedKeys, selectedVolumes,
-        worksCount, setWorksCount, setVolumeToKeys,
+        worksCount, setWorksCount, setVolumeToKeys, visibleVolumes, loadMoreVolumes,
         open, submitted, handleSubmit, handleCancel, hasChanges,
         onVolumeChange, onSharedVolumeChange, onToggleShared,
         getNodeVolume, getNodeShared, getNodeSharedVolumes,
@@ -550,6 +553,8 @@ interface TreeNodeContentProps {
     isLeaf: boolean;
     isMixed: boolean;
     worksCount: number;
+    visibleVolumes: number;
+    loadMoreVolumes: () => void;
     getNodeVolume: (key: string) => number | undefined
     getNodeShared: (key: string) => boolean
     getNodeSharedVolumes: (key: string) => number[]
@@ -578,7 +583,7 @@ function buildMenuEntries(worksCount: number, visibleVolumes: number): MenuEntry
 }
 
 function TreeNodeContent({
-                             title, nodeKey, isLeaf, isMixed, worksCount,
+                             title, nodeKey, isLeaf, isMixed, worksCount, visibleVolumes, loadMoreVolumes,
                              getNodeVolume, getNodeShared, getNodeSharedVolumes,
                              onVolumeChange, onSharedVolumeChange, onToggleShared,
                          }: TreeNodeContentProps) {
@@ -594,7 +599,7 @@ function TreeNodeContent({
         ? `第${v}卷`
         : `作品${Math.floor(v / 1000)}-第${v % 1000}卷`
 
-    const menuEntries = useMemo(() => buildMenuEntries(worksCount, VISIBLE_VOLUMES), [worksCount])
+    const menuEntries = useMemo(() => buildMenuEntries(worksCount, visibleVolumes), [worksCount, visibleVolumes])
 
     const chipLabel = isMixed
         ? <Stack direction="row" spacing={0.5} alignItems="center">
@@ -638,6 +643,11 @@ function TreeNodeContent({
         else onVolumeChange(nodeKey, null)
     }
 
+    const handleScroll = (e: React.UIEvent<HTMLUListElement>) => {
+        const {scrollTop, scrollHeight, clientHeight} = e.currentTarget
+        if (scrollHeight - scrollTop - clientHeight < 20) loadMoreVolumes()
+    }
+
     // 多作品独占模式：两栏 Popover
     const multiWorkExclusivePopover = (
         <Popover
@@ -669,8 +679,10 @@ function TreeNodeContent({
                     ))}
                 </Box>
                 {/* 右栏：当前作品的卷列表 */}
-                <Box sx={{width: 90, overflowY: 'auto', py: 0.5}}>
-                    {Array.from({length: VISIBLE_VOLUMES}, (_, i) => i + 1).map(vi => {
+                <Box sx={{width: 90, overflowY: 'auto', py: 0.5}}
+                    onScroll={e => { const el = e.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 20) loadMoreVolumes() }}
+                >
+                    {Array.from({length: visibleVolumes}, (_, i) => i + 1).map(vi => {
                         const enc = activeWork * 1000 + vi
                         return (
                             <MenuItem
@@ -730,8 +742,10 @@ function TreeNodeContent({
                     })}
                 </Box>
                 {/* 右栏：当前作品的卷列表 + Checkbox */}
-                <Box sx={{width: 110, overflowY: 'auto', py: 0.5}}>
-                    {Array.from({length: VISIBLE_VOLUMES}, (_, i) => i + 1).map(vi => {
+                <Box sx={{width: 110, overflowY: 'auto', py: 0.5}}
+                    onScroll={e => { const el = e.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 20) loadMoreVolumes() }}
+                >
+                    {Array.from({length: visibleVolumes}, (_, i) => i + 1).map(vi => {
                         const enc = activeWork * 1000 + vi
                         const checked = sharedVolumes.includes(enc)
                         return (
@@ -761,6 +775,7 @@ function TreeNodeContent({
             anchorEl={anchorEl}
             open={open}
             onClose={() => setAnchorEl(null)}
+            MenuListProps={{onScroll: handleScroll as any}}
             PaperProps={{style: {maxHeight: 300}}}
         >
             {!isShared && <MenuItem dense onClick={() => { onVolumeChange(nodeKey, null); setAnchorEl(null) }}><em>清除</em></MenuItem>}
@@ -836,7 +851,11 @@ function getLeafKeys(node: any): string[] {
 function renderTreeNodes(nodes: any[], nodeContentProps: Omit<TreeNodeContentProps, 'title' | 'nodeKey' | 'isLeaf' | 'isMixed'>): React.ReactNode {
     return nodes.map((node: any) => {
         const leaves = getLeafKeys(node)
-        const vols = leaves.map(k => nodeContentProps.getNodeVolume(k))
+        const vols = leaves.map(k => {
+            const v = nodeContentProps.getNodeVolume(k)
+            if (v !== undefined) return v
+            return nodeContentProps.getNodeSharedVolumes(k)[0]
+        })
         const anySet = vols.some(v => v !== undefined)
         const isMixed = !node.isLeaf && anySet && !vols.every(v => v === vols[0])
         return (
@@ -871,6 +890,8 @@ interface DiscEditorContentProps {
     selectedVolumes: number[];
     worksCount: number;
     setWorksCount: (n: number) => void
+    visibleVolumes: number
+    loadMoreVolumes: () => void
     volumeForms: Record<number, VolumeForm>
     updateVolumeForm: (vol: number, form: VolumeForm) => void
     onVolumeChange: (key: string, vn: number | null) => void
@@ -895,6 +916,8 @@ export function DiscEditorContent({
                                       selectedVolumes,
                                       worksCount,
                                       setWorksCount,
+                                      visibleVolumes,
+                                      loadMoreVolumes,
                                       volumeForms,
                                       updateVolumeForm,
                                       onVolumeChange,
@@ -910,10 +933,10 @@ export function DiscEditorContent({
                                   }: DiscEditorContentProps) {
     const [worksHover, setWorksHover] = useState(-1)
     const nodeContentProps = useMemo<Omit<TreeNodeContentProps, 'title' | 'nodeKey' | 'isLeaf' | 'isMixed'>>(() => ({
-        worksCount,
+        worksCount, visibleVolumes, loadMoreVolumes,
         getNodeVolume, getNodeShared, getNodeSharedVolumes,
         onVolumeChange, onSharedVolumeChange, onToggleShared,
-    }), [worksCount, getNodeVolume, getNodeShared, getNodeSharedVolumes, onVolumeChange, onSharedVolumeChange, onToggleShared])
+    }), [worksCount, visibleVolumes, loadMoreVolumes, getNodeVolume, getNodeShared, getNodeSharedVolumes, onVolumeChange, onSharedVolumeChange, onToggleShared])
 
     const fmt = (v: number) => worksCount === 1 ? `第${v}卷` : `作品${Math.floor(v / 1000)}-第${v % 1000}卷`
 
