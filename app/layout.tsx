@@ -2,8 +2,7 @@
 
 import React, {useEffect, useState} from 'react'
 import {usePathname, useRouter} from 'next/navigation'
-import {createTheme, ThemeProvider, CssBaseline} from '@mui/material'
-import {AppBar, Box, Tabs, Tab, Divider, IconButton, Typography} from '@mui/material'
+import {AppBar, Box, createTheme, CssBaseline, Divider, IconButton, Tab, Tabs, ThemeProvider, Typography} from '@mui/material'
 import {zhCN} from '@mui/material/locale'
 import DarkModeIcon from '@mui/icons-material/DarkMode'
 import LightModeIcon from '@mui/icons-material/LightMode'
@@ -13,11 +12,11 @@ import './globals.css'
 
 const NAV_ITEMS = [
     {path: '/torrents', label: '种子管理'},
-    {path: '/volume',   label: '媒介管理'},
-    {path: '/work',     label: '作品管理'},
-    {path: '/series',   label: '系列管理'},
-    {path: '/storage',  label: '数据管理'},
-    {path: '/config',   label: '配置'},
+    {path: '/volume', label: '媒介管理'},
+    {path: '/work', label: '作品管理'},
+    {path: '/series', label: '系列管理'},
+    {path: '/storage', label: '数据管理'},
+    {path: '/config', label: '配置'},
 ]
 
 const HEADER_H = 56
@@ -76,7 +75,7 @@ function AppLayout({children, isDark, onToggle}: {
     )
 }
 
-export default function RootLayout({children}: Readonly<{children: React.ReactNode}>) {
+export default function RootLayout({children}: Readonly<{ children: React.ReactNode }>) {
     const [isDark, setIsDark] = useState(false)
 
     useEffect(() => {
@@ -95,6 +94,12 @@ export default function RootLayout({children}: Readonly<{children: React.ReactNo
 
     return (
         <html lang="zh-CN">
+        <head>
+            <meta charSet="utf-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1"/>
+            <meta name="description" content="BDDB - 原盘数据管理"/>
+            <title>BDDB</title>
+        </head>
         <body>
         <ThemeProvider theme={muiTheme}>
             <CssBaseline/>
