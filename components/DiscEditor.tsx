@@ -5,18 +5,15 @@ import type {FileItem, NodeData, VolumeForm, TorrentWithVolume, Volume} from '@/
 import {fetchApi, postApi} from '@/lib/api'
 import {buildTree, FlatTree} from '@/lib/utils'
 import {
-    Box, Card, CardContent, CardHeader, Chip, Checkbox, CircularProgress,
-    IconButton, MenuItem, ListSubheader, Menu, Popover, Rating, Stack,
-    TextField, Tooltip, Typography,
+    Box, Card, CardContent, CardHeader, CircularProgress,
+    IconButton, Rating, Stack, TextField, Typography,
 } from '@mui/material'
 import {SimpleTreeView} from '@mui/x-tree-view/SimpleTreeView'
-import {TreeItem} from '@mui/x-tree-view/TreeItem'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import FolderOpenIcon from '@mui/icons-material/FolderOpen'
-import CallSplitIcon from '@mui/icons-material/CallSplit'
 import InboxIcon from '@mui/icons-material/Inbox'
-import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile'
 import {useSnackbar} from 'notistack'
+import {EditorTreeNode, renderEditorTreeNodes} from '@/components/EditorTreeNode'
+import type {EditorTreeNodeProps} from '@/components/EditorTreeNode'
 
 // ─── VolumeFormList ──────────────────────────────────────────────────────────
 
@@ -545,337 +542,18 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
     }
 }
 
-// ─── TreeNodeContent ──────────────────────────────────────────────────────────
+// ─── DiscEditor isMixed 计算 ───────────────────────────────────────────────────
 
-interface TreeNodeContentProps {
-    title: string;
-    nodeKey: string;
-    isLeaf: boolean;
-    isMixed: boolean;
-    worksCount: number;
-    visibleVolumes: number;
-    loadMoreVolumes: () => void;
-    getNodeVolume: (key: string) => number | undefined
-    getNodeShared: (key: string) => boolean
-    getNodeSharedVolumes: (key: string) => number[]
-    onVolumeChange: (key: string, vn: number | null) => void
-    onSharedVolumeChange: (key: string, vols: number[]) => void
-    onToggleShared: (key: string, shared: boolean) => void
-}
-
-type MenuEntry = {type: 'header'; label: string} | {type: 'item'; value: number; label: string}
-
-function buildMenuEntries(worksCount: number, visibleVolumes: number): MenuEntry[] {
-    const entries: MenuEntry[] = []
-    if (worksCount === 1) {
-        for (let vi = 1; vi <= visibleVolumes; vi++) {
-            entries.push({type: 'item', value: vi, label: `第 ${vi} 卷`})
-        }
-    } else {
-        for (let wi = 1; wi <= worksCount; wi++) {
-            entries.push({type: 'header', label: `作品 ${wi}`})
-            for (let vi = 1; vi <= visibleVolumes; vi++) {
-                entries.push({type: 'item', value: wi * 1000 + vi, label: `第 ${vi} 卷`})
-            }
-        }
-    }
-    return entries
-}
-
-function TreeNodeContent({
-                             title, nodeKey, isLeaf, isMixed, worksCount, visibleVolumes, loadMoreVolumes,
-                             getNodeVolume, getNodeShared, getNodeSharedVolumes,
-                             onVolumeChange, onSharedVolumeChange, onToggleShared,
-                         }: TreeNodeContentProps) {
-    const isShared = getNodeShared(nodeKey)
-    const volumeNo = getNodeVolume(nodeKey)
-    const sharedVolumes = getNodeSharedVolumes(nodeKey)
-    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-    const open = Boolean(anchorEl)
-    // 多作品两栏 Popover 中当前选中的作品
-    const [activeWork, setActiveWork] = useState(1)
-
-    const fmtVol = (v: number) => worksCount === 1
-        ? `第${v}卷`
-        : `作品${Math.floor(v / 1000)}-第${v % 1000}卷`
-
-    const menuEntries = useMemo(() => buildMenuEntries(worksCount, visibleVolumes), [worksCount, visibleVolumes])
-
-    const chipLabel = isMixed
-        ? <Stack direction="row" spacing={0.5} alignItems="center">
-            <CallSplitIcon sx={{fontSize: 11}}/>
-            <span>混合</span>
-          </Stack>
-        : isShared
-            ? sharedVolumes.length === 0 ? '未分配' : sharedVolumes.length === 1 ? fmtVol(sharedVolumes[0]) : `${fmtVol(sharedVolumes[0])} +${sharedVolumes.length - 1}`
-            : volumeNo !== undefined ? fmtVol(volumeNo) : '未分配'
-
-    const hasValue = isShared ? sharedVolumes.length > 0 : volumeNo !== undefined
-
-    const handleChipClick = (e: React.MouseEvent<HTMLElement>) => {
-        if (worksCount > 1) {
-            // 定位到已选卷所属作品
-            const firstSelected = !isShared
-                ? (volumeNo !== undefined ? Math.floor(volumeNo / 1000) : 1)
-                : (sharedVolumes.length > 0 ? Math.floor(sharedVolumes[0] / 1000) : 1)
-            setActiveWork(firstSelected || 1)
-        } else {
-            setActiveWork(1)
-        }
-        setAnchorEl(e.currentTarget)
-    }
-
-    const handleMenuItemClick = (val: number) => {
-        if (isShared) {
-            const next = sharedVolumes.includes(val)
-                ? sharedVolumes.filter(v => v !== val)
-                : [...sharedVolumes, val]
-            onSharedVolumeChange(nodeKey, next)
-        } else {
-            onVolumeChange(nodeKey, val)
-            setAnchorEl(null)
-        }
-    }
-
-    const handleClear = (e: React.MouseEvent) => {
-        e.stopPropagation()
-        if (isShared) onSharedVolumeChange(nodeKey, [])
-        else onVolumeChange(nodeKey, null)
-    }
-
-    const handleScroll = (e: React.UIEvent<HTMLUListElement>) => {
-        const {scrollTop, scrollHeight, clientHeight} = e.currentTarget
-        if (scrollHeight - scrollTop - clientHeight < 20) loadMoreVolumes()
-    }
-
-    // 多作品独占模式：两栏 Popover
-    const multiWorkExclusivePopover = (
-        <Popover
-            anchorEl={anchorEl}
-            open={open}
-            onClose={() => setAnchorEl(null)}
-            anchorOrigin={{vertical: 'bottom', horizontal: 'left'}}
-            transformOrigin={{vertical: 'top', horizontal: 'left'}}
-        >
-            <Stack direction="row" sx={{maxHeight: 280}}>
-                {/* 左栏：作品列表 */}
-                <Box sx={{
-                    width: 80, borderRight: '1px solid', borderColor: 'divider',
-                    overflowY: 'auto', py: 0.5,
-                }}>
-                    <MenuItem dense onClick={() => { onVolumeChange(nodeKey, null); setAnchorEl(null) }}
-                        sx={{color: 'text.secondary', fontStyle: 'italic', fontSize: '0.75rem'}}>
-                        清除
-                    </MenuItem>
-                    {Array.from({length: worksCount}, (_, i) => i + 1).map(wi => (
-                        <MenuItem
-                            key={wi} dense
-                            selected={activeWork === wi}
-                            onClick={() => setActiveWork(wi)}
-                            sx={{fontSize: '0.8rem', fontWeight: activeWork === wi ? 600 : 400}}
-                        >
-                            作品 {wi}
-                        </MenuItem>
-                    ))}
-                </Box>
-                {/* 右栏：当前作品的卷列表 */}
-                <Box sx={{width: 90, overflowY: 'auto', py: 0.5}}
-                    onScroll={e => { const el = e.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 20) loadMoreVolumes() }}
-                >
-                    {Array.from({length: visibleVolumes}, (_, i) => i + 1).map(vi => {
-                        const enc = activeWork * 1000 + vi
-                        return (
-                            <MenuItem
-                                key={enc} dense
-                                selected={volumeNo === enc}
-                                onClick={() => { onVolumeChange(nodeKey, enc); setAnchorEl(null) }}
-                                sx={{fontSize: '0.8rem'}}
-                            >
-                                第 {vi} 卷
-                            </MenuItem>
-                        )
-                    })}
-                </Box>
-            </Stack>
-        </Popover>
-    )
-
-    // 多作品共享模式：两栏 Popover + Checkbox
-    const multiWorkSharedPopover = (
-        <Popover
-            anchorEl={anchorEl}
-            open={open}
-            onClose={() => setAnchorEl(null)}
-            anchorOrigin={{vertical: 'bottom', horizontal: 'left'}}
-            transformOrigin={{vertical: 'top', horizontal: 'left'}}
-        >
-            <Stack direction="row" sx={{maxHeight: 280}}>
-                {/* 左栏：作品列表，显示该作品已勾选卷数 */}
-                <Box sx={{
-                    width: 90, borderRight: '1px solid', borderColor: 'divider',
-                    overflowY: 'auto', py: 0.5,
-                }}>
-                    <MenuItem dense onClick={() => onSharedVolumeChange(nodeKey, [])}
-                        sx={{color: 'text.secondary', fontStyle: 'italic', fontSize: '0.75rem'}}>
-                        清除全部
-                    </MenuItem>
-                    {Array.from({length: worksCount}, (_, i) => i + 1).map(wi => {
-                        const checkedCount = sharedVolumes.filter(v => Math.floor(v / 1000) === wi).length
-                        return (
-                            <MenuItem
-                                key={wi} dense
-                                selected={activeWork === wi}
-                                onClick={() => setActiveWork(wi)}
-                                sx={{fontSize: '0.8rem', fontWeight: activeWork === wi ? 600 : 400,
-                                    justifyContent: 'space-between', gap: 0.5}}
-                            >
-                                <span>作品 {wi}</span>
-                                {checkedCount > 0 && (
-                                    <Box component="span" sx={{
-                                        fontSize: '0.65rem', lineHeight: 1, px: '4px', py: '1px',
-                                        borderRadius: '8px', bgcolor: 'primary.main', color: 'primary.contrastText',
-                                        flexShrink: 0,
-                                    }}>{checkedCount}</Box>
-                                )}
-                            </MenuItem>
-                        )
-                    })}
-                </Box>
-                {/* 右栏：当前作品的卷列表 + Checkbox */}
-                <Box sx={{width: 110, overflowY: 'auto', py: 0.5}}
-                    onScroll={e => { const el = e.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 20) loadMoreVolumes() }}
-                >
-                    {Array.from({length: visibleVolumes}, (_, i) => i + 1).map(vi => {
-                        const enc = activeWork * 1000 + vi
-                        const checked = sharedVolumes.includes(enc)
-                        return (
-                            <MenuItem key={enc} dense
-                                selected={checked}
-                                onClick={() => {
-                                    const next = checked
-                                        ? sharedVolumes.filter(v => v !== enc)
-                                        : [...sharedVolumes, enc]
-                                    onSharedVolumeChange(nodeKey, next)
-                                }}
-                                sx={{fontSize: '0.8rem', gap: 0.5}}
-                            >
-                                <Checkbox size="small" checked={checked} sx={{p: 0}}/>
-                                第 {vi} 卷
-                            </MenuItem>
-                        )
-                    })}
-                </Box>
-            </Stack>
-        </Popover>
-    )
-
-    // 单作品模式：原有 Menu
-    const regularMenu = (
-        <Menu
-            anchorEl={anchorEl}
-            open={open}
-            onClose={() => setAnchorEl(null)}
-            MenuListProps={{onScroll: handleScroll as any}}
-            PaperProps={{style: {maxHeight: 300}}}
-        >
-            {!isShared && <MenuItem dense onClick={() => { onVolumeChange(nodeKey, null); setAnchorEl(null) }}><em>清除</em></MenuItem>}
-            {menuEntries.map(entry => {
-                if (entry.type === 'header') return <ListSubheader key={entry.label}>{entry.label}</ListSubheader>
-                const {value: val, label} = entry
-                if (!isShared) return (
-                    <MenuItem key={val} dense selected={volumeNo === val} onClick={() => handleMenuItemClick(val)}>
-                        {label}
-                    </MenuItem>
-                )
-                return (
-                    <MenuItem key={val} dense selected={sharedVolumes.includes(val)} onClick={() => handleMenuItemClick(val)}>
-                        <Checkbox size="small" checked={sharedVolumes.includes(val)} sx={{p: 0, mr: 1}}/>
-                        {label}
-                    </MenuItem>
-                )
-            })}
-        </Menu>
-    )
-
-    return (
-        <Stack direction="row" alignItems="center" spacing={0.75} sx={{py: 0.25, width: '100%'}}>
-            {isLeaf
-                ? <InsertDriveFileIcon sx={{fontSize: 14, color: 'text.disabled', flexShrink: 0}}/>
-                : <FolderOpenIcon sx={{fontSize: 14, color: 'warning.main', flexShrink: 0}}/>
-            }
-            <Typography variant="body2" noWrap sx={{maxWidth: 300, flexShrink: 0}}>{title}</Typography>
-            <Stack
-                direction="row" alignItems="center" spacing={0.5} sx={{flexShrink: 0}}
-                onClick={e => e.stopPropagation()}
-                onMouseDown={e => e.stopPropagation()}
-            >
-                <Tooltip title={isShared ? '共享模式（点击切换）' : '独占模式（点击切换）'}>
-                    <Chip
-                        size="small"
-                        label={isShared ? '共享' : '独占'}
-                        variant={isShared ? 'filled' : 'outlined'}
-                        color={isShared ? 'secondary' : 'default'}
-                        onClick={() => onToggleShared(nodeKey, !isShared)}
-                        sx={{fontSize: '0.7rem', height: 20, cursor: 'pointer', flexShrink: 0,
-                            '& .MuiChip-label': {px: '6px'}}}
-                    />
-                </Tooltip>
-                <Chip
-                    size="small"
-                    label={chipLabel}
-                    variant={hasValue ? 'filled' : 'outlined'}
-                    color={isMixed ? 'warning' : hasValue ? 'primary' : 'default'}
-                    onClick={handleChipClick}
-                    onDelete={hasValue ? handleClear : undefined}
-                    sx={{fontSize: '0.7rem', height: 20, flexShrink: 0, cursor: 'pointer',
-                        '& .MuiChip-label': {px: '6px'},
-                        '& .MuiChip-deleteIcon': {fontSize: '14px', mr: '2px'},
-                    }}
-                />
-                {worksCount > 1 && !isShared
-                    ? multiWorkExclusivePopover
-                    : worksCount > 1 && isShared
-                        ? multiWorkSharedPopover
-                        : regularMenu
-                }
-            </Stack>
-        </Stack>
-    )
-}
-
-function getLeafKeys(node: any): string[] {
-    if (!node.children?.length) return [node.key]
-    return node.children.flatMap(getLeafKeys)
-}
-
-function renderTreeNodes(nodes: any[], nodeContentProps: Omit<TreeNodeContentProps, 'title' | 'nodeKey' | 'isLeaf' | 'isMixed'>): React.ReactNode {
-    return nodes.map((node: any) => {
-        const leaves = getLeafKeys(node)
-        const vols = leaves.map(k => {
-            const v = nodeContentProps.getNodeVolume(k)
-            if (v !== undefined) return v
-            return nodeContentProps.getNodeSharedVolumes(k)[0]
-        })
+function makeDiscComputeIsMixed(
+    getSingleValue: (key: string) => number | undefined,
+    getSharedValues: (key: string) => number[],
+) {
+    return (leafKeys: string[], isLeaf: boolean): boolean => {
+        if (isLeaf) return false
+        const vols = leafKeys.map(k => getSingleValue(k) ?? getSharedValues(k)[0])
         const anySet = vols.some(v => v !== undefined)
-        const isMixed = !node.isLeaf && anySet && !vols.every(v => v === vols[0])
-        return (
-            <TreeItem
-                key={node.key}
-                itemId={node.key}
-                label={
-                    <TreeNodeContent
-                        title={node.title}
-                        nodeKey={node.key}
-                        isLeaf={!!node.isLeaf}
-                        isMixed={isMixed}
-                        {...nodeContentProps}
-                    />
-                }
-            >
-                {node.children?.length ? renderTreeNodes(node.children, nodeContentProps) : null}
-            </TreeItem>
-        )
-    })
+        return anySet && !vols.every(v => v === vols[0])
+    }
 }
 
 // ─── DiscEditorContent ────────────────────────────────────────────────────────
@@ -932,13 +610,27 @@ export function DiscEditorContent({
                                       handleSubmit,
                                   }: DiscEditorContentProps) {
     const [worksHover, setWorksHover] = useState(-1)
-    const nodeContentProps = useMemo<Omit<TreeNodeContentProps, 'title' | 'nodeKey' | 'isLeaf' | 'isMixed'>>(() => ({
-        worksCount, visibleVolumes, loadMoreVolumes,
-        getNodeVolume, getNodeShared, getNodeSharedVolumes,
-        onVolumeChange, onSharedVolumeChange, onToggleShared,
-    }), [worksCount, visibleVolumes, loadMoreVolumes, getNodeVolume, getNodeShared, getNodeSharedVolumes, onVolumeChange, onSharedVolumeChange, onToggleShared])
+    const fmtVol = useCallback((v: number) => worksCount === 1
+        ? `第${v}卷`
+        : `作品${Math.floor(v / 1000)}-第${v % 1000}卷`, [worksCount])
 
-    const fmt = (v: number) => worksCount === 1 ? `第${v}卷` : `作品${Math.floor(v / 1000)}-第${v % 1000}卷`
+    const nodeContentProps = useMemo<Omit<EditorTreeNodeProps, 'title' | 'nodeKey' | 'isLeaf' | 'isMixed'>>(() => ({
+        formatValue: fmtVol,
+        worksCount,
+        visibleCount: visibleVolumes,
+        onLoadMore: loadMoreVolumes,
+        getSingleValue: getNodeVolume,
+        getIsShared: getNodeShared,
+        getSharedValues: getNodeSharedVolumes,
+        onSingleChange: onVolumeChange,
+        onSharedChange: onSharedVolumeChange,
+        onToggleShared,
+    }), [fmtVol, worksCount, visibleVolumes, loadMoreVolumes, getNodeVolume, getNodeShared, getNodeSharedVolumes, onVolumeChange, onSharedVolumeChange, onToggleShared])
+
+    const computeIsMixed = useMemo(
+        () => makeDiscComputeIsMixed(getNodeVolume, getNodeSharedVolumes),
+        [getNodeVolume, getNodeSharedVolumes],
+    )
 
     const leafResults = useMemo(() => {
         const keys: string[] = []
@@ -1005,7 +697,7 @@ export function DiscEditorContent({
             <CardContent sx={{pt: 0, px: 2, pb: '8px !important'}}>
                 {files.length > 0 ? (
                     <SimpleTreeView defaultExpandedItems={defaultExpandedKeys}>
-                        {renderTreeNodes(treeData, nodeContentProps)}
+                        {renderEditorTreeNodes(treeData, nodeContentProps, computeIsMixed)}
                     </SimpleTreeView>
                 ) : (
                     <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, color: 'text.disabled'}}>

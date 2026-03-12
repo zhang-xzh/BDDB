@@ -5,18 +5,16 @@ import type {FileItem, Media, MediaForm, MediaType, NodeData} from '@/lib/mongod
 import {fetchApi, postApi} from '@/lib/api'
 import {buildTree, FlatTree} from '@/lib/utils'
 import {
-    Box, Card, CardContent, CardHeader, Checkbox, Chip, CircularProgress,
-    FormControl, IconButton, InputLabel, Menu, MenuItem, Select, Stack,
-    TextField, Tooltip, Typography,
+    Box, Card, CardContent, CardHeader, CircularProgress,
+    FormControl, IconButton, InputLabel, MenuItem, Select, Stack,
+    TextField, Typography,
 } from '@mui/material'
 import {SimpleTreeView} from '@mui/x-tree-view/SimpleTreeView'
-import {TreeItem} from '@mui/x-tree-view/TreeItem'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import FolderOpenIcon from '@mui/icons-material/FolderOpen'
-import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile'
 import InboxIcon from '@mui/icons-material/Inbox'
-import CallSplitIcon from '@mui/icons-material/CallSplit'
 import {useSnackbar} from 'notistack'
+import {EditorTreeNode, renderEditorTreeNodes} from '@/components/EditorTreeNode'
+import type {EditorTreeNodeProps} from '@/components/EditorTreeNode'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -433,148 +431,17 @@ function MediaFormList({selectedMedias, mediaForms, onMediaFormChange, onDeleteM
     )
 }
 
-// ─── TreeNodeContent ─────────────────────────────────────────────────────────
+// ─── MediaEditor isMixed 计算 ──────────────────────────────────────────────────
 
-interface TreeNodeContentProps {
-    title: string
-    nodeKey: string
-    isLeaf: boolean
-    visibleMedias: number
-    loadMoreMedias: () => void
-    getNodeMediaNo: (key: string) => number | undefined
-    getNodeShared: (key: string) => boolean
-    getNodeSharedMedias: (key: string) => number[]
-    getComputedNodeValue: (key: string) => { media_no: number | undefined; isConsistent: boolean }
-    onMediaNoChange: (key: string, mediaNo: number | null) => void
-    onSharedMediaChange: (key: string, medias: number[]) => void
-    onToggleShared: (key: string, shared: boolean) => void
-}
-
-function TreeNodeContent({
-                             title, nodeKey, isLeaf, visibleMedias, loadMoreMedias,
-                             getNodeMediaNo, getNodeShared, getNodeSharedMedias, getComputedNodeValue,
-                             onMediaNoChange, onSharedMediaChange, onToggleShared,
-                         }: TreeNodeContentProps) {
-    const isShared = getNodeShared(nodeKey)
-    const mediaNo = getNodeMediaNo(nodeKey)
-    const sharedMedias = getNodeSharedMedias(nodeKey)
-    const computed = getComputedNodeValue(nodeKey)
-    const displayMediaNo = mediaNo ?? computed.media_no
-    const isIndeterminate = !computed.isConsistent
-    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-    const open = Boolean(anchorEl)
-
-    const hasValue = isShared ? sharedMedias.length > 0 : displayMediaNo !== undefined
-
-    const chipLabel = isIndeterminate
-        ? <Stack direction="row" spacing={0.5} alignItems="center">
-            <CallSplitIcon sx={{fontSize: 11}}/>
-            <span>混合</span>
-          </Stack>
-        : isShared
-            ? sharedMedias.length === 0 ? '未分配'
-                : sharedMedias.length === 1 ? `媒介 ${sharedMedias[0]}`
-                : `媒介 ${sharedMedias[0]} +${sharedMedias.length - 1}`
-            : displayMediaNo !== undefined ? `媒介 ${displayMediaNo}` : '未分配'
-
-    const menuNos = useMemo(() =>
-        Array.from({length: visibleMedias}, (_, i) => i + 1), [visibleMedias])
-
-    const handleScroll = (e: React.UIEvent<HTMLUListElement>) => {
-        const {scrollTop, scrollHeight, clientHeight} = e.currentTarget
-        if (scrollHeight - scrollTop - clientHeight < 20) loadMoreMedias()
+function makeMediaComputeIsMixed(
+    getComputedNodeValue: (key: string) => { media_no: number | undefined; isConsistent: boolean },
+) {
+    return (leafKeys: string[], isLeaf: boolean): boolean => {
+        if (isLeaf) return false
+        const values = leafKeys.map(k => getComputedNodeValue(k).media_no)
+        const anySet = values.some(v => v !== undefined)
+        return anySet && !values.every(v => v === values[0])
     }
-
-    const handleClear = (e: React.MouseEvent) => {
-        e.stopPropagation()
-        if (isShared) onSharedMediaChange(nodeKey, [])
-        else onMediaNoChange(nodeKey, null)
-    }
-
-    return (
-        <Stack direction="row" alignItems="center" spacing={0.75} sx={{py: 0.25, width: '100%'}}>
-            {isLeaf
-                ? <InsertDriveFileIcon sx={{fontSize: 14, color: 'text.disabled', flexShrink: 0}}/>
-                : <FolderOpenIcon sx={{fontSize: 14, color: 'warning.main', flexShrink: 0}}/>
-            }
-            <Typography variant="body2" noWrap sx={{maxWidth: 300, flexShrink: 0}}>{title}</Typography>
-            <Stack
-                direction="row" alignItems="center" spacing={0.5} sx={{flexShrink: 0}}
-                onClick={e => e.stopPropagation()}
-                onMouseDown={e => e.stopPropagation()}
-            >
-                <Tooltip title={isShared ? '共享模式（点击切换）' : '独占模式（点击切换）'}>
-                    <Chip
-                        size="small"
-                        label={isShared ? '共享' : '独占'}
-                        variant={isShared ? 'filled' : 'outlined'}
-                        color={isShared ? 'secondary' : 'default'}
-                        onClick={() => onToggleShared(nodeKey, !isShared)}
-                        sx={{fontSize: '0.7rem', height: 20, cursor: 'pointer', flexShrink: 0,
-                            '& .MuiChip-label': {px: '6px'}}}
-                    />
-                </Tooltip>
-                <Chip
-                    size="small"
-                    label={chipLabel}
-                    variant={hasValue ? 'filled' : 'outlined'}
-                    color={isIndeterminate ? 'warning' : hasValue ? 'primary' : 'default'}
-                    onClick={e => setAnchorEl(e.currentTarget)}
-                    onDelete={hasValue ? handleClear : undefined}
-                    sx={{fontSize: '0.7rem', height: 20, flexShrink: 0, cursor: 'pointer',
-                        '& .MuiChip-label': {px: '6px'},
-                        '& .MuiChip-deleteIcon': {fontSize: '14px', mr: '2px'},
-                    }}
-                />
-                <Menu
-                    anchorEl={anchorEl}
-                    open={open}
-                    onClose={() => setAnchorEl(null)}
-                    MenuListProps={{onScroll: handleScroll as any}}
-                    PaperProps={{style: {maxHeight: 300}}}
-                >
-                    {!isShared && (
-                        <MenuItem dense onClick={() => { onMediaNoChange(nodeKey, null); setAnchorEl(null) }}>
-                            <em>清除</em>
-                        </MenuItem>
-                    )}
-                    {menuNos.map(no => {
-                        if (!isShared) return (
-                            <MenuItem key={no} dense selected={displayMediaNo === no}
-                                onClick={() => { onMediaNoChange(nodeKey, no); setAnchorEl(null) }}>
-                                媒介 {no}
-                            </MenuItem>
-                        )
-                        const checked = sharedMedias.includes(no)
-                        return (
-                            <MenuItem key={no} dense selected={checked}
-                                onClick={() => {
-                                    const next = checked
-                                        ? sharedMedias.filter(m => m !== no)
-                                        : [...sharedMedias, no]
-                                    onSharedMediaChange(nodeKey, next)
-                                }}>
-                                <Checkbox size="small" checked={checked} sx={{p: 0, mr: 1}}/>
-                                媒介 {no}
-                            </MenuItem>
-                        )
-                    })}
-                </Menu>
-            </Stack>
-        </Stack>
-    )
-}
-
-function renderTreeNodes(nodes: any[], nodeContentProps: Omit<TreeNodeContentProps, 'title' | 'nodeKey' | 'isLeaf'>): React.ReactNode {
-    return nodes.map((node: any) => (
-        <TreeItem
-            key={node.key}
-            itemId={node.key}
-            label={<TreeNodeContent title={node.title} nodeKey={node.key} isLeaf={!!node.isLeaf} {...nodeContentProps}/>}
-        >
-            {node.children?.length ? renderTreeNodes(node.children, nodeContentProps) : null}
-        </TreeItem>
-    ))
 }
 
 // ─── MediaEditorContent ──────────────────────────────────────────────────────
@@ -586,11 +453,22 @@ export function MediaEditorContent({
                                        getNodeMediaNo, getNodeShared, getNodeSharedMedias, getComputedNodeValue,
                                        updateMediaForm, resetMediaAssignments, deleteMedia,
                                    }: MediaEditorContentProps) {
-    const nodeContentProps = useMemo<Omit<TreeNodeContentProps, 'title' | 'nodeKey' | 'isLeaf'>>(() => ({
-        visibleMedias, loadMoreMedias,
-        getNodeMediaNo, getNodeShared, getNodeSharedMedias, getComputedNodeValue,
-        onMediaNoChange, onSharedMediaChange, onToggleShared,
-    }), [visibleMedias, loadMoreMedias, getNodeMediaNo, getNodeShared, getNodeSharedMedias, getComputedNodeValue, onMediaNoChange, onSharedMediaChange, onToggleShared])
+    const nodeContentProps = useMemo<Omit<EditorTreeNodeProps, 'title' | 'nodeKey' | 'isLeaf' | 'isMixed'>>(() => ({
+        formatValue: (v: number) => `媒介 ${v}`,
+        visibleCount: visibleMedias,
+        onLoadMore: loadMoreMedias,
+        getSingleValue: getNodeMediaNo,
+        getIsShared: getNodeShared,
+        getSharedValues: getNodeSharedMedias,
+        onSingleChange: onMediaNoChange,
+        onSharedChange: onSharedMediaChange,
+        onToggleShared,
+    }), [visibleMedias, loadMoreMedias, getNodeMediaNo, getNodeShared, getNodeSharedMedias, onMediaNoChange, onSharedMediaChange, onToggleShared])
+
+    const computeIsMixed = useMemo(
+        () => makeMediaComputeIsMixed(getComputedNodeValue),
+        [getComputedNodeValue],
+    )
 
     return (
         <Card variant="outlined" sx={{position: 'relative', mx: 2, mt: 1, mb: 2}}>
@@ -611,7 +489,7 @@ export function MediaEditorContent({
             <CardContent sx={{pt: 0, px: 2, pb: '8px !important'}}>
                 {files.length > 0 ? (
                     <SimpleTreeView defaultExpandedItems={defaultExpandedKeys}>
-                        {renderTreeNodes(treeData, nodeContentProps)}
+                        {renderEditorTreeNodes(treeData, nodeContentProps, computeIsMixed)}
                     </SimpleTreeView>
                 ) : (
                     <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, color: 'text.disabled'}}>
