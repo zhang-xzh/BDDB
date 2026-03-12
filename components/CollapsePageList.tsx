@@ -1,5 +1,5 @@
-import React, {type CSSProperties, type ReactNode} from 'react'
-import {Accordion, AccordionDetails, AccordionSummary, Box, Typography, useTheme} from '@mui/material'
+import React, {type ReactNode} from 'react'
+import {Accordion, AccordionDetails, AccordionSummary, Box} from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 
 /**
@@ -10,27 +10,6 @@ export const ExpandBlocker: React.FC<{ isExpanded: boolean; children: ReactNode 
         {children}
     </div>
 )
-
-// ─── ListHeader ───────────────────────────────────────────────────────────────
-
-export interface ListHeaderColumn {
-    label: string
-    style: CSSProperties
-}
-
-export const ListHeader: React.FC<{ columns: ListHeaderColumn[] }> = ({columns}) => {
-    const theme = useTheme()
-    return (
-        <Box sx={{display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, bgcolor: theme.palette.action.hover}}>
-            <Box sx={{width: 24, flexShrink: 0}}/>
-            {columns.map(col => (
-                <Typography key={col.label} variant="body2" fontWeight={700} color="text.primary" style={col.style}>
-                    {col.label}
-                </Typography>
-            ))}
-        </Box>
-    )
-}
 
 // ─── CollapsePageList ─────────────────────────────────────────────────────────
 
