@@ -13,10 +13,7 @@
  */
 
 import React, {useMemo, useState} from 'react'
-import {
-    Box, Checkbox, Chip, Menu, MenuItem, ListSubheader,
-    Popover, Stack, Tooltip, Typography,
-} from '@mui/material'
+import {Box, Checkbox, Chip, ListSubheader, Menu, MenuItem, Popover, Stack, Tooltip, Typography,} from '@mui/material'
 import {TreeItem} from '@mui/x-tree-view/TreeItem'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile'
@@ -74,11 +71,11 @@ function buildMenuEntries(worksCount: number, visibleCount: number, formatValue:
 // ─── EditorTreeNode ───────────────────────────────────────────────────────────
 
 export function EditorTreeNode({
-    title, nodeKey, isLeaf, isMixed, formatValue, visibleCount, onLoadMore,
-    worksCount = 1,
-    getSingleValue, getIsShared, getSharedValues,
-    onSingleChange, onSharedChange, onToggleShared,
-}: EditorTreeNodeProps) {
+                                   title, nodeKey, isLeaf, isMixed, formatValue, visibleCount, onLoadMore,
+                                   worksCount = 1,
+                                   getSingleValue, getIsShared, getSharedValues,
+                                   onSingleChange, onSharedChange, onToggleShared,
+                               }: EditorTreeNodeProps) {
     const isShared = getIsShared(nodeKey)
     const singleValue = getSingleValue(nodeKey)
     const sharedValues = getSharedValues(nodeKey)
@@ -93,7 +90,7 @@ export function EditorTreeNode({
         ? <Stack direction="row" spacing={0.5} alignItems="center">
             <CallSplitIcon sx={{fontSize: 11}}/>
             <span>混合</span>
-          </Stack>
+        </Stack>
         : isShared
             ? sharedValues.length === 0
                 ? '未分配'
@@ -162,7 +159,10 @@ export function EditorTreeNode({
             PaperProps={{style: {maxHeight: 300}}}
         >
             {!isShared && (
-                <MenuItem dense onClick={() => { onSingleChange(nodeKey, null); setAnchorEl(null) }}>
+                <MenuItem dense onClick={() => {
+                    onSingleChange(nodeKey, null);
+                    setAnchorEl(null)
+                }}>
                     <em>清除</em>
                 </MenuItem>
             )}
@@ -195,26 +195,32 @@ export function EditorTreeNode({
         >
             <Stack direction="row" sx={{maxHeight: 280}}>
                 {/* 左栏：作品列表 */}
-                <Box sx={{width: 80, borderRight: '1px solid', borderColor: 'divider', overflowY: 'auto', py: 0.5}}>
-                    <MenuItem dense onClick={() => { onSingleChange(nodeKey, null); setAnchorEl(null) }}
-                        sx={{color: 'text.secondary', fontStyle: 'italic', fontSize: '0.75rem'}}>
+                <Box sx={{width: 85, borderRight: '1px solid', borderColor: 'divider', overflowY: 'auto', py: 0.5}}>
+                    <MenuItem dense onClick={() => {
+                        onSingleChange(nodeKey, null);
+                        setAnchorEl(null)
+                    }}
+                              sx={{color: 'text.secondary', fontStyle: 'italic', fontSize: '0.75rem'}}>
                         清除
                     </MenuItem>
                     {Array.from({length: worksCount}, (_, i) => i + 1).map(wi => (
                         <MenuItem key={wi} dense selected={activeWork === wi} onClick={() => setActiveWork(wi)}
-                            sx={{fontSize: '0.8rem', fontWeight: activeWork === wi ? 600 : 400}}>
+                                  sx={{fontSize: '0.8rem', fontWeight: activeWork === wi ? 600 : 400}}>
                             作品 {wi}
                         </MenuItem>
                     ))}
                 </Box>
                 {/* 右栏：当前作品的卷列表 */}
-                <Box sx={{width: 90, overflowY: 'auto', py: 0.5}} onScroll={handleColScroll}>
+                <Box sx={{width: 130, overflowY: 'auto', py: 0.5}} onScroll={handleColScroll}>
                     {Array.from({length: visibleCount}, (_, i) => i + 1).map(vi => {
                         const enc = activeWork * 1000 + vi
                         return (
                             <MenuItem key={enc} dense selected={singleValue === enc}
-                                onClick={() => { onSingleChange(nodeKey, enc); setAnchorEl(null) }}
-                                sx={{fontSize: '0.8rem'}}>
+                                      onClick={() => {
+                                          onSingleChange(nodeKey, enc);
+                                          setAnchorEl(null)
+                                      }}
+                                      sx={{fontSize: '0.8rem'}}>
                                 {formatValue(enc)}
                             </MenuItem>
                         )
@@ -235,17 +241,19 @@ export function EditorTreeNode({
         >
             <Stack direction="row" sx={{maxHeight: 280}}>
                 {/* 左栏：作品列表，显示该作品已勾选卷数 */}
-                <Box sx={{width: 90, borderRight: '1px solid', borderColor: 'divider', overflowY: 'auto', py: 0.5}}>
+                <Box sx={{width: 100, borderRight: '1px solid', borderColor: 'divider', overflowY: 'auto', py: 0.5}}>
                     <MenuItem dense onClick={() => onSharedChange(nodeKey, [])}
-                        sx={{color: 'text.secondary', fontStyle: 'italic', fontSize: '0.75rem'}}>
+                              sx={{color: 'text.secondary', fontStyle: 'italic', fontSize: '0.75rem'}}>
                         清除全部
                     </MenuItem>
                     {Array.from({length: worksCount}, (_, i) => i + 1).map(wi => {
                         const checkedCount = sharedValues.filter(v => Math.floor(v / 1000) === wi).length
                         return (
                             <MenuItem key={wi} dense selected={activeWork === wi} onClick={() => setActiveWork(wi)}
-                                sx={{fontSize: '0.8rem', fontWeight: activeWork === wi ? 600 : 400,
-                                    justifyContent: 'space-between', gap: 0.5}}>
+                                      sx={{
+                                          fontSize: '0.8rem', fontWeight: activeWork === wi ? 600 : 400,
+                                          justifyContent: 'space-between', gap: 0.5
+                                      }}>
                                 <span>作品 {wi}</span>
                                 {checkedCount > 0 && (
                                     <Box component="span" sx={{
@@ -259,19 +267,19 @@ export function EditorTreeNode({
                     })}
                 </Box>
                 {/* 右栏：当前作品的卷列表 + Checkbox */}
-                <Box sx={{width: 110, overflowY: 'auto', py: 0.5}} onScroll={handleColScroll}>
+                <Box sx={{width: 150, overflowY: 'auto', py: 0.5}} onScroll={handleColScroll}>
                     {Array.from({length: visibleCount}, (_, i) => i + 1).map(vi => {
                         const enc = activeWork * 1000 + vi
                         const checked = sharedValues.includes(enc)
                         return (
                             <MenuItem key={enc} dense selected={checked}
-                                onClick={() => {
-                                    const next = checked
-                                        ? sharedValues.filter(v => v !== enc)
-                                        : [...sharedValues, enc]
-                                    onSharedChange(nodeKey, next)
-                                }}
-                                sx={{fontSize: '0.8rem', gap: 0.5}}>
+                                      onClick={() => {
+                                          const next = checked
+                                              ? sharedValues.filter(v => v !== enc)
+                                              : [...sharedValues, enc]
+                                          onSharedChange(nodeKey, next)
+                                      }}
+                                      sx={{fontSize: '0.8rem', gap: 0.5}}>
                                 <Checkbox size="small" checked={checked} sx={{p: 0}}/>
                                 {formatValue(enc)}
                             </MenuItem>
@@ -301,8 +309,10 @@ export function EditorTreeNode({
                         variant={isShared ? 'filled' : 'outlined'}
                         color={isShared ? 'secondary' : 'default'}
                         onClick={() => onToggleShared(nodeKey, !isShared)}
-                        sx={{fontSize: '0.7rem', height: 20, cursor: 'pointer', flexShrink: 0,
-                            '& .MuiChip-label': {px: '6px'}}}
+                        sx={{
+                            fontSize: '0.7rem', height: 20, cursor: 'pointer', flexShrink: 0,
+                            '& .MuiChip-label': {px: '6px'}
+                        }}
                     />
                 </Tooltip>
                 <Chip
@@ -312,7 +322,8 @@ export function EditorTreeNode({
                     color={isMixed ? 'warning' : hasValue ? 'primary' : 'default'}
                     onClick={handleChipClick}
                     onDelete={hasValue ? handleClear : undefined}
-                    sx={{fontSize: '0.7rem', height: 20, flexShrink: 0, cursor: 'pointer',
+                    sx={{
+                        fontSize: '0.7rem', height: 20, flexShrink: 0, cursor: 'pointer',
                         '& .MuiChip-label': {px: '6px'},
                         '& .MuiChip-deleteIcon': {fontSize: '14px', mr: '2px'},
                     }}
