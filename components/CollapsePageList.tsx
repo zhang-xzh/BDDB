@@ -6,7 +6,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
  * 行标签包装器：展开时阻止点击冒泡（防止误触收起），收起时允许点击展开。
  */
 export const ExpandBlocker: React.FC<{ isExpanded: boolean; children: ReactNode }> = ({isExpanded, children}) => (
-    <div style={{width: '100%'}} onClick={(e) => isExpanded && e.stopPropagation()}>
+    <div style={{width: '100%', overflow: 'hidden'}} onClick={(e) => isExpanded && e.stopPropagation()}>
         {children}
     </div>
 )
@@ -46,6 +46,14 @@ function CollapsePageList<T>({items, getKey, activeKey, onChange, renderLabel, r
                                 }}/>
                             }
                             sx={{px: 1, flexDirection: 'row-reverse', userSelect: 'text'}}
+                            slotProps={{
+                                content: {
+                                    sx: {
+                                        flexGrow: 1,
+                                        minWidth: 0,
+                                    }
+                                }
+                            }}
                         >
                             {renderLabel(item, isExpanded)}
                         </AccordionSummary>

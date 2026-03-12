@@ -153,7 +153,7 @@ const TorrentFiltersBar: React.FC<{
 const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume; isExpanded: boolean }> = ({torrent, isExpanded}) => {
     return (
         <ExpandBlocker isExpanded={isExpanded}>
-            <Box sx={{display: 'flex', alignItems: 'center', gap: 1, width: '100%'}}>
+            <Box sx={{display: 'flex', alignItems: 'center', gap: 1, width: '100%', overflow: 'hidden'}}>
                 <Box sx={{width: 56, flexShrink: 0}}>
                     {torrent.hasVolumes
                         ? <Chip
@@ -169,7 +169,12 @@ const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume; isExpanded: boolea
                 <Typography
                     variant="body2"
                     noWrap
-                    sx={{flex: 1}}
+                    sx={{
+                        flex: 1,
+                        minWidth: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                    }}
                 >
                     {torrent.name}
                 </Typography>
