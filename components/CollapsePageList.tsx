@@ -45,7 +45,7 @@ function CollapsePageList<T>({items, getKey, activeKey, onChange, renderLabel, r
                                     onChange(key)
                                 }}/>
                             }
-                            sx={{px: 1, flexDirection: 'row-reverse'}}
+                            sx={{px: 1, flexDirection: 'row-reverse', userSelect: 'text'}}
                         >
                             {renderLabel(item, isExpanded)}
                         </AccordionSummary>

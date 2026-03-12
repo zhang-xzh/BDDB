@@ -31,6 +31,7 @@ const SiderContent: React.FC = () => {
     const [loadingMore, setLoadingMore] = useState(false)
     const [searchResult, setSearchResult] = useState<SearchResponse | null>(null)
     const [hasMore, setHasMore] = useState(false)
+    const [expandedKey, setExpandedKey] = useState<string | null>(null)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
 
     const handleSearch = async () => {
@@ -159,12 +160,27 @@ const SiderContent: React.FC = () => {
                             <Typography variant="caption" color="text.secondary" sx={{px: 1, display: 'block', mb: 1}}>
                                 共找到 {searchResult.total} 个结果{hasMore && '（滚动加载更多）'}
                             </Typography>
-                            {products.map((product) => {
+                            {products.map((product, i) => {
                                 const thumbnailUrl = product.images?.[0]
                                 const releaseDate = formatDate(product.release_date)
                                 return (
-                                    <Accordion key={product.model_number ?? product.title} variant="outlined" disableGutters>
-                                        <AccordionSummary expandIcon={<ExpandMoreIcon/>} sx={{px: 1, alignItems: 'flex-start'}}>
+                                    <Accordion
+                                        key={`${product.model_number ?? product.title}-${i}`}
+                                        variant="outlined"
+                                        disableGutters
+                                        expanded={expandedKey === (product.model_number ?? product.title)}
+                                        onChange={() => {}}
+                                    >
+                                        <AccordionSummary
+                                            sx={{
+                                                px: 1,
+                                                alignItems: 'flex-start',
+                                                userSelect: 'text',
+                                                '& .MuiAccordionSummary-content': {
+                                                    width: '100%',
+                                                },
+                                            }}
+                                        >
                                             <Box sx={{display: 'flex', gap: 1.5, alignItems: 'flex-start', width: '100%'}}>
                                                 {/* 缩略图 */}
                                                 {thumbnailUrl ? (
@@ -181,9 +197,23 @@ const SiderContent: React.FC = () => {
                                                     <Typography variant="body2" fontWeight={600} sx={{wordBreak: 'break-word'}}>
                                                         {product.title}
                                                     </Typography>
-                                                    <Box sx={{display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5}}>
-                                                        {product.model_number && <Chip label={product.model_number} size="small" color="primary" variant="outlined"/>}
-                                                        {releaseDate && <Chip label={releaseDate} size="small" color="success" variant="outlined"/>}
+                                                    <Box sx={{display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5, alignItems: 'center', justifyContent: 'space-between'}}>
+                                                        <Box sx={{display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center'}}>
+                                                            {product.model_number && <Chip label={product.model_number} size="small" color="primary" variant="outlined"/>}
+                                                            {releaseDate && <Chip label={releaseDate} size="small" color="success" variant="outlined"/>}
+                                                        </Box>
+                                                        <ExpandMoreIcon
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                const key = product.model_number ?? product.title
+                                                                setExpandedKey(expandedKey === key ? null : key)
+                                                            }}
+                                                            sx={{
+                                                                cursor: 'pointer',
+                                                                transform: expandedKey === (product.model_number ?? product.title) ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                                transition: 'transform 0.3s',
+                                                            }}
+                                                        />
                                                     </Box>
                                                 </Box>
                                             </Box>
