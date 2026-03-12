@@ -53,12 +53,17 @@ function CollapsePageList<T>({items, getKey, activeKey, onChange, renderLabel, r
                     <Accordion
                         key={key}
                         expanded={isExpanded}
-                        onChange={() => onChange(key)}
+                        onChange={() => { if (!isExpanded) onChange(key) }}
                         variant="outlined"
                         disableGutters
                     >
                         <AccordionSummary
-                            expandIcon={<ExpandMoreIcon/>}
+                            expandIcon={
+                                <ExpandMoreIcon onClick={(e) => {
+                                    e.stopPropagation()
+                                    onChange(key)
+                                }}/>
+                            }
                             sx={{px: 2}}
                         >
                             {renderLabel(item, isExpanded)}
