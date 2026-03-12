@@ -1,20 +1,17 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-    Box, Card, CardContent, Chip, CircularProgress, FormControl, InputLabel, Tooltip,
-    MenuItem, Select, Switch, TextField, Typography,
-} from "@mui/material";
+import React, {useCallback, useEffect, useMemo, useState} from "react";
+import {Box, Card, CardContent, Chip, CircularProgress, FormControl, InputLabel, MenuItem, Select, Switch, TextField, Tooltip, Typography,} from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import InboxIcon from "@mui/icons-material/Inbox";
-import type { Volume } from "@/lib/mongodb";
-import { fetchApi } from "@/lib/api";
-import MediaEditorContent, { useMediaEditor } from '@/components/MediaEditor';
-import { PAGE_SIZE } from "@/lib/utils";
+import type {Volume} from "@/lib/mongodb";
+import {fetchApi} from "@/lib/api";
+import MediaEditorContent, {useMediaEditor} from '@/components/MediaEditor';
+import {PAGE_SIZE} from "@/lib/utils";
 import ListPagination from "@/components/ListPagination";
-import { useEditorPanel } from "@/components/useEditorPanel";
-import CollapsePageList, { ExpandBlocker, ListHeader } from "@/components/CollapsePageList";
+import {useEditorPanel} from "@/components/useEditorPanel";
+import CollapsePageList, {ExpandBlocker} from "@/components/CollapsePageList";
 
 // ─── Constants & Utilities ────────────────────────────────────────────────────
 
@@ -31,7 +28,7 @@ function matchesFilters(volume: VolumeWithMedia, filters: {
     searchTitle: string; invertTitle: boolean
     filterHasMedia?: boolean
 }): boolean {
-    const { searchCatalogNo, searchTitle, invertTitle, filterHasMedia } = filters
+    const {searchCatalogNo, searchTitle, invertTitle, filterHasMedia} = filters
     if (searchCatalogNo) {
         const match = volume.catalog_no?.toLowerCase().includes(searchCatalogNo.toLowerCase())
         if (!match) return false
@@ -57,12 +54,12 @@ function useVolumeListView(volumes: VolumeWithMedia[]) {
     const [currentPage, setCurrentPage] = useState(1)
 
     const filteredVolumes = useMemo(() =>
-        volumes.filter(v => matchesFilters(v, {
-            searchCatalogNo,
-            searchTitle,
-            invertTitle,
-            filterHasMedia
-        })),
+            volumes.filter(v => matchesFilters(v, {
+                searchCatalogNo,
+                searchTitle,
+                invertTitle,
+                filterHasMedia
+            })),
         [volumes, searchCatalogNo, searchTitle, invertTitle, filterHasMedia])
 
     const pagedVolumes = useMemo(() => {
@@ -97,81 +94,81 @@ const VolumeFiltersBar: React.FC<{
     onInvertTitleChange: (v: boolean) => void
     onFilterHasMediaChange: (v: boolean | undefined) => void
 }> = ({
-    searchCatalogNo, searchTitle, invertTitle, filterHasMedia, total,
-    onSearchCatalogNoChange, onSearchTitleChange, onInvertTitleChange, onFilterHasMediaChange
-}) => {
-        return (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
-                <TextField
-                    value={searchCatalogNo}
-                    onChange={e => onSearchCatalogNoChange(e.target.value)}
-                    label="搜索编号"
-                    size="small"
-                    sx={{ width: 200 }}
-                />
-                <TextField
-                    value={searchTitle}
-                    onChange={e => onSearchTitleChange(e.target.value)}
-                    label="搜索标题"
-                    size="small"
-                    sx={{ width: 300 }}
-                    slotProps={{
-                        input: {
-                            endAdornment: (
-                                <Tooltip title="反向">
-                                    <Switch
-                                        checked={invertTitle}
-                                        onChange={e => onInvertTitleChange(e.target.checked)}
-                                        size="small"
-                                    />
-                                </Tooltip>
-                            ),
-                        },
+          searchCatalogNo, searchTitle, invertTitle, filterHasMedia, total,
+          onSearchCatalogNoChange, onSearchTitleChange, onInvertTitleChange, onFilterHasMediaChange
+      }) => {
+    return (
+        <Box sx={{display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1}}>
+            <TextField
+                value={searchCatalogNo}
+                onChange={e => onSearchCatalogNoChange(e.target.value)}
+                label="搜索编号"
+                size="small"
+                sx={{width: 200}}
+            />
+            <TextField
+                value={searchTitle}
+                onChange={e => onSearchTitleChange(e.target.value)}
+                label="搜索标题"
+                size="small"
+                sx={{width: 300}}
+                slotProps={{
+                    input: {
+                        endAdornment: (
+                            <Tooltip title="反向">
+                                <Switch
+                                    checked={invertTitle}
+                                    onChange={e => onInvertTitleChange(e.target.checked)}
+                                    size="small"
+                                />
+                            </Tooltip>
+                        ),
+                    },
+                }}
+            />
+            <FormControl size="small" sx={{width: 150}}>
+                <InputLabel>是否添加</InputLabel>
+                <Select
+                    value={filterHasMedia === undefined ? NONE : String(filterHasMedia)}
+                    onChange={e => {
+                        const v = e.target.value
+                        onFilterHasMediaChange(v === NONE ? undefined : v === 'true')
                     }}
-                />
-                <FormControl size="small" sx={{ width: 150 }}>
-                    <InputLabel>是否添加</InputLabel>
-                    <Select
-                        value={filterHasMedia === undefined ? NONE : String(filterHasMedia)}
-                        onChange={e => {
-                            const v = e.target.value
-                            onFilterHasMediaChange(v === NONE ? undefined : v === 'true')
-                        }}
-                        label="是否添加"
-                    >
-                        <MenuItem value={NONE}><em>全部</em></MenuItem>
-                        <MenuItem value="true">已添加</MenuItem>
-                        <MenuItem value="false">未添加</MenuItem>
-                    </Select>
-                </FormControl>
-                <Typography variant="body2" color="text.secondary">共 {total} 条</Typography>
-            </Box>
-        )
-    }
+                    label="是否添加"
+                >
+                    <MenuItem value={NONE}><em>全部</em></MenuItem>
+                    <MenuItem value="true">已添加</MenuItem>
+                    <MenuItem value="false">未添加</MenuItem>
+                </Select>
+            </FormControl>
+            <Typography variant="body2" color="text.secondary">共 {total} 条</Typography>
+        </Box>
+    )
+}
 
-const VolumeRowLabel: React.FC<{ volume: VolumeWithMedia; isExpanded: boolean }> = ({ volume, isExpanded }) => {
+const VolumeRowLabel: React.FC<{ volume: VolumeWithMedia; isExpanded: boolean }> = ({volume, isExpanded}) => {
     return (
         <ExpandBlocker isExpanded={isExpanded}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                <Box sx={{ width: 56, flexShrink: 0 }}>
+            <Box sx={{display: 'flex', alignItems: 'center', gap: 1, width: '100%'}}>
+                <Box sx={{width: 56, flexShrink: 0}}>
                     {volume.mediaCount && volume.mediaCount > 0
                         ? <Chip
-                            icon={<CheckCircleOutlineIcon />}
+                            icon={<CheckCircleOutlineIcon/>}
                             label={volume.mediaCount}
                             color="success"
                             size="small"
-                            sx={{ m: 0 }}
+                            sx={{m: 0}}
                         />
-                        : <HighlightOffIcon color="disabled" fontSize="small" />
+                        : <HighlightOffIcon color="disabled" fontSize="small"/>
                     }
                 </Box>
                 <Typography
                     variant="body2"
-                    sx={{ width: 120, flexShrink: 0, fontFamily: 'monospace' }}
+                    sx={{width: 120, flexShrink: 0, fontFamily: 'monospace'}}
                 >
                     {formatCatalogNo(volume.catalog_no)}
                 </Typography>
-                <Typography variant="body2" noWrap sx={{ flex: 1 }}>
+                <Typography variant="body2" noWrap sx={{flex: 1}}>
                     {volume.volume_name || '无标题'}
                 </Typography>
             </Box>
@@ -206,7 +203,7 @@ const VolumePage: React.FC = () => {
     } = useVolumeListView(volumes);
 
     const editor = useMediaEditor(refreshVolumes);
-    const { activeKey, handleCollapseChange, closeForPageChange } = useEditorPanel({
+    const {activeKey, handleCollapseChange, closeForPageChange} = useEditorPanel({
         pagedItems: pagedVolumes,
         getItemKey: v => v._id,
         openItem: v => editor.open(v._id, v.volume_no, v.catalog_no),
@@ -235,11 +232,11 @@ const VolumePage: React.FC = () => {
 
     if (filteredVolumes.length === 0 && !loading) {
         return (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
                 {filterBar}
                 <Card variant="outlined">
-                    <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, py: 4 }}>
-                        <InboxIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
+                    <CardContent sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, py: 4}}>
+                        <InboxIcon sx={{fontSize: 48, color: 'text.disabled'}}/>
                         <Typography color="text.secondary">
                             {hasActiveFilters ? '无匹配结果' : '暂无卷数据'}
                         </Typography>
@@ -250,16 +247,16 @@ const VolumePage: React.FC = () => {
     }
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
             {filterBar}
-            <Box sx={{ position: 'relative' }}>
+            <Box sx={{position: 'relative'}}>
                 {loading && (
                     <Box sx={{
                         position: 'absolute', inset: 0, zIndex: 1,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         bgcolor: 'rgba(255,255,255,0.6)',
                     }}>
-                        <CircularProgress />
+                        <CircularProgress/>
                     </Box>
                 )}
                 <Card>
@@ -268,7 +265,7 @@ const VolumePage: React.FC = () => {
                         getKey={v => v._id}
                         activeKey={activeKey}
                         onChange={handleCollapseChange}
-                        renderLabel={(v, isExpanded) => <VolumeRowLabel volume={v} isExpanded={isExpanded} />}
+                        renderLabel={(v, isExpanded) => <VolumeRowLabel volume={v} isExpanded={isExpanded}/>}
                         renderContent={() => <MediaEditorContent {...editor} />}
                     />
                 </Card>

@@ -11,7 +11,7 @@ import {DiscEditorContent, useDiscEditor} from "@/components/DiscEditor";
 import {PAGE_SIZE} from "@/lib/utils";
 import ListPagination from "@/components/ListPagination";
 import {useEditorPanel} from "@/components/useEditorPanel";
-import CollapsePageList, {ExpandBlocker, ListHeader} from "@/components/CollapsePageList";
+import CollapsePageList, {ExpandBlocker} from "@/components/CollapsePageList";
 
 function matchesFilters(torrent: TorrentWithVolume, filters: {
     searchText: string; invertSearch: boolean
@@ -149,15 +149,6 @@ const TorrentFiltersBar: React.FC<{
         </Box>
     )
 }
-
-const TorrentListHeader: React.FC = () => (
-    <ListHeader columns={[
-        {label: '卷', style: {width: 56, flexShrink: 0}},
-        {label: '名称', style: {flex: 1}},
-        {label: '类别', style: {width: 200, flexShrink: 0}},
-        {label: '状态', style: {width: 100, flexShrink: 0, textAlign: 'right'}},
-    ]}/>
-)
 
 const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume; isExpanded: boolean }> = ({torrent, isExpanded}) => {
     return (

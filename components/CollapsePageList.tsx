@@ -53,7 +53,9 @@ function CollapsePageList<T>({items, getKey, activeKey, onChange, renderLabel, r
                     <Accordion
                         key={key}
                         expanded={isExpanded}
-                        onChange={() => { if (!isExpanded) onChange(key) }}
+                        onChange={() => {
+                            if (!isExpanded) onChange(key)
+                        }}
                         variant="outlined"
                         disableGutters
                     >
@@ -64,7 +66,7 @@ function CollapsePageList<T>({items, getKey, activeKey, onChange, renderLabel, r
                                     onChange(key)
                                 }}/>
                             }
-                            sx={{px: 2}}
+                            sx={{px: 1, flexDirection: 'row-reverse'}}
                         >
                             {renderLabel(item, isExpanded)}
                         </AccordionSummary>
