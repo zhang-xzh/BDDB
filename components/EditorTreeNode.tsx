@@ -291,12 +291,12 @@ export function EditorTreeNode({
     )
 
     return (
-        <Stack direction="row" alignItems="center" spacing={0.75} sx={{py: 0.25, width: '100%'}}>
+        <Stack direction="row" alignItems="center" spacing={0.75} sx={{py: 0.25}}>
             {isLeaf
                 ? <InsertDriveFileIcon sx={{fontSize: 14, color: 'text.disabled', flexShrink: 0}}/>
                 : <FolderOpenIcon sx={{fontSize: 14, color: 'warning.main', flexShrink: 0}}/>
             }
-            <Typography variant="body2" noWrap sx={{maxWidth: 300, flexShrink: 0}}>{title}</Typography>
+            <Typography variant="body2">{title}</Typography>
             <Stack
                 direction="row" alignItems="center" spacing={0.5} sx={{flexShrink: 0}}
                 onClick={e => e.stopPropagation()}
