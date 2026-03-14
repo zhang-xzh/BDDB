@@ -1,7 +1,7 @@
 'use client'
 
 import React, {useCallback, useEffect, useRef, useState} from 'react'
-import {Accordion, AccordionDetails, AccordionSummary, Box, Chip, CircularProgress, IconButton, InputAdornment, TextField, Typography,} from '@mui/material'
+import {Accordion, AccordionDetails, AccordionSummary, Box, Chip, CircularProgress, Dialog, DialogContent, IconButton, InputAdornment, TextField, Typography,} from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import InboxIcon from '@mui/icons-material/Inbox'
@@ -32,6 +32,7 @@ const SiderContent: React.FC = () => {
     const [searchResult, setSearchResult] = useState<SearchResponse | null>(null)
     const [hasMore, setHasMore] = useState(false)
     const [expandedKey, setExpandedKey] = useState<string | null>(null)
+    const [selectedImage, setSelectedImage] = useState<string | null>(null)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
 
     const handleSearch = async () => {
@@ -186,7 +187,8 @@ const SiderContent: React.FC = () => {
                                                 {thumbnailUrl ? (
                                                     <Box
                                                         component="img" src={thumbnailUrl} alt={product.title}
-                                                        sx={{width: 60, height: 60, objectFit: 'cover', borderRadius: 1, flexShrink: 0}}
+                                                        onClick={() => setSelectedImage(thumbnailUrl)}
+                                                        sx={{width: 60, height: 60, objectFit: 'cover', borderRadius: 1, flexShrink: 0, cursor: 'pointer'}}
                                                     />
                                                 ) : (
                                                     <Box sx={{width: 60, height: 60, borderRadius: 1, flexShrink: 0, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
@@ -247,6 +249,19 @@ const SiderContent: React.FC = () => {
                     <Typography variant="body2" color="text.secondary" sx={{px: 1}}>输入关键词搜索产品</Typography>
                 )}
             </Box>
+
+            <Dialog open={!!selectedImage} onClose={() => setSelectedImage(null)} maxWidth="lg">
+                <DialogContent sx={{p: 0, bgcolor: 'transparent'}}>
+                    {selectedImage && (
+                        <Box
+                            component="img"
+                            src={selectedImage}
+                            alt="大图预览"
+                            sx={{width: '100%', height: 'auto', maxHeight: '80vh', objectFit: 'contain'}}
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
         </Box>
     )
 }
