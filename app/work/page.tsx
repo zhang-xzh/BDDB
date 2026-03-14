@@ -146,7 +146,10 @@ const VolumeFiltersBar: React.FC<{
     )
 }
 
-const VolumeRowLabel: React.FC<{ volume: VolumeWithWork; isExpanded: boolean }> = ({volume, isExpanded}) => {
+const VolumeRowLabel: React.FC<{
+    volume: VolumeWithWork
+    isExpanded: boolean
+}> = ({volume, isExpanded}) => {
     return (
         <ExpandBlocker isExpanded={isExpanded}>
             <Box sx={{display: 'flex', alignItems: 'center', gap: 1, width: '100%'}}>
@@ -210,6 +213,14 @@ const WorkPage: React.FC = () => {
         editor,
     });
 
+    // 使用 useMemo 缓存 renderLabel 函数
+    const renderVolumeLabel = useCallback((v: VolumeWithWork, isExpanded: boolean) => (
+        <VolumeRowLabel
+            volume={v}
+            isExpanded={isExpanded}
+        />
+    ), []);
+
     useEffect(() => {
         refreshVolumes();
     }, [refreshVolumes]);
@@ -265,7 +276,7 @@ const WorkPage: React.FC = () => {
                         getKey={v => v._id}
                         activeKey={activeKey}
                         onChange={handleCollapseChange}
-                        renderLabel={(v, isExpanded) => <VolumeRowLabel volume={v} isExpanded={isExpanded}/>}
+                        renderLabel={renderVolumeLabel}
                         renderContent={() => <WorkEditorContent {...editor} />}
                     />
                 </Card>
