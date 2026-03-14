@@ -127,6 +127,7 @@ export function WorkEditorContent({
         formatValue: (v: number) => `媒介 ${v}`,
         visibleCount: visibleMedias,
         onLoadMore: loadMoreMedias,
+        readOnly: true,
         getSingleValue: () => undefined,
         getIsShared: () => false,
         getSharedValues: () => [],

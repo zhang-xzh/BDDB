@@ -35,6 +35,8 @@ export interface EditorTreeNodeProps {
     onLoadMore: () => void
     /** 多作品模式（> 1 时启用两栏 Popover），仅 DiscEditor 使用 */
     worksCount?: number
+    /** 只读模式，不显示选择器按钮 */
+    readOnly?: boolean
 
     // ── 值读取 ──
     getSingleValue: (key: string) => number | undefined
@@ -73,6 +75,7 @@ function buildMenuEntries(worksCount: number, visibleCount: number, formatValue:
 export function EditorTreeNode({
                                    title, nodeKey, isLeaf, isMixed, formatValue, visibleCount, onLoadMore,
                                    worksCount = 1,
+                                   readOnly = false,
                                    getSingleValue, getIsShared, getSharedValues,
                                    onSingleChange, onSharedChange, onToggleShared,
                                }: EditorTreeNodeProps) {
@@ -297,42 +300,44 @@ export function EditorTreeNode({
                 : <FolderOpenIcon sx={{fontSize: 14, color: 'warning.main', flexShrink: 0}}/>
             }
             <Typography variant="body2">{title}</Typography>
-            <Stack
-                direction="row" alignItems="center" spacing={0.5} sx={{flexShrink: 0}}
-                onClick={e => e.stopPropagation()}
-                onMouseDown={e => e.stopPropagation()}
-            >
-                <Tooltip title={isShared ? '共享模式（点击切换）' : '独占模式（点击切换）'}>
+            {!readOnly && (
+                <Stack
+                    direction="row" alignItems="center" spacing={0.5} sx={{flexShrink: 0}}
+                    onClick={e => e.stopPropagation()}
+                    onMouseDown={e => e.stopPropagation()}
+                >
+                    <Tooltip title={isShared ? '共享模式（点击切换）' : '独占模式（点击切换）'}>
+                        <Chip
+                            size="small"
+                            label={isShared ? '共享' : '独占'}
+                            variant={isShared ? 'filled' : 'outlined'}
+                            color={isShared ? 'secondary' : 'default'}
+                            onClick={() => onToggleShared(nodeKey, !isShared)}
+                            sx={{
+                                fontSize: '0.7rem', height: 20, cursor: 'pointer', flexShrink: 0,
+                                '& .MuiChip-label': {px: '6px'}
+                            }}
+                        />
+                    </Tooltip>
                     <Chip
                         size="small"
-                        label={isShared ? '共享' : '独占'}
-                        variant={isShared ? 'filled' : 'outlined'}
-                        color={isShared ? 'secondary' : 'default'}
-                        onClick={() => onToggleShared(nodeKey, !isShared)}
+                        label={chipLabel}
+                        variant={hasValue ? 'filled' : 'outlined'}
+                        color={isMixed ? 'warning' : hasValue ? 'primary' : 'default'}
+                        onClick={handleChipClick}
+                        onDelete={hasValue ? handleClear : undefined}
                         sx={{
-                            fontSize: '0.7rem', height: 20, cursor: 'pointer', flexShrink: 0,
-                            '& .MuiChip-label': {px: '6px'}
+                            fontSize: '0.7rem', height: 20, flexShrink: 0, cursor: 'pointer',
+                            '& .MuiChip-label': {px: '6px'},
+                            '& .MuiChip-deleteIcon': {fontSize: '14px', mr: '2px'},
                         }}
                     />
-                </Tooltip>
-                <Chip
-                    size="small"
-                    label={chipLabel}
-                    variant={hasValue ? 'filled' : 'outlined'}
-                    color={isMixed ? 'warning' : hasValue ? 'primary' : 'default'}
-                    onClick={handleChipClick}
-                    onDelete={hasValue ? handleClear : undefined}
-                    sx={{
-                        fontSize: '0.7rem', height: 20, flexShrink: 0, cursor: 'pointer',
-                        '& .MuiChip-label': {px: '6px'},
-                        '& .MuiChip-deleteIcon': {fontSize: '14px', mr: '2px'},
-                    }}
-                />
-                {/* 根据 worksCount 和 isShared 渲染对应的菜单/弹出层 */}
-                {worksCount <= 1 && regularMenu}
-                {worksCount > 1 && !isShared && multiWorkExclusivePopover}
-                {worksCount > 1 && isShared && multiWorkSharedPopover}
-            </Stack>
+                    {/* 根据 worksCount 和 isShared 渲染对应的菜单/弹出层 */}
+                    {worksCount <= 1 && regularMenu}
+                    {worksCount > 1 && !isShared && multiWorkExclusivePopover}
+                    {worksCount > 1 && isShared && multiWorkSharedPopover}
+                </Stack>
+            )}
         </Stack>
     )
 }
