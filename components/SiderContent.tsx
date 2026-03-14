@@ -164,12 +164,13 @@ const SiderContent: React.FC = () => {
                             {products.map((product, i) => {
                                 const thumbnailUrl = product.images?.[0]
                                 const releaseDate = formatDate(product.release_date)
+                                const itemKey = `${product.model_number ?? product.title}-${i}`
                                 return (
                                     <Accordion
-                                        key={`${product.model_number ?? product.title}-${i}`}
+                                        key={itemKey}
                                         variant="outlined"
                                         disableGutters
-                                        expanded={expandedKey === (product.model_number ?? product.title)}
+                                        expanded={expandedKey === itemKey}
                                         onChange={() => {}}
                                     >
                                         <AccordionSummary
@@ -207,12 +208,11 @@ const SiderContent: React.FC = () => {
                                                         <ExpandMoreIcon
                                                             onClick={(e) => {
                                                                 e.stopPropagation()
-                                                                const key = product.model_number ?? product.title
-                                                                setExpandedKey(expandedKey === key ? null : key)
+                                                                setExpandedKey(expandedKey === itemKey ? null : itemKey)
                                                             }}
                                                             sx={{
                                                                 cursor: 'pointer',
-                                                                transform: expandedKey === (product.model_number ?? product.title) ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                                transform: expandedKey === itemKey ? 'rotate(180deg)' : 'rotate(0deg)',
                                                                 transition: 'transform 0.3s',
                                                             }}
                                                         />
