@@ -114,7 +114,7 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
 
             // 加载已关联的作品
             try {
-                const worksResult = await fetchApi<{bangumiSubjectId?: string}[]>(`/api/volumes/${volumeId}/works`)
+                const worksResult = await fetchApi<{ bangumiSubjectId?: string }[]>(`/api/volumes/${volumeId}/works`)
                 if (worksResult?.success && worksResult.data && worksResult.data.length > 0) {
                     // 取第一个关联的作品（单选）
                     const savedWork = worksResult.data[0]
@@ -288,7 +288,7 @@ function WorkDetail({work}: WorkDetailProps) {
     const bangumiUrl = bangumiSite?.id ? `https://bangumi.tv/subject/${bangumiSite.id}` : null
 
     return (
-        <Box sx={{mt: 2}}>
+        <Box>
             {/* 标题区域 */}
             <Box sx={{mb: 2, pb: 1, borderBottom: '1px solid', borderColor: 'divider'}}>
                 <Typography variant="h6" sx={{fontSize: '1.1rem', fontWeight: 600}}>
@@ -432,7 +432,7 @@ function WorkEditView({
     return (
         <Box>
             <Autocomplete
-                sx={{maxWidth: 400, mb: 2}}
+                sx={{maxWidth: 400, mb: 2, mt: 1}}
                 size="small"
                 options={bangumiItems}
                 getOptionLabel={(option) => option.titleCn || option.title}
@@ -469,7 +469,7 @@ function WorkEditView({
             )}
 
             {/* 操作按钮 */}
-            <Stack direction="row" spacing={1} justifyContent="flex-start">
+            <Stack direction="row" spacing={1} justifyContent="flex-start" sx={{mt: 1}}>
                 {onCancel && (
                     <Button
                         variant="text"
@@ -552,9 +552,9 @@ function WorkFormList({selectedWork, onWorkChange, saving = false, onSubmit}: Wo
             <CardHeader
                 title="作品信息"
                 titleTypographyProps={{variant: 'body2', fontWeight: 600}}
-                sx={{py: 1, px: 1.5}}
+                sx={{py: 1, px: 1.5, pb: 0.5}}
             />
-            <CardContent sx={{pt: 1.5, pb: '8px !important', px: 1.5}}>
+            <CardContent sx={{pt: 1, pb: '8px !important', px: 1.5}}>
                 {isEditing ? (
                     <WorkEditView
                         selectedWork={selectedWork}
