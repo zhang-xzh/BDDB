@@ -280,7 +280,7 @@ const WorkPage: React.FC = () => {
                         activeKey={activeKey}
                         onChange={handleCollapseChange}
                         renderLabel={renderVolumeLabel}
-                        renderContent={() => <WorkEditorContent {...editor} />}
+                        renderContent={() => <WorkEditorContent {...editor} onSubmit={editor.handleSubmit} />}
                     />
                 </Card>
             </Box>
