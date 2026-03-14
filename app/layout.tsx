@@ -26,7 +26,7 @@ function AppLayout({children, isDark, onToggle}: {
 }) {
     const pathname = usePathname()
     const router = useRouter()
-    const currentTab = NAV_ITEMS.find(n => pathname.startsWith(n.path))?.path ?? false
+    const currentTab = NAV_ITEMS.find(n => pathname?.startsWith(n.path))?.path ?? false
 
     return (
         <>
