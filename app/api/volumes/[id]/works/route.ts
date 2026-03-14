@@ -59,11 +59,23 @@ export async function GET(
             }
         }
 
-        // 返回简化格式，包含 subjectId
+        // 返回完整的 work 数据（直接从数据库读取）
         const result = works.map(work => ({
-            subjectId: work.id,
+            id: work.id,
+            url: work.url,
+            type: work.type,
             name: work.name,
             name_cn: work.name_cn,
+            summary: work.summary,
+            eps: work.eps,
+            air_date: work.air_date,
+            air_weekday: work.air_weekday,
+            images: work.images,
+            rating: work.rating,
+            rank: work.rank,
+            collection: work.collection,
+            crt: work.crt,
+            staff: work.staff,
         }))
 
         return NextResponse.json({success: true, data: result})

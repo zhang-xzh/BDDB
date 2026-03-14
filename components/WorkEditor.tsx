@@ -109,28 +109,15 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
                 setDefaultExpandedKeys([])
             }
 
-            // 加载已关联的作品
+            // 加载已关联的作品（直接从数据库读取完整数据）
             try {
-                const worksResult = await fetchApi<{ subjectId?: number }[]>(`/api/volumes/${volumeId}/works`)
+                const worksResult = await fetchApi<BangumiSubject[]>(`/api/volumes/${volumeId}/works`)
                 if (worksResult?.success && worksResult.data && worksResult.data.length > 0) {
                     const savedWork = worksResult.data[0]
-                    if (savedWork?.subjectId) {
-                        // 从 Bangumi API 获取详情
-                        const subject = await getBangumiSubject(savedWork.subjectId)
-                        if (subject) {
-                            setSelectedWork(subject)
-                            initialWorkRef.current = subject
-                            previousWorkRef.current = subject
-                        } else {
-                            setSelectedWork(null)
-                            initialWorkRef.current = null
-                            previousWorkRef.current = null
-                        }
-                    } else {
-                        setSelectedWork(null)
-                        initialWorkRef.current = null
-                        previousWorkRef.current = null
-                    }
+                    console.log('[WorkEditor] Loaded work from database:', savedWork.name_cn || savedWork.name)
+                    setSelectedWork(savedWork)
+                    initialWorkRef.current = savedWork
+                    previousWorkRef.current = savedWork
                 } else {
                     setSelectedWork(null)
                     initialWorkRef.current = null
