@@ -49,6 +49,12 @@ export interface BddbMedia {
     file_ids: ObjectId[]
 }
 
+// 临时 works 接口 - 字段待定，支持任意信息
+export interface BddbWork {
+    _id: ObjectId
+    [key: string]: any
+}
+
 // 前端序列化类型（ObjectId -> string）
 export interface TorrentWithVolume {
     _id: string
@@ -138,6 +144,10 @@ function getVolumesCollection(): Collection<BddbVolume> {
 
 function getMediasCollection(): Collection<BddbMedia> {
     return getMongoCollection<BddbMedia>('bddb_medias')
+}
+
+function getWorksCollection(): Collection<BddbWork> {
+    return getMongoCollection<BddbWork>('bddb_works')
 }
 
 // ─── 种子相关 ─────────────────────────────────────────────────────────────────
@@ -689,6 +699,112 @@ export async function getMediaCount(volumeId?: string | ObjectId): Promise<numbe
     }
 }
 
+// ─── Works 相关 ───────────────────────────────────────────────────────────────
+
+/**
+ * 获取所有 works
+ */
+export async function getAllWorks(): Promise<BddbWork[]> {
+    try {
+        const collection = getWorksCollection()
+        return await collection.find({}).toArray()
+    } catch (error) {
+        console.error('[mongodb] getAllWorks error:', error)
+        return []
+    }
+}
+
+/**
+ * 根据 ID 获取 work
+ */
+export async function getWorkById(id: string | ObjectId): Promise<BddbWork | null> {
+    try {
+        const collection = getWorksCollection()
+        return await collection.findOne({
+            _id: typeof id === 'string' ? new ObjectId(id) : id,
+        })
+    } catch (error) {
+        console.error('[mongodb] getWorkById error:', error)
+        return null
+    }
+}
+
+/**
+ * 保存 work（插入或更新）
+ */
+export async function saveWork(work: BddbWork): Promise<void> {
+    try {
+        const collection = getWorksCollection()
+        const now = Math.floor(Date.now() / 1000)
+
+        await collection.updateOne(
+            {_id: work._id},
+            {
+                $set: {
+                    ...work,
+                    updated_at: work.updated_at || now,
+                },
+                $setOnInsert: {
+                    created_at: work.created_at || now,
+                },
+            },
+            {upsert: true}
+        )
+    } catch (error) {
+        console.error('[mongodb] saveWork error:', error)
+        throw error
+    }
+}
+
+/**
+ * 创建新 work
+ */
+export async function createWork(data: Omit<BddbWork, '_id'>): Promise<BddbWork> {
+    try {
+        const collection = getWorksCollection()
+        const now = Math.floor(Date.now() / 1000)
+
+        const work: BddbWork = {
+            _id: new ObjectId(),
+            ...data,
+            created_at: data.created_at || now,
+            updated_at: data.updated_at || now,
+        }
+
+        await collection.insertOne(work)
+        return work
+    } catch (error) {
+        console.error('[mongodb] createWork error:', error)
+        throw error
+    }
+}
+
+/**
+ * 删除 work
+ */
+export async function deleteWork(id: string | ObjectId): Promise<void> {
+    try {
+        const collection = getWorksCollection()
+        await collection.deleteOne({_id: typeof id === 'string' ? new ObjectId(id) : id})
+    } catch (error) {
+        console.error('[mongodb] deleteWork error:', error)
+        throw error
+    }
+}
+
+/**
+ * 获取 work 数量
+ */
+export async function getWorkCount(): Promise<number> {
+    try {
+        const collection = getWorksCollection()
+        return await collection.countDocuments({})
+    } catch (error) {
+        console.error('[mongodb] getWorkCount error:', error)
+        return 0
+    }
+}
+
 // ─── 清理相关 ─────────────────────────────────────────────────────────────────
 
 /**
@@ -699,10 +815,12 @@ export async function clearAllData(): Promise<void> {
         const torrentsCollection = getTorrentsCollection()
         const volumesCollection = getVolumesCollection()
         const mediasCollection = getMediasCollection()
+        const worksCollection = getWorksCollection()
 
         await torrentsCollection.deleteMany({})
         await volumesCollection.deleteMany({})
         await mediasCollection.deleteMany({})
+        await worksCollection.deleteMany({})
     } catch (error) {
         console.error('[mongodb] clearAllData error:', error)
         throw error

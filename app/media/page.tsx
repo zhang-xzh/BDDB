@@ -177,7 +177,7 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithMedia; isExpanded: boolean }>
 }
 
 
-const VolumePage: React.FC = () => {
+const MediaPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [volumes, setVolumes] = useState<VolumeWithMedia[]>([]);
 
@@ -282,4 +282,4 @@ const VolumePage: React.FC = () => {
     );
 };
 
-export default VolumePage;
+export default MediaPage;
