@@ -114,7 +114,6 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
                 const worksResult = await fetchApi<BangumiSubject[]>(`/api/volumes/${volumeId}/works`)
                 if (worksResult?.success && worksResult.data && worksResult.data.length > 0) {
                     const savedWork = worksResult.data[0]
-                    console.log('[WorkEditor] Loaded work from database:', savedWork.name_cn || savedWork.name)
                     setSelectedWork(savedWork)
                     initialWorkRef.current = savedWork
                     previousWorkRef.current = savedWork
@@ -165,12 +164,10 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
         if (volumeInfo == null) return false
         setSaving(true)
         const workBeforeSave = previousWorkRef.current
-        
+
         // 使用传入的 work 或当前的 selectedWork
         const work = workToSave !== undefined ? workToSave : selectedWork
-        
-        console.log('[useWorkEditor] handleSubmit called with work:', work?.id, work?.name_cn || work?.name)
-        
+
         try {
             const result = await postApi(`/api/volumes/${volumeInfo.volumeId}/works`, {
                 work: work,
@@ -506,18 +503,14 @@ function WorkFormList({selectedWork, onWorkChange, saving = false, onSubmit}: Wo
         if (tempWork !== null) {
             // 获取完整的条目详情（包含 rating、rank、collection 等）
             try {
-                console.log('[WorkEditor] Fetching full subject details for id:', tempWork.id)
                 const fullSubject = await getBangumiSubject(tempWork.id, 'large')
-                console.log('[WorkEditor] Got full subject:', fullSubject.name_cn || fullSubject.name)
-                
+
                 // 先更新父组件的 selectedWork
                 onWorkChange(fullSubject)
-                
+
                 // 如果有 onSubmit，调用它进行保存
                 if (onSubmit) {
-                    console.log('[WorkEditor] Calling onSubmit with full subject')
                     const result = await onSubmit(fullSubject)
-                    console.log('[WorkEditor] onSubmit result:', result)
                     // 如果保存成功，退出编辑模式
                     if (result) {
                         setIsEditing(false)

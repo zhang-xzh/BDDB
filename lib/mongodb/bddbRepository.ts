@@ -52,81 +52,81 @@ export interface BddbMedia {
 
 // Bangumi API 图片信息
 export interface BangumiImages {
-  large: string
-  common: string
-  medium: string
-  small: string
-  grid: string
+    large: string
+    common: string
+    medium: string
+    small: string
+    grid: string
 }
 
 // Bangumi API 评分信息
 export interface BangumiRating {
-  score: number
-  total: number
-  count: Record<string, number>
+    score: number
+    total: number
+    count: Record<string, number>
 }
 
 // Bangumi API 收藏统计
 export interface BangumiCollection {
-  wish: number
-  collect: number
-  doing: number
-  on_hold: number
-  dropped: number
+    wish: number
+    collect: number
+    doing: number
+    on_hold: number
+    dropped: number
 }
 
 // Bangumi API 角色信息
 export interface BangumiCharacter {
-  id: number
-  url: string
-  name: string
-  name_cn: string
-  role_name: string
-  images: BangumiImages
+    id: number
+    url: string
+    name: string
+    name_cn: string
+    role_name: string
+    images: BangumiImages
 }
 
 // Bangumi API 制作人员信息
 export interface BangumiStaff {
-  id: number
-  url: string
-  name: string
-  name_cn: string
-  jobs: string[]
-  images: BangumiImages
+    id: number
+    url: string
+    name: string
+    name_cn: string
+    jobs: string[]
+    images: BangumiImages
 }
 
 // Work 接口 - 1:1 复制 Bangumi API 数据结构
 export interface BddbWork {
-  _id: ObjectId
+    _id: ObjectId
 
-  // Bangumi API 原始字段
-  id: number                    // Bangumi subject ID
-  url: string                   // bgm.tv/subject/{id}
-  type: number                  // 条目类型 (1=书籍, 2=动画, 3=音乐, 4=游戏, 6=三次元)
-  name: string                  // 日文/原名
-  name_cn: string               // 中文译名
-  summary: string               // 剧情简介
-  eps: number                   // 话数
-  air_date: string              // 放送开始日期
-  air_weekday: number           // 放送星期 (1-7)
+    // Bangumi API 原始字段
+    id: number                    // Bangumi subject ID
+    url: string                   // bgm.tv/subject/{id}
+    type: number                  // 条目类型 (1=书籍, 2=动画, 3=音乐, 4=游戏, 6=三次元)
+    name: string                  // 日文/原名
+    name_cn: string               // 中文译名
+    summary: string               // 剧情简介
+    eps: number                   // 话数
+    air_date: string              // 放送开始日期
+    air_weekday: number           // 放送星期 (1-7)
 
-  // 图片
-  images: BangumiImages
+    // 图片
+    images: BangumiImages
 
-  // 评分
-  rating: BangumiRating
-  rank: number                  // 排名
+    // 评分
+    rating: BangumiRating
+    rank: number                  // 排名
 
-  // 收藏统计
-  collection: BangumiCollection
+    // 收藏统计
+    collection: BangumiCollection
 
-  // 角色和制作人员（可选，large 响应才有）
-  crt?: BangumiCharacter[]
-  staff?: BangumiStaff[]
+    // 角色和制作人员（可选，large 响应才有）
+    crt?: BangumiCharacter[]
+    staff?: BangumiStaff[]
 
-  // 内部字段
-  created_at: number
-  updated_at: number
+    // 内部字段
+    created_at: number
+    updated_at: number
 }
 
 // 前端序列化类型（ObjectId -> string）
@@ -925,11 +925,8 @@ export async function saveWorkFromBangumi(bangumiData: Partial<BddbWork>): Promi
         const collection = getWorksCollection()
         const now = Math.floor(Date.now() / 1000)
 
-        console.log('[mongodb] saveWorkFromBangumi called with id:', bangumiData.id)
-
         // 查找是否已存在
         const existingWork = await getWorkByBangumiSubjectId(bangumiData.id!)
-        console.log('[mongodb] Existing work:', existingWork ? existingWork._id.toString() : 'not found')
 
         const workData: Omit<BddbWork, '_id'> = {
             id: bangumiData.id!,
@@ -941,10 +938,10 @@ export async function saveWorkFromBangumi(bangumiData: Partial<BddbWork>): Promi
             eps: bangumiData.eps || 0,
             air_date: bangumiData.air_date || '',
             air_weekday: bangumiData.air_weekday || 0,
-            images: bangumiData.images || { large: '', common: '', medium: '', small: '', grid: '' },
-            rating: bangumiData.rating || { score: 0, total: 0, count: {} },
+            images: bangumiData.images || {large: '', common: '', medium: '', small: '', grid: ''},
+            rating: bangumiData.rating || {score: 0, total: 0, count: {}},
             rank: bangumiData.rank || 0,
-            collection: bangumiData.collection || { wish: 0, collect: 0, doing: 0, on_hold: 0, dropped: 0 },
+            collection: bangumiData.collection || {wish: 0, collect: 0, doing: 0, on_hold: 0, dropped: 0},
             crt: bangumiData.crt,
             staff: bangumiData.staff,
             created_at: existingWork?.created_at || now,
@@ -953,12 +950,10 @@ export async function saveWorkFromBangumi(bangumiData: Partial<BddbWork>): Promi
 
         if (existingWork) {
             // 更新现有 work
-            console.log('[mongodb] Updating existing work:', existingWork._id.toString())
             await collection.updateOne(
                 {_id: existingWork._id},
                 {$set: workData}
             )
-            console.log('[mongodb] Work updated successfully')
             return {...existingWork, ...workData}
         } else {
             // 创建新 work
@@ -966,9 +961,7 @@ export async function saveWorkFromBangumi(bangumiData: Partial<BddbWork>): Promi
                 _id: new ObjectId(),
                 ...workData,
             }
-            console.log('[mongodb] Inserting new work:', newWork._id.toString())
             await collection.insertOne(newWork)
-            console.log('[mongodb] Work inserted successfully')
             return newWork
         }
     } catch (error) {
@@ -1086,7 +1079,7 @@ export async function getTorrent(hash: string): Promise<BddbTorrent | null> {
 /**
  * 获取种子文件列表转换为 FileItem 格式
  */
-export async function getTorrentFilesAsFileItems(torrentId: string | ObjectId): Promise<{id: string; name: string; size: number; progress: number}[]> {
+export async function getTorrentFilesAsFileItems(torrentId: string | ObjectId): Promise<{ id: string; name: string; size: number; progress: number }[]> {
     try {
         const torrent = await getTorrentById(torrentId)
         if (!torrent) return []
@@ -1186,7 +1179,7 @@ export async function deleteStaleVolumes(torrentId: string | ObjectId, keepVolum
 /**
  * 删除过期媒体 (保留指定 media_no + media_type 的媒体，其余软删除)
  */
-export async function deleteStaleMedias(volumeId: string | ObjectId, keepMedias: {media_no: number; media_type: MediaType}[]): Promise<void> {
+export async function deleteStaleMedias(volumeId: string | ObjectId, keepMedias: { media_no: number; media_type: MediaType }[]): Promise<void> {
     try {
         const collection = getMediasCollection()
         const vid = typeof volumeId === 'string' ? new ObjectId(volumeId) : volumeId
@@ -1233,7 +1226,7 @@ export async function getVolumeById(volumeId: string | ObjectId): Promise<BddbVo
 /**
  * 获取卷的文件列表 (从关联的种子中解析)
  */
-export async function getVolumeFilesAsFileItems(volumeId: string | ObjectId): Promise<{id: string; name: string; size: number; progress: number}[]> {
+export async function getVolumeFilesAsFileItems(volumeId: string | ObjectId): Promise<{ id: string; name: string; size: number; progress: number }[]> {
     try {
         const volume = await getVolumeById(volumeId)
         if (!volume) return []
@@ -1262,7 +1255,7 @@ export async function getVolumeFilesAsFileItems(volumeId: string | ObjectId): Pr
 export async function saveVolumeCompat(
     torrentId: string | ObjectId,
     fileIds: string[],
-    data: {volume_no?: number; catalog_no?: string; volume_name?: string}
+    data: { volume_no?: number; catalog_no?: string; volume_name?: string }
 ): Promise<void> {
     const tid = typeof torrentId === 'string' ? new ObjectId(torrentId) : torrentId
     const volume: BddbVolume = {
@@ -1285,7 +1278,7 @@ export async function saveVolumeCompat(
 export async function saveMediaCompat(
     volumeId: string | ObjectId,
     fileIds: string[],
-    data: {media_no?: number; media_type?: MediaType; content_title?: string; description?: string}
+    data: { media_no?: number; media_type?: MediaType; content_title?: string; description?: string }
 ): Promise<void> {
     const vid = typeof volumeId === 'string' ? new ObjectId(volumeId) : volumeId
     const media: BddbMedia = {
