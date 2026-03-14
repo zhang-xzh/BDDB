@@ -127,18 +127,18 @@ const VolumeFiltersBar: React.FC<{
                 }}
             />
             <FormControl size="small" sx={{width: 150}}>
-                <InputLabel>是否添加</InputLabel>
+                <InputLabel>是否处理</InputLabel>
                 <Select
                     value={filterHasMedia === undefined ? NONE : String(filterHasMedia)}
                     onChange={e => {
                         const v = e.target.value
                         onFilterHasMediaChange(v === NONE ? undefined : v === 'true')
                     }}
-                    label="是否添加"
+                    label="是否处理"
                 >
                     <MenuItem value={NONE}><em>全部</em></MenuItem>
-                    <MenuItem value="true">已添加</MenuItem>
-                    <MenuItem value="false">未添加</MenuItem>
+                    <MenuItem value="true">已处理</MenuItem>
+                    <MenuItem value="false">未处理</MenuItem>
                 </Select>
             </FormControl>
             <Typography variant="body2" color="text.secondary">共 {total} 条</Typography>
