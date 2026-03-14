@@ -14,7 +14,6 @@ const NAV_ITEMS = [
     {path: '/torrents', label: '种子管理'},
     {path: '/volume', label: '媒介管理'},
     {path: '/work', label: '作品管理'},
-    {path: '/series', label: '系列管理'},
     {path: '/storage', label: '数据管理'},
     {path: '/config', label: '配置'},
 ]
