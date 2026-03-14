@@ -50,31 +50,83 @@ export interface BddbMedia {
     file_ids: ObjectId[]
 }
 
-// 站点信息
-export interface SiteInfo {
-    site: string
-    siteName: string
-    id: string
-    url?: string
+// Bangumi API 图片信息
+export interface BangumiImages {
+  large: string
+  common: string
+  medium: string
+  small: string
+  grid: string
 }
 
-// Work 接口 - 基于 bangumi-data
+// Bangumi API 评分信息
+export interface BangumiRating {
+  score: number
+  total: number
+  count: Record<string, number>
+}
+
+// Bangumi API 收藏统计
+export interface BangumiCollection {
+  wish: number
+  collect: number
+  doing: number
+  on_hold: number
+  dropped: number
+}
+
+// Bangumi API 角色信息
+export interface BangumiCharacter {
+  id: number
+  url: string
+  name: string
+  name_cn: string
+  role_name: string
+  images: BangumiImages
+}
+
+// Bangumi API 制作人员信息
+export interface BangumiStaff {
+  id: number
+  url: string
+  name: string
+  name_cn: string
+  jobs: string[]
+  images: BangumiImages
+}
+
+// Work 接口 - 1:1 复制 Bangumi API 数据结构
 export interface BddbWork {
-    _id: ObjectId
-    bangumiSubjectId?: string  // bangumi.tv 的 subject ID
-    title: string
-    titleCn: string
-    titleEn: string
-    type: string
-    lang: string
-    officialSite: string
-    begin: string
-    end: string
-    broadcast?: string
-    comment?: string
-    sites: SiteInfo[]
-    created_at: number
-    updated_at: number
+  _id: ObjectId
+
+  // Bangumi API 原始字段
+  id: number                    // Bangumi subject ID
+  url: string                   // bgm.tv/subject/{id}
+  type: number                  // 条目类型 (1=书籍, 2=动画, 3=音乐, 4=游戏, 6=三次元)
+  name: string                  // 日文/原名
+  name_cn: string               // 中文译名
+  summary: string               // 剧情简介
+  eps: number                   // 话数
+  air_date: string              // 放送开始日期
+  air_weekday: number           // 放送星期 (1-7)
+
+  // 图片
+  images: BangumiImages
+
+  // 评分
+  rating: BangumiRating
+  rank: number                  // 排名
+
+  // 收藏统计
+  collection: BangumiCollection
+
+  // 角色和制作人员（可选，large 响应才有）
+  crt?: BangumiCharacter[]
+  staff?: BangumiStaff[]
+
+  // 内部字段
+  created_at: number
+  updated_at: number
 }
 
 // 前端序列化类型（ObjectId -> string）
@@ -852,71 +904,61 @@ export async function getWorkCount(): Promise<number> {
 }
 
 /**
- * 根据 bangumiSubjectId 获取 work
+ * 根据 Bangumi subject ID 获取 work
  */
-export async function getWorkByBangumiId(bangumiSubjectId: string): Promise<BddbWork | null> {
+export async function getWorkByBangumiSubjectId(subjectId: number): Promise<BddbWork | null> {
     try {
         const collection = getWorksCollection()
-        return await collection.findOne({bangumiSubjectId})
+        return await collection.findOne({id: subjectId})
     } catch (error) {
-        console.error('[mongodb] getWorkByBangumiId error:', error)
+        console.error('[mongodb] getWorkByBangumiSubjectId error:', error)
         return null
     }
 }
 
 /**
- * 从 bangumi 数据保存 work（如果不存在则创建，存在则更新）
+ * 从 Bangumi API 数据保存 work（如果不存在则创建，存在则更新）
+ * 1:1 复制 Bangumi API 数据结构
  */
-export async function saveWorkFromBangumi(bangumiItem: {
-    id: string
-    title: string
-    titleCn: string
-    titleEn: string
-    type: string
-    lang: string
-    officialSite: string
-    begin: string
-    end: string
-    broadcast?: string
-    comment?: string
-    sites: SiteInfo[]
-}): Promise<BddbWork> {
+export async function saveWorkFromBangumi(bangumiData: Partial<BddbWork>): Promise<BddbWork> {
     try {
         const collection = getWorksCollection()
         const now = Math.floor(Date.now() / 1000)
 
-        // 查找是否已存在
-        const bangumiSite = bangumiItem.sites?.find(s => s.site === 'bangumi')
-        const bangumiSubjectId = bangumiSite?.id
+        console.log('[mongodb] saveWorkFromBangumi called with id:', bangumiData.id)
 
-        let existingWork: BddbWork | null = null
-        if (bangumiSubjectId) {
-            existingWork = await getWorkByBangumiId(bangumiSubjectId)
-        }
+        // 查找是否已存在
+        const existingWork = await getWorkByBangumiSubjectId(bangumiData.id!)
+        console.log('[mongodb] Existing work:', existingWork ? existingWork._id.toString() : 'not found')
 
         const workData: Omit<BddbWork, '_id'> = {
-            bangumiSubjectId,
-            title: bangumiItem.title,
-            titleCn: bangumiItem.titleCn,
-            titleEn: bangumiItem.titleEn,
-            type: bangumiItem.type,
-            lang: bangumiItem.lang,
-            officialSite: bangumiItem.officialSite,
-            begin: bangumiItem.begin,
-            end: bangumiItem.end,
-            broadcast: bangumiItem.broadcast,
-            comment: bangumiItem.comment,
-            sites: bangumiItem.sites,
+            id: bangumiData.id!,
+            url: bangumiData.url || '',
+            type: bangumiData.type || 2,
+            name: bangumiData.name || '',
+            name_cn: bangumiData.name_cn || '',
+            summary: bangumiData.summary || '',
+            eps: bangumiData.eps || 0,
+            air_date: bangumiData.air_date || '',
+            air_weekday: bangumiData.air_weekday || 0,
+            images: bangumiData.images || { large: '', common: '', medium: '', small: '', grid: '' },
+            rating: bangumiData.rating || { score: 0, total: 0, count: {} },
+            rank: bangumiData.rank || 0,
+            collection: bangumiData.collection || { wish: 0, collect: 0, doing: 0, on_hold: 0, dropped: 0 },
+            crt: bangumiData.crt,
+            staff: bangumiData.staff,
             created_at: existingWork?.created_at || now,
             updated_at: now,
         }
 
         if (existingWork) {
             // 更新现有 work
+            console.log('[mongodb] Updating existing work:', existingWork._id.toString())
             await collection.updateOne(
                 {_id: existingWork._id},
                 {$set: workData}
             )
+            console.log('[mongodb] Work updated successfully')
             return {...existingWork, ...workData}
         } else {
             // 创建新 work
@@ -924,7 +966,9 @@ export async function saveWorkFromBangumi(bangumiItem: {
                 _id: new ObjectId(),
                 ...workData,
             }
+            console.log('[mongodb] Inserting new work:', newWork._id.toString())
             await collection.insertOne(newWork)
+            console.log('[mongodb] Work inserted successfully')
             return newWork
         }
     } catch (error) {

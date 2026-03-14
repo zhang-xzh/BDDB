@@ -13,7 +13,7 @@ import InboxIcon from '@mui/icons-material/Inbox'
 import {useSnackbar} from 'notistack'
 import type {EditorTreeNodeProps} from '@/components/EditorTreeNode'
 import {renderEditorTreeNodes} from '@/components/EditorTreeNode'
-import {type BangumiItem, getAllBangumiItems, getBangumiItemBySubjectId, getLangLabel, getTypeLabel} from '@/lib/bangumi'
+import {type BangumiSubject, formatDate, getBangumiSubject, getTypeName, searchBangumi} from '@/lib/bangumi'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -27,9 +27,9 @@ export interface WorkEditorContentProps {
     selectedMedias: number[]
     visibleMedias: number
     loadMoreMedias: () => void
-    selectedWork: BangumiItem | null
-    onWorkChange: (work: BangumiItem | null) => void
-    onSubmit?: (work?: BangumiItem | null) => Promise<boolean>
+    selectedWork: BangumiSubject | null
+    onWorkChange: (work: BangumiSubject | null) => void
+    onSubmit?: (work?: BangumiSubject | null) => Promise<boolean>
 }
 
 interface WorkInfo {
@@ -49,11 +49,11 @@ interface UseWorkEditorReturn {
     selectedMedias: number[]
     visibleMedias: number
     loadMoreMedias: () => void
-    selectedWork: BangumiItem | null
+    selectedWork: BangumiSubject | null
     open: (volumeId: string, volumeNo?: number, catalogNo?: string) => Promise<void>
     hasChanges: () => boolean
-    handleSubmit: () => Promise<boolean>
-    onWorkChange: (work: BangumiItem | null) => void
+    handleSubmit: (work?: BangumiSubject | null) => Promise<boolean>
+    onWorkChange: (work: BangumiSubject | null) => void
 }
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
@@ -69,15 +69,12 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
     const [treeData, setTreeData] = useState<any[]>([])
     const [nodeData, setNodeData] = useState<Map<string, NodeData>>(new Map())
     const [defaultExpandedKeys, setDefaultExpandedKeys] = useState<string[]>([])
-    const [selectedWork, setSelectedWork] = useState<BangumiItem | null>(null)
+    const [selectedWork, setSelectedWork] = useState<BangumiSubject | null>(null)
 
-    // 用于检测变更的初始值快照
-    const initialWorkRef = useRef<BangumiItem | null>(null)
-    // 用于撤销的前一个值
-    const previousWorkRef = useRef<BangumiItem | null>(null)
+    const initialWorkRef = useRef<BangumiSubject | null>(null)
+    const previousWorkRef = useRef<BangumiSubject | null>(null)
 
     const hasChanges = useCallback((): boolean => {
-        // 比较当前选中的作品和初始值
         const initial = initialWorkRef.current
         const current = selectedWork
 
@@ -86,7 +83,7 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
         return initial.id !== current.id
     }, [selectedWork])
 
-    const onWorkChange = useCallback((work: BangumiItem | null) => {
+    const onWorkChange = useCallback((work: BangumiSubject | null) => {
         setSelectedWork(work)
     }, [])
 
@@ -114,17 +111,16 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
 
             // 加载已关联的作品
             try {
-                const worksResult = await fetchApi<{ bangumiSubjectId?: string }[]>(`/api/volumes/${volumeId}/works`)
+                const worksResult = await fetchApi<{ subjectId?: number }[]>(`/api/volumes/${volumeId}/works`)
                 if (worksResult?.success && worksResult.data && worksResult.data.length > 0) {
-                    // 取第一个关联的作品（单选）
                     const savedWork = worksResult.data[0]
-                    if (savedWork?.bangumiSubjectId) {
-                        // 从 bangumi-data 中找到对应条目
-                        const bangumiItem = getBangumiItemBySubjectId(savedWork.bangumiSubjectId)
-                        if (bangumiItem) {
-                            setSelectedWork(bangumiItem)
-                            initialWorkRef.current = bangumiItem
-                            previousWorkRef.current = bangumiItem
+                    if (savedWork?.subjectId) {
+                        // 从 Bangumi API 获取详情
+                        const subject = await getBangumiSubject(savedWork.subjectId)
+                        if (subject) {
+                            setSelectedWork(subject)
+                            initialWorkRef.current = subject
+                            previousWorkRef.current = subject
                         } else {
                             setSelectedWork(null)
                             initialWorkRef.current = null
@@ -153,8 +149,7 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
         }
     }, [])
 
-    // 撤销操作
-    const undoSave = useCallback(async (previousWork: BangumiItem | null) => {
+    const undoSave = useCallback(async (previousWork: BangumiSubject | null) => {
         if (volumeInfo == null) return false
         setSaving(true)
         try {
@@ -179,25 +174,28 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
         }
     }, [volumeInfo, enqueueSnackbar, onSave])
 
-    const handleSubmit = useCallback(async (): Promise<boolean> => {
+    const handleSubmit = useCallback(async (workToSave?: BangumiSubject | null): Promise<boolean> => {
         if (volumeInfo == null) return false
         setSaving(true)
-        // 保存当前值用于撤销
         const workBeforeSave = previousWorkRef.current
+        
+        // 使用传入的 work 或当前的 selectedWork
+        const work = workToSave !== undefined ? workToSave : selectedWork
+        
+        console.log('[useWorkEditor] handleSubmit called with work:', work?.id, work?.name_cn || work?.name)
+        
         try {
             const result = await postApi(`/api/volumes/${volumeInfo.volumeId}/works`, {
-                work: selectedWork,
+                work: work,
             })
             if (!result?.success) {
                 enqueueSnackbar(result?.error || '保存失败', {variant: 'error'})
                 return false
             }
-            // 更新快照
             previousWorkRef.current = initialWorkRef.current
-            initialWorkRef.current = selectedWork
+            initialWorkRef.current = work
             onSave?.()
 
-            // Material Design: Snackbar with Undo
             const snackbarKey = enqueueSnackbar('作品关联已更新', {
                 variant: 'success',
                 action: (key) => (
@@ -269,106 +267,68 @@ function InfoRow({label, value}: InfoRowProps) {
 // ─── WorkDetail 组件 ─────────────────────────────────────────────────────────
 
 interface WorkDetailProps {
-    work: BangumiItem
+    work: BangumiSubject
 }
 
 function WorkDetail({work}: WorkDetailProps) {
-    // 格式化日期
-    const formatDate = (dateStr: string) => {
-        if (!dateStr) return '-'
-        try {
-            return new Date(dateStr).toLocaleDateString('zh-CN')
-        } catch {
-            return dateStr
-        }
-    }
-
-    // 获取 bangumi 链接
-    const bangumiSite = work.sites?.find(s => s.site === 'bangumi')
-    const bangumiUrl = bangumiSite?.id ? `https://bangumi.tv/subject/${bangumiSite.id}` : null
-
     return (
         <Box>
             {/* 标题区域 */}
             <Box sx={{mb: 2, pb: 1, borderBottom: '1px solid', borderColor: 'divider'}}>
                 <Typography variant="h6" sx={{fontSize: '1.1rem', fontWeight: 600}}>
-                    {work.titleCn || work.title}
+                    {work.name_cn || work.name}
                 </Typography>
-                {work.titleCn && work.title !== work.titleCn && (
+                {work.name_cn && work.name !== work.name_cn && (
                     <Typography variant="body2" color="text.secondary" sx={{mt: 0.5}}>
-                        {work.title}
+                        {work.name}
                     </Typography>
                 )}
             </Box>
 
             {/* 基本信息 */}
-            <InfoRow label="日文标题" value={work.title}/>
-            <InfoRow label="中文标题" value={work.titleCn || '-'}/>
-            <InfoRow label="英文标题" value={work.titleEn || '-'}/>
-            <InfoRow label="类型" value={getTypeLabel(work.type)}/>
-            <InfoRow label="语言" value={getLangLabel(work.lang)}/>
-            <InfoRow label="开始日期" value={formatDate(work.begin)}/>
-            <InfoRow label="结束日期" value={formatDate(work.end)}/>
-            {work.broadcast && (
-                <InfoRow label="放送周期" value={work.broadcast}/>
+            <InfoRow label="日文标题" value={work.name}/>
+            <InfoRow label="中文标题" value={work.name_cn || '-'}/>
+            <InfoRow label="类型" value={getTypeName(work.type)}/>
+            <InfoRow label="话数" value={work.eps > 0 ? `${work.eps} 话` : '-'}/>
+            <InfoRow label="放送日期" value={formatDate(work.air_date)}/>
+            {work.rating?.score > 0 && (
+                <InfoRow label="评分" value={`${work.rating.score} / 10 (${work.rating.total} 人评分)`}/>
             )}
-            {work.comment && (
-                <InfoRow label="备注" value={work.comment}/>
+            {work.rank > 0 && (
+                <InfoRow label="排名" value={`#${work.rank}`}/>
             )}
-
-            {/* 官网 */}
-            {work.officialSite && (
-                <Box sx={{display: 'flex', alignItems: 'baseline', gap: 1, py: 0.5}}>
-                    <Typography variant="body2" color="text.secondary" sx={{minWidth: 80}}>
-                        官网
-                    </Typography>
-                    <Link
-                        href={work.officialSite}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="body2"
-                        sx={{flex: 1}}
-                    >
-                        {work.officialSite}
-                    </Link>
-                </Box>
+            {work.summary && (
+                <InfoRow label="简介" value={work.summary}/>
             )}
 
             {/* Bangumi 链接 */}
-            {bangumiUrl && (
-                <Box sx={{display: 'flex', alignItems: 'baseline', gap: 1, py: 0.5}}>
-                    <Typography variant="body2" color="text.secondary" sx={{minWidth: 80}}>
-                        Bangumi
-                    </Typography>
-                    <Link
-                        href={bangumiUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="body2"
-                        sx={{flex: 1}}
-                    >
-                        {bangumiUrl}
-                    </Link>
-                </Box>
-            )}
+            <Box sx={{display: 'flex', alignItems: 'baseline', gap: 1, py: 0.5}}>
+                <Typography variant="body2" color="text.secondary" sx={{minWidth: 80}}>
+                    Bangumi
+                </Typography>
+                <Link
+                    href={work.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="body2"
+                    sx={{flex: 1}}
+                >
+                    {work.url}
+                </Link>
+            </Box>
 
-            {/* 关联站点 */}
-            {work.sites && work.sites.length > 0 && (
+            {/* 收藏统计 */}
+            {work.collection && (
                 <Box sx={{mt: 2, pt: 1, borderTop: '1px solid', borderColor: 'divider'}}>
                     <Typography variant="body2" color="text.secondary" sx={{mb: 1}}>
-                        关联站点
+                        收藏统计
                     </Typography>
                     <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 1}}>
-                        {work.sites
-                            .filter(s => s.site !== 'bangumi') // 已单独显示
-                            .map(site => (
-                                <Chip
-                                    key={site.site}
-                                    label={`${site.siteName}: ${site.id}`}
-                                    size="small"
-                                    variant="outlined"
-                                />
-                            ))}
+                        <Chip label={`想看: ${work.collection.wish}`} size="small" variant="outlined"/>
+                        <Chip label={`看过: ${work.collection.collect}`} size="small" variant="outlined"/>
+                        <Chip label={`在看: ${work.collection.doing}`} size="small" variant="outlined"/>
+                        <Chip label={`搁置: ${work.collection.on_hold}`} size="small" variant="outlined"/>
+                        <Chip label={`抛弃: ${work.collection.dropped}`} size="small" variant="outlined"/>
                     </Box>
                 </Box>
             )}
@@ -379,7 +339,7 @@ function WorkDetail({work}: WorkDetailProps) {
 // ─── WorkReadOnlyView (只读模式视图) ─────────────────────────────────────────
 
 interface WorkReadOnlyViewProps {
-    work: BangumiItem
+    work: BangumiSubject
     onEdit: () => void
 }
 
@@ -404,9 +364,9 @@ function WorkReadOnlyView({work, onEdit}: WorkReadOnlyViewProps) {
 // ─── WorkEditView (编辑模式视图) ─────────────────────────────────────────────
 
 interface WorkEditViewProps {
-    selectedWork: BangumiItem | null
-    tempWork: BangumiItem | null
-    onTempWorkChange: (work: BangumiItem | null) => void
+    selectedWork: BangumiSubject | null
+    tempWork: BangumiSubject | null
+    onTempWorkChange: (work: BangumiSubject | null) => void
     onSave: () => void
     onCancel?: () => void
     saving: boolean
@@ -420,9 +380,29 @@ function WorkEditView({
                           onCancel,
                           saving
                       }: WorkEditViewProps) {
-    const bangumiItems = useMemo(() => getAllBangumiItems(), [])
+    const [searchQuery, setSearchQuery] = useState('')
+    const [searchResults, setSearchResults] = useState<BangumiSubject[]>([])
+    const [searching, setSearching] = useState(false)
 
-    const handleChange = useCallback((_: React.SyntheticEvent, newValue: BangumiItem | null) => {
+    // 防抖搜索
+    const handleSearchChange = useCallback(async (_: React.SyntheticEvent, value: string) => {
+        setSearchQuery(value)
+        if (value.length < 2) {
+            setSearchResults([])
+            return
+        }
+        setSearching(true)
+        try {
+            const result = await searchBangumi(value, 2, 'small')
+            setSearchResults(result.list)
+        } catch (err) {
+            console.error('搜索失败:', err)
+        } finally {
+            setSearching(false)
+        }
+    }, [])
+
+    const handleChange = useCallback((_: React.SyntheticEvent, newValue: BangumiSubject | null) => {
         onTempWorkChange(newValue)
     }, [onTempWorkChange])
 
@@ -434,24 +414,29 @@ function WorkEditView({
             <Autocomplete
                 sx={{maxWidth: 400, mb: 2, mt: 1}}
                 size="small"
-                options={bangumiItems}
-                getOptionLabel={(option) => option.titleCn || option.title}
-                filterOptions={(options, state) => {
-                    const query = state.inputValue.toLowerCase()
-                    return options.filter(opt =>
-                        opt.title.toLowerCase().includes(query) ||
-                        opt.titleCn.toLowerCase().includes(query)
-                    ).slice(0, 10)
-                }}
+                options={searchResults}
+                getOptionLabel={(option) => option.name_cn || option.name}
+                filterOptions={(x) => x} // 禁用本地过滤，使用 API 结果
                 value={tempWork}
                 onChange={handleChange}
+                onInputChange={handleSearchChange}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
+                loading={searching}
                 renderInput={(params) => (
                     <TextField
                         {...params}
                         label="搜索作品"
                         placeholder="输入日文或中文标题..."
                         size="small"
+                        InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                                <React.Fragment>
+                                    {searching ? <CircularProgress color="inherit" size={20}/> : null}
+                                    {params.InputProps.endAdornment}
+                                </React.Fragment>
+                            ),
+                        }}
                     />
                 )}
             />
@@ -460,10 +445,10 @@ function WorkEditView({
             {tempWork && (
                 <Box sx={{mb: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1}}>
                     <Typography variant="body2" sx={{fontWeight: 600}}>
-                        {tempWork.titleCn || tempWork.title}
+                        {tempWork.name_cn || tempWork.name}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                        {getTypeLabel(tempWork.type)} · {getLangLabel(tempWork.lang)}
+                        {getTypeName(tempWork.type)}
                     </Typography>
                 </Box>
             )}
@@ -487,7 +472,6 @@ function WorkEditView({
                     startIcon={<SaveIcon/>}
                     onClick={onSave}
                     disabled={!hasSelection || !isChanged || saving}
-                    loading={saving}
                 >
                     保存
                 </Button>
@@ -499,25 +483,21 @@ function WorkEditView({
 // ─── WorkFormList (作品信息表单) ─────────────────────────────────────────────
 
 interface WorkFormListProps {
-    selectedWork: BangumiItem | null
-    onWorkChange: (work: BangumiItem | null) => void
+    selectedWork: BangumiSubject | null
+    onWorkChange: (work: BangumiSubject | null) => void
     saving?: boolean
-    onSubmit?: (work?: BangumiItem | null) => Promise<boolean>
+    onSubmit?: (work?: BangumiSubject | null) => Promise<boolean>
 }
 
 function WorkFormList({selectedWork, onWorkChange, saving = false, onSubmit}: WorkFormListProps) {
-    // 编辑模式状态：未关联作品时默认进入编辑模式
     const [isEditing, setIsEditing] = useState(false)
-    const [tempWork, setTempWork] = useState<BangumiItem | null>(null)
+    const [tempWork, setTempWork] = useState<BangumiSubject | null>(null)
 
-    // 当 selectedWork 变化时，同步更新状态
     React.useEffect(() => {
         if (selectedWork === null) {
-            // 未关联作品：进入编辑模式
             setIsEditing(true)
             setTempWork(null)
         } else {
-            // 已关联作品：进入只读模式
             setIsEditing(false)
             setTempWork(selectedWork)
         }
@@ -537,13 +517,35 @@ function WorkFormList({selectedWork, onWorkChange, saving = false, onSubmit}: Wo
 
     const handleSave = useCallback(async () => {
         if (tempWork !== null) {
-            onWorkChange(tempWork)
-            // 如果有提交回调，调用它进行服务器保存，直接传递 tempWork
-            if (onSubmit) {
-                await onSubmit(tempWork)
+            // 获取完整的条目详情（包含 rating、rank、collection 等）
+            try {
+                console.log('[WorkEditor] Fetching full subject details for id:', tempWork.id)
+                const fullSubject = await getBangumiSubject(tempWork.id, 'large')
+                console.log('[WorkEditor] Got full subject:', fullSubject.name_cn || fullSubject.name)
+                
+                // 先更新父组件的 selectedWork
+                onWorkChange(fullSubject)
+                
+                // 如果有 onSubmit，调用它进行保存
+                if (onSubmit) {
+                    console.log('[WorkEditor] Calling onSubmit with full subject')
+                    const result = await onSubmit(fullSubject)
+                    console.log('[WorkEditor] onSubmit result:', result)
+                    // 如果保存成功，退出编辑模式
+                    if (result) {
+                        setIsEditing(false)
+                    }
+                    return
+                }
+            } catch (err) {
+                console.error('[WorkEditor] 获取完整条目详情失败:', err)
+                // 如果获取详情失败，仍然使用当前数据
+                onWorkChange(tempWork)
+                if (onSubmit) {
+                    await onSubmit(tempWork)
+                }
             }
         }
-        // 保存后根据是否有作品决定模式
         setIsEditing(tempWork === null)
     }, [tempWork, onWorkChange, onSubmit])
 
@@ -599,10 +601,8 @@ export function WorkEditorContent({
                                       onWorkChange,
                                       onSubmit,
                                   }: WorkEditorContentProps) {
-    // 使用受控的 expandedItems 来确保 defaultExpandedKeys 变化时能正确展开
     const [expandedItems, setExpandedItems] = useState<string[]>(defaultExpandedKeys);
 
-    // 当 defaultExpandedKeys 变化时同步更新 expandedItems
     React.useEffect(() => {
         setExpandedItems(defaultExpandedKeys);
     }, [defaultExpandedKeys]);
@@ -623,10 +623,7 @@ export function WorkEditorContent({
         },
     }), [visibleMedias, loadMoreMedias])
 
-    const computeIsMixed = useMemo(
-        () => makeWorkComputeIsMixed(),
-        [],
-    )
+    const computeIsMixed = useMemo(() => makeWorkComputeIsMixed(), [])
 
     return (
         <Card variant="outlined" sx={{position: 'relative', mx: 2, mt: 1, mb: 2}}>

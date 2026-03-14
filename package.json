@@ -23,7 +23,6 @@
     "@types/mongodb": "^4.0.6",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "bangumi-data": "^0.3.200",
     "meilisearch": "^0.55.0",
     "mongodb": "^7.1.0",
     "next": "^16.1.6",

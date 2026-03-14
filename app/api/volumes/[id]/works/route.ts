@@ -1,24 +1,25 @@
 import {NextRequest, NextResponse} from 'next/server'
 import {ObjectId} from 'mongodb'
-import {saveWorkFromBangumi, addWorkToVolume, removeWorkFromVolume, getWorkById, getVolumeById} from '@/lib/mongodb/bddbRepository'
-import type {SiteInfo, BddbWork} from '@/lib/mongodb/bddbRepository'
+import {saveWorkFromBangumi, addWorkToVolume, removeWorkFromVolume, getWorkById, getVolumeById, getWorkByBangumiSubjectId} from '@/lib/mongodb/bddbRepository'
+import type {BddbWork, BangumiImages, BangumiRating, BangumiCollection} from '@/lib/mongodb/bddbRepository'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface SaveWorkRequest {
     work: {
-        id: string
-        title: string
-        titleCn: string
-        titleEn: string
-        type: string
-        lang: string
-        officialSite: string
-        begin: string
-        end: string
-        broadcast?: string
-        comment?: string
-        sites: SiteInfo[]
+        id: number
+        url: string
+        type: number
+        name: string
+        name_cn: string
+        summary: string
+        eps: number
+        air_date: string
+        air_weekday: number
+        images: BangumiImages
+        rating: BangumiRating
+        rank: number
+        collection: BangumiCollection
     } | null
 }
 
@@ -58,7 +59,14 @@ export async function GET(
             }
         }
 
-        return NextResponse.json({success: true, data: works})
+        // 返回简化格式，包含 subjectId
+        const result = works.map(work => ({
+            subjectId: work.id,
+            name: work.name,
+            name_cn: work.name_cn,
+        }))
+
+        return NextResponse.json({success: true, data: result})
     } catch (error) {
         console.error('[API] GET /api/volumes/[id]/works error:', error)
         return NextResponse.json(
@@ -87,23 +95,30 @@ export async function POST(
         const body: SaveWorkRequest = await request.json()
         const {work} = body
 
+        console.log('[API] Received work data:', JSON.stringify(work, null, 2))
+
         // 如果没有选择作品，清除关联
         if (!work) {
+            console.log('[API] No work provided, clearing association')
             // TODO: 清除 volume 的 work_ids
             return NextResponse.json({success: true})
         }
 
         // 1. 保存/获取 Work
+        console.log('[API] Saving work to database...')
         const savedWork = await saveWorkFromBangumi(work)
+        console.log('[API] Work saved:', savedWork._id.toString(), 'subjectId:', savedWork.id)
 
         // 2. 关联到 Volume
+        console.log('[API] Associating work to volume:', volumeId)
         await addWorkToVolume(volumeId, savedWork._id.toString())
+        console.log('[API] Association complete')
 
         return NextResponse.json({
             success: true,
             data: {
                 workId: savedWork._id.toString(),
-                bangumiSubjectId: savedWork.bangumiSubjectId,
+                subjectId: savedWork.id,
             }
         })
     } catch (error) {

@@ -1,186 +1,287 @@
-import { items, siteMeta } from 'bangumi-data'
-import type { Item, Site } from 'bangumi-data'
+// Bangumi API 客户端 - 1:1 复制 Bangumi API 数据结构
+// 文档: https://bangumi.github.io/api/
 
-export type { Item, Site }
+const BANGUMI_API_BASE = 'https://api.bgm.tv'
 
-// 站点信息
-export interface SiteInfo {
-  site: string
-  siteName: string
-  id: string
-  url?: string
+// ─── 类型定义 ─────────────────────────────────────────────────────────────────
+
+/**
+ * Bangumi API 图片信息
+ * 提供不同尺寸的图片 URL
+ */
+export interface BangumiImages {
+  /** 大尺寸图片 (约 800x600) */
+  large: string
+  /** 普通尺寸图片 (约 400x300) */
+  common: string
+  /** 中等尺寸图片 (约 200x150) */
+  medium: string
+  /** 小尺寸图片 (约 100x75) */
+  small: string
+  /** 网格尺寸图片 (约 50x50) */
+  grid: string
 }
 
-export interface BangumiItem {
-  id: string
-  title: string
-  titleCn: string
-  titleEn: string
-  type: string
-  lang: string
-  officialSite: string
-  begin: string
-  end: string
-  broadcast?: string
-  comment?: string
-  sites: SiteInfo[]
+/**
+ * Bangumi API 评分信息
+ * 包含总体评分和各分数段人数分布
+ */
+export interface BangumiRating {
+  /** 平均评分 (0-10) */
+  score: number
+  /** 总评分人数 */
+  total: number
+  /** 各分数段人数分布 {1: 100, 2: 200, ...} */
+  count: Record<string, number>
 }
 
-// 站点名称映射
-const SITE_NAME_MAP: Record<string, string> = {
-  bangumi: 'Bangumi',
-  bilibili: 'Bilibili',
-  bilibili_hk_mo_tw: 'Bilibili(港澳台)',
-  dmhy: '动漫花园',
-  mikan: '蜜柑计划',
-  acfun: 'AcFun',
-  youku: '优酷',
-  qq: '腾讯视频',
-  iqiyi: '爱奇艺',
-  netflix: 'Netflix',
-  disneyplus: 'Disney+',
-  prime: 'Amazon Prime',
+/**
+ * Bangumi API 收藏统计
+ * 用户收藏状态的分布情况
+ */
+export interface BangumiCollection {
+  /** 想看人数 */
+  wish: number
+  /** 看过人数 */
+  collect: number
+  /** 在看人数 */
+  doing: number
+  /** 搁置人数 */
+  on_hold: number
+  /** 抛弃人数 */
+  dropped: number
 }
 
-// 语言映射
-const LANG_MAP: Record<string, string> = {
-  ja: '日语',
-  en: '英语',
-  'zh-Hans': '简体中文',
-  'zh-Hant': '繁体中文',
+/**
+ * Bangumi API 角色信息
+ * 动画/游戏中的角色数据
+ */
+export interface BangumiCharacter {
+  /** 角色 ID */
+  id: number
+  /** 角色页面 URL */
+  url: string
+  /** 角色日文名 */
+  name: string
+  /** 角色中文名 */
+  name_cn: string
+  /** 角色类型 (主角/配角等) */
+  role_name: string
+  /** 角色图片 */
+  images: BangumiImages
 }
 
-// 类型映射
-const TYPE_MAP: Record<string, string> = {
-  tv: 'TV',
-  web: 'Web',
-  movie: '剧场版',
-  ova: 'OVA',
+/**
+ * Bangumi API 制作人员信息
+ * STAFF 和制作人员数据
+ */
+export interface BangumiStaff {
+  /** 人员 ID */
+  id: number
+  /** 人员页面 URL */
+  url: string
+  /** 人员日文名 */
+  name: string
+  /** 人员中文名 */
+  name_cn: string
+  /** 担任职位列表 */
+  jobs: string[]
+  /** 人员图片 */
+  images: BangumiImages
 }
 
-// 为每个 item 生成唯一 id
-const itemMap = new Map<string, Item>()
-const bangumiItems: BangumiItem[] = items.map((item, index) => {
-  const id = `${index}`
-  itemMap.set(id, item)
+/**
+ * Bangumi API 条目详情（1:1 复制）
+ * 包含动画、书籍、音乐、游戏等条目的完整信息
+ */
+export interface BangumiSubject {
+  /** 条目 ID (唯一标识) */
+  id: number
+  /** 条目页面 URL */
+  url: string
+  /**
+   * 条目类型
+   * 1 = 书籍
+   * 2 = 动画
+   * 3 = 音乐
+   * 4 = 游戏
+   * 6 = 三次元 (真人影视)
+   */
+  type: number
+  /** 日文/原名 */
+  name: string
+  /** 中文译名 (可能为空) */
+  name_cn: string
+  /** 剧情简介 (纯文本) */
+  summary: string
+  /** 话数/集数 */
+  eps: number
+  /** 放送开始日期 (YYYY-MM-DD) */
+  air_date: string
+  /**
+   * 放送星期
+   * 1 = 星期一, 2 = 星期二, ..., 7 = 星期日, 0 = 星期日
+   */
+  air_weekday: number
+  /** 封面图片 (各尺寸) */
+  images: BangumiImages
+  /** 评分信息 */
+  rating: BangumiRating
+  /** 全站排名 (0 表示未上榜) */
+  rank: number
+  /** 收藏统计 */
+  collection: BangumiCollection
+  /** 角色列表 (large 响应才有) */
+  crt?: BangumiCharacter[]
+  /** 制作人员列表 (large 响应才有) */
+  staff?: BangumiStaff[]
+}
 
-  // 提取站点信息
-  const sites: SiteInfo[] = (item.sites || []).map((site: Site) => ({
-    site: site.site,
-    siteName: SITE_NAME_MAP[site.site] || site.site,
-    id: (site as any).id || '',
-    url: (site as any).url,
-  }))
+/**
+ * Bangumi API 搜索结果（small response）
+ * 搜索接口返回的列表数据
+ */
+export interface BangumiSearchResult {
+  /** 搜索结果总数 */
+  results: number
+  /** 条目列表 */
+  list: Array<{
+    /** 条目 ID */
+    id: number
+    /** 条目页面 URL */
+    url: string
+    /** 条目类型 (1=书籍, 2=动画, 3=音乐, 4=游戏, 6=三次元) */
+    type: number
+    /** 日文/原名 */
+    name: string
+    /** 中文译名 */
+    name_cn: string
+    /** 剧情简介 */
+    summary: string
+    /** 放送开始日期 */
+    air_date: string
+    /** 放送星期 */
+    air_weekday: number
+    /** 封面图片 */
+    images: BangumiImages
+  }>
+}
 
-  return {
-    id,
-    title: item.title,
-    titleCn: item.titleTranslate?.['zh-Hans']?.[0] || item.titleTranslate?.['zh-Hant']?.[0] || '',
-    titleEn: item.titleTranslate?.['en']?.[0] || '',
-    type: item.type,
-    lang: item.lang,
-    officialSite: item.officialSite,
-    begin: item.begin,
-    end: item.end,
-    broadcast: item.broadcast,
-    comment: item.comment,
-    sites,
+// ─── API 调用 ─────────────────────────────────────────────────────────────────
+
+/**
+ * 搜索 Bangumi 条目
+ * @param keywords 搜索关键词
+ * @param type 条目类型 (1=书籍, 2=动画, 3=音乐, 4=游戏, 6=三次元)
+ * @param responseGroup 响应级别 (small/large)
+ * @returns 搜索结果
+ * @throws 当 API 请求失败时抛出错误
+ */
+export async function searchBangumi(
+  keywords: string,
+  type: number = 2,
+  responseGroup: 'small' | 'large' = 'small'
+): Promise<BangumiSearchResult> {
+  const encodedKeywords = encodeURIComponent(keywords)
+  const url = `${BANGUMI_API_BASE}/search/subject/${encodedKeywords}?type=${type}&responseGroup=${responseGroup}`
+
+  const response = await fetch(url, {
+    headers: {
+      'Accept': 'application/json',
+      'User-Agent': 'BDDB/1.0 (https://github.com/yourname/bddb)',
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Bangumi API error: ${response.status} ${response.statusText}`)
   }
-})
 
-/**
- * 获取语言中文名
- */
-export function getLangLabel(lang: string): string {
-  return LANG_MAP[lang] || lang
+  return response.json()
 }
 
 /**
- * 获取类型中文名
+ * 获取 Bangumi 条目详情
+ * @param subjectId 条目 ID
+ * @param responseGroup 响应级别 (small/large)
+ * @returns 条目详情
+ * @throws 当 API 请求失败时抛出错误
  */
-export function getTypeLabel(type: string): string {
-  return TYPE_MAP[type] || type
-}
+export async function getBangumiSubject(
+  subjectId: number,
+  responseGroup: 'small' | 'large' = 'large'
+): Promise<BangumiSubject> {
+  const url = `${BANGUMI_API_BASE}/subject/${subjectId}?responseGroup=${responseGroup}`
 
-/**
- * 获取所有 bangumi 数据（用于客户端搜索）
- */
-export function getAllBangumiItems(): BangumiItem[] {
-  return bangumiItems
-}
+  const response = await fetch(url, {
+    headers: {
+      'Accept': 'application/json',
+      'User-Agent': 'BDDB/1.0 (https://github.com/yourname/bddb)',
+    },
+  })
 
-/**
- * 根据 ID 获取原始 item 数据
- */
-export function getBangumiItemById(id: string): Item | undefined {
-  return itemMap.get(id)
-}
-
-/**
- * 搜索 bangumi 数据
- * @param query 搜索关键词
- * @param limit 返回数量限制
- */
-export function searchBangumi(query: string, limit = 20): BangumiItem[] {
-  if (!query.trim()) return bangumiItems.slice(0, limit)
-
-  const lowerQuery = query.toLowerCase()
-  const results: BangumiItem[] = []
-
-  for (const item of bangumiItems) {
-    if (
-      item.title.toLowerCase().includes(lowerQuery) ||
-      item.titleCn.toLowerCase().includes(lowerQuery)
-    ) {
-      results.push(item)
-      if (results.length >= limit) break
-    }
+  if (!response.ok) {
+    throw new Error(`Bangumi API error: ${response.status} ${response.statusText}`)
   }
 
-  return results
+  return response.json()
 }
 
+// ─── 工具函数 ─────────────────────────────────────────────────────────────────
+
 /**
- * 根据 bangumi.tv subject ID 查找 BangumiItem
+ * 获取类型名称
+ * @param type 条目类型代码
+ * @returns 类型的中文名称
  */
-export function getBangumiItemBySubjectId(subjectId: string): BangumiItem | undefined {
-  for (const item of bangumiItems) {
-    const bangumiSite = item.sites?.find(s => s.site === 'bangumi')
-    if (bangumiSite?.id === subjectId) {
-      return item
-    }
+export function getTypeName(type: number): string {
+  const typeMap: Record<number, string> = {
+    1: '书籍',
+    2: '动画',
+    3: '音乐',
+    4: '游戏',
+    6: '三次元',
   }
-  return undefined
+  return typeMap[type] || '未知'
 }
 
 /**
- * 获取站点元数据
+ * 获取星期名称
+ * @param weekday 星期代码 (1-7, 0 也表示星期日)
+ * @returns 星期的中文名称
  */
-export function getSiteMeta() {
-  return siteMeta
+export function getWeekdayName(weekday: number): string {
+  const weekdayMap: Record<number, string> = {
+    1: '星期一',
+    2: '星期二',
+    3: '星期三',
+    4: '星期四',
+    5: '星期五',
+    6: '星期六',
+    7: '星期日',
+    0: '星期日',
+  }
+  return weekdayMap[weekday] || '未知'
 }
 
 /**
- * 从 item 中提取 bangumi 站点 ID
+ * 格式化日期
+ * @param dateStr 日期字符串 (YYYY-MM-DD)
+ * @returns 格式化后的日期字符串 (zh-CN 格式)
  */
-export function getBangumiSiteId(item: Item): string | undefined {
-  const bangumiSite = item.sites?.find(s => s.site === 'bangumi')
-  return bangumiSite?.id
-}
-
-/**
- * 从 item 中提取 dmhy 下载关键词
- */
-export function getDmhyKeyword(item: Item): string | undefined {
-  const dmhySite = item.sites?.find(s => s.site === 'dmhy')
-  return dmhySite?.id
+export function formatDate(dateStr: string): string {
+  if (!dateStr) return '-'
+  try {
+    return new Date(dateStr).toLocaleDateString('zh-CN')
+  } catch {
+    return dateStr
+  }
 }
 
 /**
  * 获取 Bangumi 条目 URL
+ * @param subjectId 条目 ID
+ * @returns 条目页面完整 URL
  */
-export function getBangumiUrl(item: Item): string | undefined {
-  const id = getBangumiSiteId(item)
-  if (!id) return undefined
-  return `https://bangumi.tv/subject/${id}`
+export function getBangumiUrl(subjectId: number): string {
+  return `https://bgm.tv/subject/${subjectId}`
 }
