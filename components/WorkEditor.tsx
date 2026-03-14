@@ -411,6 +411,20 @@ function WorkEditView({
                 onInputChange={handleSearchChange}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
                 loading={searching}
+                renderOption={(props, option) => (
+                    <Box component="li" {...props}>
+                        <Box sx={{display: 'flex', flexDirection: 'column', py: 0.5}}>
+                            <Typography variant="body2" sx={{fontWeight: 500}}>
+                                {option.name_cn || option.name}
+                            </Typography>
+                            {(option.name_cn && option.name !== option.name_cn) && (
+                                <Typography variant="caption" color="text.secondary">
+                                    {option.name}
+                                </Typography>
+                            )}
+                        </Box>
+                    </Box>
+                )}
                 renderInput={(params) => (
                     <TextField
                         {...params}
