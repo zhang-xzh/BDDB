@@ -52,7 +52,7 @@ interface UseWorkEditorReturn {
     selectedWork: BangumiItem | null
     open: (volumeId: string, volumeNo?: number, catalogNo?: string) => Promise<void>
     hasChanges: () => boolean
-    handleSubmit: (work?: BangumiItem | null) => Promise<boolean>
+    handleSubmit: () => Promise<boolean>
     onWorkChange: (work: BangumiItem | null) => void
 }
 
@@ -179,16 +179,14 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
         }
     }, [volumeInfo, enqueueSnackbar, onSave])
 
-    const handleSubmit = useCallback(async (workToSave?: BangumiItem | null): Promise<boolean> => {
+    const handleSubmit = useCallback(async (): Promise<boolean> => {
         if (volumeInfo == null) return false
         setSaving(true)
         // 保存当前值用于撤销
         const workBeforeSave = previousWorkRef.current
-        // 使用传入的参数或当前状态
-        const work = workToSave !== undefined ? workToSave : selectedWork
         try {
             const result = await postApi(`/api/volumes/${volumeInfo.volumeId}/works`, {
-                work: work,
+                work: selectedWork,
             })
             if (!result?.success) {
                 enqueueSnackbar(result?.error || '保存失败', {variant: 'error'})
@@ -196,7 +194,7 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
             }
             // 更新快照
             previousWorkRef.current = initialWorkRef.current
-            initialWorkRef.current = work
+            initialWorkRef.current = selectedWork
             onSave?.()
 
             // Material Design: Snackbar with Undo
