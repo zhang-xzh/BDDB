@@ -13,7 +13,7 @@ import InboxIcon from '@mui/icons-material/Inbox'
 import {useSnackbar} from 'notistack'
 import type {EditorTreeNodeProps} from '@/components/EditorTreeNode'
 import {renderEditorTreeNodes} from '@/components/EditorTreeNode'
-import {type BangumiSubject, formatDate, getBangumiSubject, getTypeName, searchBangumi} from '@/lib/bangumi'
+import {type BangumiSubject, type BangumiSearchResult, formatDate, getBangumiSubject, getTypeName, searchBangumi} from '@/lib/bangumi'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -28,8 +28,8 @@ export interface WorkEditorContentProps {
     visibleMedias: number
     loadMoreMedias: () => void
     selectedWork: BangumiSubject | null
-    onWorkChange: (work: BangumiSubject | null) => void
-    onSubmit?: (work?: BangumiSubject | null) => Promise<boolean>
+    onWorkChange: (work: BangumiSubject | SearchResultItem | null) => void
+    onSubmit?: (work?: BangumiSubject | SearchResultItem | null) => Promise<boolean>
 }
 
 interface WorkInfo {
@@ -52,8 +52,8 @@ interface UseWorkEditorReturn {
     selectedWork: BangumiSubject | null
     open: (volumeId: string, volumeNo?: number, catalogNo?: string) => Promise<void>
     hasChanges: () => boolean
-    handleSubmit: (work?: BangumiSubject | null) => Promise<boolean>
-    onWorkChange: (work: BangumiSubject | null) => void
+    handleSubmit: (work?: BangumiSubject | SearchResultItem | null) => Promise<boolean>
+    onWorkChange: (work: BangumiSubject | SearchResultItem | null) => void
 }
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
@@ -83,8 +83,9 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
         return initial.id !== current.id
     }, [selectedWork])
 
-    const onWorkChange = useCallback((work: BangumiSubject | null) => {
-        setSelectedWork(work)
+    const onWorkChange = useCallback((work: BangumiSubject | SearchResultItem | null) => {
+        // SearchResultItem 是 BangumiSubject 的子集，可以直接赋值
+        setSelectedWork(work as BangumiSubject | null)
     }, [])
 
     const open = useCallback(async (volumeId: string, volumeNo?: number, catalogNo?: string) => {
@@ -160,7 +161,7 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
         }
     }, [volumeInfo, enqueueSnackbar, onSave])
 
-    const handleSubmit = useCallback(async (workToSave?: BangumiSubject | null): Promise<boolean> => {
+    const handleSubmit = useCallback(async (workToSave?: BangumiSubject | SearchResultItem | null): Promise<boolean> => {
         if (volumeInfo == null) return false
         setSaving(true)
         const workBeforeSave = previousWorkRef.current
@@ -177,7 +178,8 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
                 return false
             }
             previousWorkRef.current = initialWorkRef.current
-            initialWorkRef.current = work
+            // 保存时 work 可能是 SearchResultItem，但 ref 需要 BangumiSubject
+            initialWorkRef.current = work as BangumiSubject | null
             onSave?.()
 
             const snackbarKey = enqueueSnackbar('作品关联已更新', {
@@ -347,10 +349,13 @@ function WorkReadOnlyView({work, onEdit}: WorkReadOnlyViewProps) {
 
 // ─── WorkEditView (编辑模式视图) ─────────────────────────────────────────────
 
+// 搜索结果的条目类型（比 BangumiSubject 字段少）
+type SearchResultItem = BangumiSearchResult['list'][number]
+
 interface WorkEditViewProps {
     selectedWork: BangumiSubject | null
-    tempWork: BangumiSubject | null
-    onTempWorkChange: (work: BangumiSubject | null) => void
+    tempWork: BangumiSubject | SearchResultItem | null
+    onTempWorkChange: (work: BangumiSubject | SearchResultItem | null) => void
     onSave: () => void
     onCancel?: () => void
     saving: boolean
@@ -365,7 +370,7 @@ function WorkEditView({
                           saving
                       }: WorkEditViewProps) {
     const [searchQuery, setSearchQuery] = useState('')
-    const [searchResults, setSearchResults] = useState<BangumiSubject[]>([])
+    const [searchResults, setSearchResults] = useState<BangumiSearchResult['list']>([])
     const [searching, setSearching] = useState(false)
 
     // 防抖搜索
@@ -386,7 +391,7 @@ function WorkEditView({
         }
     }, [])
 
-    const handleChange = useCallback((_: React.SyntheticEvent, newValue: BangumiSubject | null) => {
+    const handleChange = useCallback((_: React.SyntheticEvent, newValue: SearchResultItem | null) => {
         onTempWorkChange(newValue)
     }, [onTempWorkChange])
 
@@ -395,13 +400,13 @@ function WorkEditView({
 
     return (
         <Box>
-            <Autocomplete
+            <Autocomplete<SearchResultItem, false, false, false>
                 sx={{maxWidth: 400, mb: 2, mt: 1}}
                 size="small"
                 options={searchResults}
                 getOptionLabel={(option) => option.name_cn || option.name}
                 filterOptions={(x) => x} // 禁用本地过滤，使用 API 结果
-                value={tempWork}
+                value={tempWork as SearchResultItem | null}
                 onChange={handleChange}
                 onInputChange={handleSearchChange}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
@@ -468,14 +473,14 @@ function WorkEditView({
 
 interface WorkFormListProps {
     selectedWork: BangumiSubject | null
-    onWorkChange: (work: BangumiSubject | null) => void
+    onWorkChange: (work: BangumiSubject | SearchResultItem | null) => void
     saving?: boolean
-    onSubmit?: (work?: BangumiSubject | null) => Promise<boolean>
+    onSubmit?: (work?: BangumiSubject | SearchResultItem | null) => Promise<boolean>
 }
 
 function WorkFormList({selectedWork, onWorkChange, saving = false, onSubmit}: WorkFormListProps) {
     const [isEditing, setIsEditing] = useState(false)
-    const [tempWork, setTempWork] = useState<BangumiSubject | null>(null)
+    const [tempWork, setTempWork] = useState<BangumiSubject | SearchResultItem | null>(null)
 
     React.useEffect(() => {
         if (selectedWork === null) {
