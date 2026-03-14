@@ -10,20 +10,22 @@ export function useEditorPanel<TItem>({
     getItemKey,
     openItem,
     editor,
+    autoSave = true,
 }: {
     pagedItems: TItem[]
     getItemKey: (item: TItem) => string
     openItem: (item: TItem) => Promise<void>
     editor: EditorActions
+    autoSave?: boolean
 }) {
     const [activeKey, setActiveKey] = useState<string | undefined>(undefined)
 
     const handleCollapseChange = useCallback(async (key: string | string[]) => {
         const newKey = Array.isArray(key) ? key[0] : key || undefined
 
-        // 点击已展开的项 → 保存并收起
+        // 点击已展开的项 → 保存并收起（如果启用自动保存）
         if (activeKey && newKey === activeKey) {
-            if (editor.hasChanges()) {
+            if (autoSave && editor.hasChanges()) {
                 const ok = await editor.handleSubmit()
                 if (!ok) return
             }
@@ -31,9 +33,9 @@ export function useEditorPanel<TItem>({
             return
         }
 
-        // 切换到新项 → 保存当前项，打开新项
+        // 切换到新项 → 保存当前项，打开新项（如果启用自动保存）
         if (activeKey && activeKey !== newKey) {
-            if (editor.hasChanges()) {
+            if (autoSave && editor.hasChanges()) {
                 const ok = await editor.handleSubmit()
                 if (!ok) return
             }
@@ -44,15 +46,15 @@ export function useEditorPanel<TItem>({
             const item = pagedItems.find(i => getItemKey(i) === newKey)
             if (item) await openItem(item)
         }
-    }, [activeKey, editor, pagedItems, getItemKey, openItem])
+    }, [activeKey, editor, pagedItems, getItemKey, openItem, autoSave])
 
     const closeForPageChange = useCallback(async () => {
-        if (editor.hasChanges()) {
+        if (autoSave && editor.hasChanges()) {
             const ok = await editor.handleSubmit()
             if (!ok) return
         }
         setActiveKey(undefined)
-    }, [editor])
+    }, [editor, autoSave])
 
     return {activeKey, handleCollapseChange, closeForPageChange}
 }

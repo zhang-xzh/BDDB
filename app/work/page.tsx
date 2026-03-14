@@ -214,6 +214,7 @@ const WorkPage: React.FC = () => {
         getItemKey: v => v._id,
         openItem: v => editor.open(v._id),
         editor,
+        autoSave: false, // work 页面不需要自动保存折叠状态
     });
 
     // 使用 useMemo 缓存 renderLabel 函数
