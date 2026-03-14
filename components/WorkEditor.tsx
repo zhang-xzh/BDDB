@@ -251,6 +251,7 @@ function WorkFormList({selectedWork, onWorkChange}: WorkFormListProps) {
             <CardContent sx={{pt: 2, pb: '8px !important', px: 1.5}}>
                 {/* 作品选择器 - 单选 */}
                 <Autocomplete
+                    sx={{maxWidth: 400}}
                     size="small"
                     options={bangumiItems}
                     getOptionLabel={(option) => option.titleCn || option.title}
