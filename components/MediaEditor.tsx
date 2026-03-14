@@ -5,12 +5,15 @@ import type {FileItem, Media, MediaForm, MediaType, NodeData} from '@/lib/mongod
 import {fetchApi, postApi} from '@/lib/api'
 import {buildTree, FlatTree} from '@/lib/utils'
 import {
-    Box, Card, CardContent, CardHeader, CircularProgress,
+    Box, Button, Card, CardContent, CardHeader, CircularProgress,
     FormControl, IconButton, InputLabel, MenuItem, Select, Stack,
     TextField, Typography,
 } from '@mui/material'
 import {SimpleTreeView} from '@mui/x-tree-view/SimpleTreeView'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import EditIcon from '@mui/icons-material/Edit'
+import CloseIcon from '@mui/icons-material/Close'
+import SaveIcon from '@mui/icons-material/Save'
 import InboxIcon from '@mui/icons-material/Inbox'
 import {useSnackbar} from 'notistack'
 import {EditorTreeNode, renderEditorTreeNodes} from '@/components/EditorTreeNode'
@@ -27,6 +30,7 @@ interface MediaInfo {
 export interface MediaEditorContentProps {
     loading: boolean
     saving: boolean
+    submitted: boolean
     files: FileItem[]
     treeData: any[]
     nodeData: Map<string, NodeData>
@@ -48,11 +52,13 @@ export interface MediaEditorContentProps {
     updateMediaForm: (no: number, form: MediaForm) => void
     resetMediaAssignments: () => void
     deleteMedia: (no: number) => void
+    handleSubmit: () => Promise<boolean>
 }
 
 interface UseMediaEditorReturn {
     loading: boolean
     saving: boolean
+    submitted: boolean
     volumeInfo: MediaInfo | null
     files: FileItem[]
     treeData: any[]
@@ -95,6 +101,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
     const {enqueueSnackbar} = useSnackbar()
     const [saving, setSaving] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [submitted, setSubmitted] = useState(false)
     const [volumeInfo, setVolumeInfo] = useState<MediaInfo | null>(null)
     const [visibleMedias, setVisibleMedias] = useState(20)
     const loadMoreMedias = useCallback(() => setVisibleMedias(v => v + 10), [])
@@ -321,6 +328,13 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
 
     const handleSubmit = useCallback(async (): Promise<boolean> => {
         if (volumeInfo == null) return false
+        setSubmitted(true)
+        // 验证所有媒介都有内容标题
+        const hasError = selectedMedias.some(m => !mediaForms[m]?.content_title?.trim())
+        if (hasError) {
+            enqueueSnackbar('请填写所有媒介的内容标题', {variant: 'error'})
+            return false
+        }
         setSaving(true)
         try {
             const mediaMap: Record<number, string[]> = {}
@@ -358,7 +372,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
     }, [volumeInfo, selectedMedias, mediaForms, nodeData, onSave, enqueueSnackbar])
 
     return {
-        loading, saving, volumeInfo, files, treeData, nodeData, defaultExpandedKeys,
+        loading, saving, submitted, volumeInfo, files, treeData, nodeData, defaultExpandedKeys,
         selectedMedias, visibleMedias, loadMoreMedias, mediaForms,
         open, handleSubmit, hasChanges,
         onMediaNoChange, onSharedMediaChange, onToggleShared,
@@ -374,15 +388,24 @@ interface MediaFormListProps {
     mediaForms: Record<number, MediaForm>
     onMediaFormChange: (no: number, form: MediaForm) => void
     onDeleteMedia: (no: number) => void
+    submitted?: boolean
+    onSubmit?: () => Promise<boolean>
 }
 
-function MediaRow({no, mediaForms, onMediaFormChange, onDeleteMedia}: {
+const getMediaForm = (
+    mediaForms: Record<number, MediaForm>,
+    no: number,
+): MediaForm => mediaForms[no] || {media_type: 'bd', content_title: '', description: ''}
+
+function MediaRow({no, mediaForms, onMediaFormChange, onDeleteMedia, submitted}: {
     no: number
     mediaForms: Record<number, MediaForm>
     onMediaFormChange: (no: number, form: MediaForm) => void
     onDeleteMedia: (no: number) => void
+    submitted?: boolean
 }) {
-    const form = mediaForms[no] || {media_type: 'bd', content_title: '', description: ''}
+    const form = getMediaForm(mediaForms, no)
+    const contentTitleError = submitted && !form.content_title.trim()
     return (
         <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
             <Typography variant="body2" fontWeight={600} sx={{minWidth: 60}}>媒介 {no}</Typography>
@@ -402,6 +425,7 @@ function MediaRow({no, mediaForms, onMediaFormChange, onDeleteMedia}: {
                 label="内容"
                 size="small"
                 sx={{width: 300}}
+                error={contentTitleError}
             />
             <TextField
                 value={form.description}
@@ -417,15 +441,135 @@ function MediaRow({no, mediaForms, onMediaFormChange, onDeleteMedia}: {
     )
 }
 
-function MediaFormList({selectedMedias, mediaForms, onMediaFormChange, onDeleteMedia}: MediaFormListProps) {
+// 只读模式：显示媒介信息摘要
+function MediaReadOnlyView({
+    selectedMedias,
+    mediaForms,
+    onEdit,
+}: {
+    selectedMedias: number[]
+    mediaForms: Record<number, MediaForm>
+    onEdit: () => void
+}) {
+    return (
+        <Box>
+            <Box sx={{display: 'flex', flexDirection: 'column', gap: 1}}>
+                {selectedMedias.map(no => {
+                    const form = getMediaForm(mediaForms, no)
+                    const mediaTypeLabel = MEDIA_TYPES.find(t => t.value === form.media_type)?.label || form.media_type
+                    return (
+                        <Box key={no} sx={{display: 'flex', alignItems: 'center', gap: 2}}>
+                            <Typography variant="body2" fontWeight={500} sx={{minWidth: 60}}>
+                                媒介 {no}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                [{mediaTypeLabel}] {form.content_title || '无内容标题'} {form.description ? `- ${form.description}` : ''}
+                            </Typography>
+                        </Box>
+                    )
+                })}
+            </Box>
+            <Box sx={{mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider'}}>
+                <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<EditIcon/>}
+                    onClick={onEdit}
+                >
+                    编辑媒介信息
+                </Button>
+            </Box>
+        </Box>
+    )
+}
+
+function MediaFormList({selectedMedias, mediaForms, onMediaFormChange, onDeleteMedia, submitted, onSubmit}: MediaFormListProps) {
+    // 检查是否有媒介缺少内容标题
+    const hasEmptyMedia = useMemo(() => {
+        return selectedMedias.some(no => {
+            const form = getMediaForm(mediaForms, no)
+            return !form.content_title.trim()
+        })
+    }, [selectedMedias, mediaForms])
+
+    const [isEditing, setIsEditing] = useState(false)
+    const initializedRef = useRef(false)
+
+    // 初始化时，如果有空数据则默认进入编辑模式（只在挂载时执行一次）
+    useEffect(() => {
+        if (!initializedRef.current && hasEmptyMedia) {
+            initializedRef.current = true
+            setIsEditing(true)
+        }
+    }, [hasEmptyMedia])
+
+    const handleEdit = useCallback(() => {
+        setIsEditing(true)
+    }, [])
+
+    const handleCancel = useCallback(() => {
+        setIsEditing(false)
+    }, [])
+
+    const handleSave = useCallback(async () => {
+        if (onSubmit) {
+            const success = await onSubmit()
+            if (success) {
+                setIsEditing(false)
+            }
+        } else {
+            setIsEditing(false)
+        }
+    }, [onSubmit])
+
     if (selectedMedias.length === 0) return null
+
     return (
         <Card variant="outlined">
             <CardHeader title="媒介信息" titleTypographyProps={{variant: 'body2', fontWeight: 600}} sx={{py: 1, px: 1.5}}/>
-            <CardContent sx={{pt: 0, pb: '8px !important', px: 1.5, display: 'flex', flexDirection: 'column', gap: 1}}>
-                {selectedMedias.map(no => (
-                    <MediaRow key={no} no={no} mediaForms={mediaForms} onMediaFormChange={onMediaFormChange} onDeleteMedia={onDeleteMedia}/>
-                ))}
+            <CardContent sx={{pt: 1, pb: '8px !important', px: 1.5}}>
+                {isEditing ? (
+                    <Box>
+                        <Box sx={{display: 'flex', flexDirection: 'column', gap: 1}}>
+                            {selectedMedias.map(no => (
+                                <MediaRow
+                                    key={no}
+                                    no={no}
+                                    mediaForms={mediaForms}
+                                    onMediaFormChange={onMediaFormChange}
+                                    onDeleteMedia={onDeleteMedia}
+                                    submitted={submitted}
+                                />
+                            ))}
+                        </Box>
+                        <Box sx={{mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider'}}>
+                            <Stack direction="row" spacing={1} justifyContent="flex-start">
+                                <Button
+                                    variant="text"
+                                    size="small"
+                                    startIcon={<CloseIcon/>}
+                                    onClick={handleCancel}
+                                >
+                                    取消
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    size="small"
+                                    startIcon={<SaveIcon/>}
+                                    onClick={handleSave}
+                                >
+                                    保存
+                                </Button>
+                            </Stack>
+                        </Box>
+                    </Box>
+                ) : (
+                    <MediaReadOnlyView
+                        selectedMedias={selectedMedias}
+                        mediaForms={mediaForms}
+                        onEdit={handleEdit}
+                    />
+                )}
             </CardContent>
         </Card>
     )
@@ -447,11 +591,11 @@ function makeMediaComputeIsMixed(
 // ─── MediaEditorContent ──────────────────────────────────────────────────────
 
 export function MediaEditorContent({
-                                       loading, saving, files, treeData, nodeData, defaultExpandedKeys,
+                                       loading, saving, submitted, files, treeData, nodeData, defaultExpandedKeys,
                                        selectedMedias, visibleMedias, loadMoreMedias, mediaForms,
                                        onMediaNoChange, onSharedMediaChange, onToggleShared,
                                        getNodeMediaNo, getNodeShared, getNodeSharedMedias, getComputedNodeValue,
-                                       updateMediaForm, resetMediaAssignments, deleteMedia,
+                                       updateMediaForm, resetMediaAssignments, deleteMedia, handleSubmit,
                                    }: MediaEditorContentProps) {
     const nodeContentProps = useMemo<Omit<EditorTreeNodeProps, 'title' | 'nodeKey' | 'isLeaf' | 'isMixed'>>(() => ({
         formatValue: (v: number) => `媒介 ${v}`,
@@ -505,6 +649,8 @@ export function MediaEditorContent({
                         mediaForms={mediaForms}
                         onMediaFormChange={updateMediaForm}
                         onDeleteMedia={deleteMedia}
+                        submitted={submitted}
+                        onSubmit={handleSubmit}
                     />
                 </CardContent>
             )}
