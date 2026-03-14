@@ -50,10 +50,31 @@ export interface BddbMedia {
     file_ids: ObjectId[]
 }
 
-// 临时 works 接口 - 字段待定，支持任意信息
+// 站点信息
+export interface SiteInfo {
+    site: string
+    siteName: string
+    id: string
+    url?: string
+}
+
+// Work 接口 - 基于 bangumi-data
 export interface BddbWork {
     _id: ObjectId
-    [key: string]: any
+    bangumiSubjectId?: string  // bangumi.tv 的 subject ID
+    title: string
+    titleCn: string
+    titleEn: string
+    type: string
+    lang: string
+    officialSite: string
+    begin: string
+    end: string
+    broadcast?: string
+    comment?: string
+    sites: SiteInfo[]
+    created_at: number
+    updated_at: number
 }
 
 // 前端序列化类型（ObjectId -> string）
@@ -827,6 +848,134 @@ export async function getWorkCount(): Promise<number> {
     } catch (error) {
         console.error('[mongodb] getWorkCount error:', error)
         return 0
+    }
+}
+
+/**
+ * 根据 bangumiSubjectId 获取 work
+ */
+export async function getWorkByBangumiId(bangumiSubjectId: string): Promise<BddbWork | null> {
+    try {
+        const collection = getWorksCollection()
+        return await collection.findOne({bangumiSubjectId})
+    } catch (error) {
+        console.error('[mongodb] getWorkByBangumiId error:', error)
+        return null
+    }
+}
+
+/**
+ * 从 bangumi 数据保存 work（如果不存在则创建，存在则更新）
+ */
+export async function saveWorkFromBangumi(bangumiItem: {
+    id: string
+    title: string
+    titleCn: string
+    titleEn: string
+    type: string
+    lang: string
+    officialSite: string
+    begin: string
+    end: string
+    broadcast?: string
+    comment?: string
+    sites: SiteInfo[]
+}): Promise<BddbWork> {
+    try {
+        const collection = getWorksCollection()
+        const now = Math.floor(Date.now() / 1000)
+
+        // 查找是否已存在
+        const bangumiSite = bangumiItem.sites?.find(s => s.site === 'bangumi')
+        const bangumiSubjectId = bangumiSite?.id
+
+        let existingWork: BddbWork | null = null
+        if (bangumiSubjectId) {
+            existingWork = await getWorkByBangumiId(bangumiSubjectId)
+        }
+
+        const workData: Omit<BddbWork, '_id'> = {
+            bangumiSubjectId,
+            title: bangumiItem.title,
+            titleCn: bangumiItem.titleCn,
+            titleEn: bangumiItem.titleEn,
+            type: bangumiItem.type,
+            lang: bangumiItem.lang,
+            officialSite: bangumiItem.officialSite,
+            begin: bangumiItem.begin,
+            end: bangumiItem.end,
+            broadcast: bangumiItem.broadcast,
+            comment: bangumiItem.comment,
+            sites: bangumiItem.sites,
+            created_at: existingWork?.created_at || now,
+            updated_at: now,
+        }
+
+        if (existingWork) {
+            // 更新现有 work
+            await collection.updateOne(
+                {_id: existingWork._id},
+                {$set: workData}
+            )
+            return {...existingWork, ...workData}
+        } else {
+            // 创建新 work
+            const newWork: BddbWork = {
+                _id: new ObjectId(),
+                ...workData,
+            }
+            await collection.insertOne(newWork)
+            return newWork
+        }
+    } catch (error) {
+        console.error('[mongodb] saveWorkFromBangumi error:', error)
+        throw error
+    }
+}
+
+/**
+ * 将 work 关联到 Volume
+ */
+export async function addWorkToVolume(volumeId: string | ObjectId, workId: string | ObjectId): Promise<void> {
+    try {
+        const collection = getVolumesCollection()
+        const vid = typeof volumeId === 'string' ? new ObjectId(volumeId) : volumeId
+        const wid = typeof workId === 'string' ? new ObjectId(workId) : workId
+        const now = Math.floor(Date.now() / 1000)
+
+        await collection.updateOne(
+            {_id: vid},
+            {
+                $addToSet: {work_ids: wid},
+                $set: {updated_at: now}
+            }
+        )
+    } catch (error) {
+        console.error('[mongodb] addWorkToVolume error:', error)
+        throw error
+    }
+}
+
+/**
+ * 从 Volume 移除 work 关联
+ */
+export async function removeWorkFromVolume(volumeId: string | ObjectId, workId: string | ObjectId): Promise<void> {
+    try {
+        const collection = getVolumesCollection()
+        const vid = typeof volumeId === 'string' ? new ObjectId(volumeId) : volumeId
+        const wid = typeof workId === 'string' ? new ObjectId(workId) : workId
+        const now = Math.floor(Date.now() / 1000)
+
+        await collection.updateOne(
+            {_id: vid},
+            {
+                $pull: {work_ids: wid},
+                $set: {updated_at: now}
+            }
+        )
+    } catch (error) {
+        console.error('[mongodb] removeWorkFromVolume error:', error)
+        throw error
     }
 }
 

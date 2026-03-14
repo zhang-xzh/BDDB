@@ -141,6 +141,19 @@ export function searchBangumi(query: string, limit = 20): BangumiItem[] {
 }
 
 /**
+ * 根据 bangumi.tv subject ID 查找 BangumiItem
+ */
+export function getBangumiItemBySubjectId(subjectId: string): BangumiItem | undefined {
+  for (const item of bangumiItems) {
+    const bangumiSite = item.sites?.find(s => s.site === 'bangumi')
+    if (bangumiSite?.id === subjectId) {
+      return item
+    }
+  }
+  return undefined
+}
+
+/**
  * 获取站点元数据
  */
 export function getSiteMeta() {

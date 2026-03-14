@@ -1,20 +1,22 @@
 'use client'
 
-import React, {useCallback, useMemo, useState} from 'react'
+import React, {useCallback, useMemo, useRef, useState} from 'react'
 import type {FileItem, NodeData} from '@/lib/mongodb'
-import {fetchApi} from '@/lib/api'
+import {fetchApi, postApi} from '@/lib/api'
 import {buildTree} from '@/lib/utils'
 import {Autocomplete, Box, Card, CardContent, CardHeader, Chip, CircularProgress, Link, Stack, TextField, Typography,} from '@mui/material'
 import {SimpleTreeView} from '@mui/x-tree-view/SimpleTreeView'
 import InboxIcon from '@mui/icons-material/Inbox'
+import {useSnackbar} from 'notistack'
 import type {EditorTreeNodeProps} from '@/components/EditorTreeNode'
 import {renderEditorTreeNodes} from '@/components/EditorTreeNode'
-import {type BangumiItem, getAllBangumiItems, getLangLabel, getTypeLabel} from '@/lib/bangumi'
+import {type BangumiItem, getAllBangumiItems, getBangumiItemBySubjectId, getLangLabel, getTypeLabel} from '@/lib/bangumi'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface WorkEditorContentProps {
     loading: boolean
+    saving: boolean
     files: FileItem[]
     treeData: any[]
     nodeData: Map<string, NodeData>
@@ -22,10 +24,20 @@ export interface WorkEditorContentProps {
     selectedMedias: number[]
     visibleMedias: number
     loadMoreMedias: () => void
+    selectedWork: BangumiItem | null
+    onWorkChange: (work: BangumiItem | null) => void
+}
+
+interface WorkInfo {
+    volumeId: string
+    volumeNo?: number
+    catalogNo?: string
 }
 
 interface UseWorkEditorReturn {
     loading: boolean
+    saving: boolean
+    volumeInfo: WorkInfo | null
     files: FileItem[]
     treeData: any[]
     nodeData: Map<string, NodeData>
@@ -33,25 +45,50 @@ interface UseWorkEditorReturn {
     selectedMedias: number[]
     visibleMedias: number
     loadMoreMedias: () => void
-    open: (volumeId: string) => Promise<void>
+    selectedWork: BangumiItem | null
+    open: (volumeId: string, volumeNo?: number, catalogNo?: string) => Promise<void>
     hasChanges: () => boolean
     handleSubmit: () => Promise<boolean>
+    onWorkChange: (work: BangumiItem | null) => void
 }
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
-export function useWorkEditor(): UseWorkEditorReturn {
+export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
+    const {enqueueSnackbar} = useSnackbar()
+    const [saving, setSaving] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [volumeInfo, setVolumeInfo] = useState<WorkInfo | null>(null)
+    const [visibleMedias, setVisibleMedias] = useState(20)
+    const loadMoreMedias = useCallback(() => setVisibleMedias(v => v + 10), [])
     const [files, setFiles] = useState<FileItem[]>([])
     const [treeData, setTreeData] = useState<any[]>([])
     const [nodeData, setNodeData] = useState<Map<string, NodeData>>(new Map())
     const [defaultExpandedKeys, setDefaultExpandedKeys] = useState<string[]>([])
-    const [visibleMedias, setVisibleMedias] = useState(20)
-    const loadMoreMedias = useCallback(() => setVisibleMedias(v => v + 10), [])
+    const [selectedWork, setSelectedWork] = useState<BangumiItem | null>(null)
 
-    const open = useCallback(async (volumeId: string) => {
+    // 用于检测变更的初始值快照
+    const initialWorkRef = useRef<BangumiItem | null>(null)
+
+    const hasChanges = useCallback((): boolean => {
+        // 比较当前选中的作品和初始值
+        const initial = initialWorkRef.current
+        const current = selectedWork
+
+        if (!initial && !current) return false
+        if (!initial || !current) return true
+        return initial.id !== current.id
+    }, [selectedWork])
+
+    const onWorkChange = useCallback((work: BangumiItem | null) => {
+        setSelectedWork(work)
+    }, [])
+
+    const open = useCallback(async (volumeId: string, volumeNo?: number, catalogNo?: string) => {
+        setVolumeInfo({volumeId, volumeNo, catalogNo})
         setLoading(true)
         try {
+            // 加载文件列表
             const filesResult = await fetchApi<FileItem[]>(`/api/volumes/${volumeId}/files`)
             let loadedFiles: FileItem[] = []
             if (filesResult?.success && filesResult.data) {
@@ -68,21 +105,74 @@ export function useWorkEditor(): UseWorkEditorReturn {
                 setNodeData(new Map())
                 setDefaultExpandedKeys([])
             }
+
+            // 加载已关联的作品
+            try {
+                const worksResult = await fetchApi<{bangumiSubjectId?: string}[]>(`/api/volumes/${volumeId}/works`)
+                if (worksResult?.success && worksResult.data && worksResult.data.length > 0) {
+                    // 取第一个关联的作品（单选）
+                    const savedWork = worksResult.data[0]
+                    if (savedWork?.bangumiSubjectId) {
+                        // 从 bangumi-data 中找到对应条目
+                        const bangumiItem = getBangumiItemBySubjectId(savedWork.bangumiSubjectId)
+                        if (bangumiItem) {
+                            setSelectedWork(bangumiItem)
+                            initialWorkRef.current = bangumiItem
+                        } else {
+                            setSelectedWork(null)
+                            initialWorkRef.current = null
+                        }
+                    } else {
+                        setSelectedWork(null)
+                        initialWorkRef.current = null
+                    }
+                } else {
+                    setSelectedWork(null)
+                    initialWorkRef.current = null
+                }
+            } catch (err) {
+                console.error('加载关联作品失败:', err)
+                setSelectedWork(null)
+                initialWorkRef.current = null
+            }
         } catch (err) {
-            console.error('加载文件失败:', err)
+            console.error('加载数据失败:', err)
         } finally {
             setLoading(false)
         }
     }, [])
 
-    // 只读模式，永远没有变更需要保存
-    const hasChanges = useCallback(() => false, [])
-    const handleSubmit = useCallback(async () => true, [])
+    const handleSubmit = useCallback(async (): Promise<boolean> => {
+        if (volumeInfo == null) return false
+        setSaving(true)
+        try {
+            const result = await postApi(`/api/volumes/${volumeInfo.volumeId}/works`, {
+                work: selectedWork,
+            })
+            if (!result?.success) {
+                enqueueSnackbar(result?.error || '保存失败', {variant: 'error'})
+                return false
+            }
+            enqueueSnackbar('保存成功', {variant: 'success'})
+            // 更新初始值快照
+            initialWorkRef.current = selectedWork
+            onSave?.()
+            return true
+        } catch (err) {
+            console.error('保存失败:', err)
+            enqueueSnackbar('保存失败', {variant: 'error'})
+            return false
+        } finally {
+            setSaving(false)
+        }
+    }, [volumeInfo, selectedWork, onSave, enqueueSnackbar])
 
     const selectedMedias = useMemo(() => [] as number[], [])
 
     return {
         loading,
+        saving,
+        volumeInfo,
         files,
         treeData,
         nodeData,
@@ -90,9 +180,11 @@ export function useWorkEditor(): UseWorkEditorReturn {
         selectedMedias,
         visibleMedias,
         loadMoreMedias,
+        selectedWork,
         open,
         hasChanges,
         handleSubmit,
+        onWorkChange,
     }
 }
 
@@ -248,7 +340,7 @@ function WorkFormList({selectedWork, onWorkChange}: WorkFormListProps) {
                 titleTypographyProps={{variant: 'body2', fontWeight: 600}}
                 sx={{py: 1, px: 1.5}}
             />
-            <CardContent sx={{pt: 2, pb: '8px !important', px: 1.5}}>
+            <CardContent sx={{pt: 1.5, pb: '8px !important', px: 1.5}}>
                 {/* 作品选择器 - 单选 */}
                 <Autocomplete
                     sx={{maxWidth: 400}}
@@ -294,6 +386,7 @@ function makeWorkComputeIsMixed() {
 
 export function WorkEditorContent({
                                       loading,
+                                      saving,
                                       files,
                                       treeData,
                                       nodeData,
@@ -301,11 +394,11 @@ export function WorkEditorContent({
                                       selectedMedias,
                                       visibleMedias,
                                       loadMoreMedias,
+                                      selectedWork,
+                                      onWorkChange,
                                   }: WorkEditorContentProps) {
     // 使用受控的 expandedItems 来确保 defaultExpandedKeys 变化时能正确展开
     const [expandedItems, setExpandedItems] = useState<string[]>(defaultExpandedKeys);
-    // 已选作品（单选）
-    const [selectedWork, setSelectedWork] = useState<BangumiItem | null>(null);
 
     // 当 defaultExpandedKeys 变化时同步更新 expandedItems
     React.useEffect(() => {
@@ -335,7 +428,7 @@ export function WorkEditorContent({
 
     return (
         <Card variant="outlined" sx={{position: 'relative', mx: 2, mt: 1, mb: 2}}>
-            {loading && (
+            {(loading || saving) && (
                 <Box sx={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, bgcolor: 'rgba(255,255,255,0.6)'}}>
                     <CircularProgress/>
                 </Box>
@@ -368,7 +461,7 @@ export function WorkEditorContent({
             <CardContent sx={{pt: 1, px: 2, pb: '8px !important'}}>
                 <WorkFormList
                     selectedWork={selectedWork}
-                    onWorkChange={setSelectedWork}
+                    onWorkChange={onWorkChange}
                 />
             </CardContent>
         </Card>

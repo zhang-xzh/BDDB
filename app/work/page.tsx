@@ -205,7 +205,10 @@ const WorkPage: React.FC = () => {
         currentPage, setCurrentPage, filteredVolumes, pagedVolumes,
     } = useVolumeListView(volumes);
 
-    const editor = useWorkEditor();
+    const editor = useWorkEditor(() => {
+        // 保存成功后刷新卷列表（更新 workCount）
+        refreshVolumes();
+    });
     const {activeKey, handleCollapseChange, closeForPageChange} = useEditorPanel({
         pagedItems: pagedVolumes,
         getItemKey: v => v._id,
