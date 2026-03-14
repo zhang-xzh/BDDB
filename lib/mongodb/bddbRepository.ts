@@ -30,6 +30,7 @@ export interface BddbVolume {
     created_at: number
     updated_at: number
     file_ids: ObjectId[]
+    work_ids?: ObjectId[]
 }
 
 export type MediaType = 'bd' | 'dvd' | 'cd' | 'scan'
@@ -88,6 +89,7 @@ export interface Volume {
     is_deleted: boolean
     updated_at: number
     file_ids: string[]
+    work_ids?: string[]
 }
 
 export interface Media {
@@ -700,6 +702,29 @@ export async function getMediaCount(volumeId?: string | ObjectId): Promise<numbe
 }
 
 // ─── Works 相关 ───────────────────────────────────────────────────────────────
+
+/**
+ * 获取所有 volume 的 work 数量（聚合，用于列表页）
+ * 基于 volume 的 work_ids 字段统计
+ */
+export async function getWorkCountsByVolume(): Promise<Map<string, number>> {
+    try {
+        const collection = getVolumesCollection()
+        const result = await collection.aggregate([
+            {$match: {is_deleted: false}},
+            {$project: {work_ids: {$ifNull: ['$work_ids', []]}}},
+            {$project: {count: {$size: '$work_ids'}}},
+        ]).toArray()
+        const counts = new Map<string, number>()
+        for (const item of result) {
+            counts.set(item._id.toString(), item.count)
+        }
+        return counts
+    } catch (error) {
+        console.error('[mongodb] getWorkCountsByVolume error:', error)
+        return new Map()
+    }
+}
 
 /**
  * 获取所有 works

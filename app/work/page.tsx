@@ -19,16 +19,16 @@ function formatCatalogNo(catalogNo: string): string {
     return catalogNo || '无编号'
 }
 
-interface VolumeWithMedia extends Volume {
-    mediaCount?: number
+interface VolumeWithWork extends Volume {
+    workCount?: number
 }
 
-function matchesFilters(volume: VolumeWithMedia, filters: {
+function matchesFilters(volume: VolumeWithWork, filters: {
     searchCatalogNo: string
     searchTitle: string; invertTitle: boolean
-    filterHasMedia?: boolean
+    filterHasWork?: boolean
 }): boolean {
-    const {searchCatalogNo, searchTitle, invertTitle, filterHasMedia} = filters
+    const {searchCatalogNo, searchTitle, invertTitle, filterHasWork} = filters
     if (searchCatalogNo) {
         const match = volume.catalog_no?.toLowerCase().includes(searchCatalogNo.toLowerCase())
         if (!match) return false
@@ -37,20 +37,20 @@ function matchesFilters(volume: VolumeWithMedia, filters: {
         const match = volume.volume_name?.toLowerCase().includes(searchTitle.toLowerCase())
         if (invertTitle ? match : !match) return false
     }
-    if (filterHasMedia !== undefined) {
-        const hasMedia = (volume.mediaCount ?? 0) > 0
-        if (hasMedia !== filterHasMedia) return false
+    if (filterHasWork !== undefined) {
+        const hasWork = (volume.workCount ?? 0) > 0
+        if (hasWork !== filterHasWork) return false
     }
     return true
 }
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
-function useVolumeListView(volumes: VolumeWithMedia[]) {
+function useVolumeListView(volumes: VolumeWithWork[]) {
     const [searchCatalogNo, setSearchCatalogNo] = useState('')
     const [searchTitle, setSearchTitle] = useState('')
     const [invertTitle, setInvertTitle] = useState(false)
-    const [filterHasMedia, setFilterHasMedia] = useState<boolean | undefined>(undefined)
+    const [filterHasWork, setFilterHasWork] = useState<boolean | undefined>(undefined)
     const [currentPage, setCurrentPage] = useState(1)
 
     const filteredVolumes = useMemo(() =>
@@ -58,9 +58,9 @@ function useVolumeListView(volumes: VolumeWithMedia[]) {
                 searchCatalogNo,
                 searchTitle,
                 invertTitle,
-                filterHasMedia
+                filterHasWork
             })),
-        [volumes, searchCatalogNo, searchTitle, invertTitle, filterHasMedia])
+        [volumes, searchCatalogNo, searchTitle, invertTitle, filterHasWork])
 
     const pagedVolumes = useMemo(() => {
         const start = (currentPage - 1) * PAGE_SIZE
@@ -69,12 +69,12 @@ function useVolumeListView(volumes: VolumeWithMedia[]) {
 
     useEffect(() => {
         setCurrentPage(1)
-    }, [searchCatalogNo, searchTitle, invertTitle, filterHasMedia])
+    }, [searchCatalogNo, searchTitle, invertTitle, filterHasWork])
 
     return {
         searchCatalogNo, setSearchCatalogNo,
         searchTitle, setSearchTitle, invertTitle, setInvertTitle,
-        filterHasMedia, setFilterHasMedia,
+        filterHasWork, setFilterHasWork,
         currentPage, setCurrentPage, filteredVolumes, pagedVolumes,
     }
 }
@@ -87,15 +87,15 @@ const NONE = '__none__'
 const VolumeFiltersBar: React.FC<{
     searchCatalogNo: string
     searchTitle: string; invertTitle: boolean
-    filterHasMedia?: boolean
+    filterHasWork?: boolean
     total: number
     onSearchCatalogNoChange: (v: string) => void
     onSearchTitleChange: (v: string) => void
     onInvertTitleChange: (v: boolean) => void
-    onFilterHasMediaChange: (v: boolean | undefined) => void
+    onFilterHasWorkChange: (v: boolean | undefined) => void
 }> = ({
-          searchCatalogNo, searchTitle, invertTitle, filterHasMedia, total,
-          onSearchCatalogNoChange, onSearchTitleChange, onInvertTitleChange, onFilterHasMediaChange
+          searchCatalogNo, searchTitle, invertTitle, filterHasWork, total,
+          onSearchCatalogNoChange, onSearchTitleChange, onInvertTitleChange, onFilterHasWorkChange
       }) => {
     return (
         <Box sx={{display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1}}>
@@ -127,18 +127,18 @@ const VolumeFiltersBar: React.FC<{
                 }}
             />
             <FormControl size="small" sx={{width: 150}}>
-                <InputLabel>是否处理</InputLabel>
+                <InputLabel>关联 Work</InputLabel>
                 <Select
-                    value={filterHasMedia === undefined ? NONE : String(filterHasMedia)}
+                    value={filterHasWork === undefined ? NONE : String(filterHasWork)}
                     onChange={e => {
                         const v = e.target.value
-                        onFilterHasMediaChange(v === NONE ? undefined : v === 'true')
+                        onFilterHasWorkChange(v === NONE ? undefined : v === 'true')
                     }}
-                    label="是否处理"
+                    label="关联 Work"
                 >
                     <MenuItem value={NONE}><em>全部</em></MenuItem>
-                    <MenuItem value="true">已处理</MenuItem>
-                    <MenuItem value="false">未处理</MenuItem>
+                    <MenuItem value="true">已关联</MenuItem>
+                    <MenuItem value="false">未关联</MenuItem>
                 </Select>
             </FormControl>
             <Typography variant="body2" color="text.secondary">共 {total} 条</Typography>
@@ -146,15 +146,15 @@ const VolumeFiltersBar: React.FC<{
     )
 }
 
-const VolumeRowLabel: React.FC<{ volume: VolumeWithMedia; isExpanded: boolean }> = ({volume, isExpanded}) => {
+const VolumeRowLabel: React.FC<{ volume: VolumeWithWork; isExpanded: boolean }> = ({volume, isExpanded}) => {
     return (
         <ExpandBlocker isExpanded={isExpanded}>
             <Box sx={{display: 'flex', alignItems: 'center', gap: 1, width: '100%'}}>
                 <Box sx={{width: 56, flexShrink: 0}}>
-                    {volume.mediaCount && volume.mediaCount > 0
+                    {volume.workCount && volume.workCount > 0
                         ? <Chip
                             icon={<CheckCircleOutlineIcon/>}
-                            label={volume.mediaCount}
+                            label={volume.workCount}
                             color="success"
                             size="small"
                             sx={{m: 0}}
@@ -179,12 +179,12 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithMedia; isExpanded: boolean }>
 
 const WorkPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
-    const [volumes, setVolumes] = useState<VolumeWithMedia[]>([]);
+    const [volumes, setVolumes] = useState<VolumeWithWork[]>([]);
 
     const refreshVolumes = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetchApi<VolumeWithMedia[]>("/api/volumes");
+            const res = await fetchApi<VolumeWithWork[]>("/api/volumes");
             if (res.success && res.data) {
                 setVolumes(res.data);
             }
@@ -198,7 +198,7 @@ const WorkPage: React.FC = () => {
     const {
         searchCatalogNo, setSearchCatalogNo,
         searchTitle, setSearchTitle, invertTitle, setInvertTitle,
-        filterHasMedia, setFilterHasMedia,
+        filterHasWork, setFilterHasWork,
         currentPage, setCurrentPage, filteredVolumes, pagedVolumes,
     } = useVolumeListView(volumes);
 
@@ -214,19 +214,19 @@ const WorkPage: React.FC = () => {
         refreshVolumes();
     }, [refreshVolumes]);
 
-    const hasActiveFilters = searchCatalogNo || searchTitle || filterHasMedia !== undefined
+    const hasActiveFilters = searchCatalogNo || searchTitle || filterHasWork !== undefined
 
     const filterBar = (
         <VolumeFiltersBar
             searchCatalogNo={searchCatalogNo}
             searchTitle={searchTitle}
             invertTitle={invertTitle}
-            filterHasMedia={filterHasMedia}
+            filterHasWork={filterHasWork}
             total={filteredVolumes.length}
             onSearchCatalogNoChange={setSearchCatalogNo}
             onSearchTitleChange={setSearchTitle}
             onInvertTitleChange={setInvertTitle}
-            onFilterHasMediaChange={setFilterHasMedia}
+            onFilterHasWorkChange={setFilterHasWork}
         />
     )
 
