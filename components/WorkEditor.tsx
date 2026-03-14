@@ -29,7 +29,7 @@ export interface WorkEditorContentProps {
     loadMoreMedias: () => void
     selectedWork: BangumiItem | null
     onWorkChange: (work: BangumiItem | null) => void
-    onSubmit?: () => Promise<boolean>
+    onSubmit?: (work?: BangumiItem | null) => Promise<boolean>
 }
 
 interface WorkInfo {
@@ -52,7 +52,7 @@ interface UseWorkEditorReturn {
     selectedWork: BangumiItem | null
     open: (volumeId: string, volumeNo?: number, catalogNo?: string) => Promise<void>
     hasChanges: () => boolean
-    handleSubmit: () => Promise<boolean>
+    handleSubmit: (work?: BangumiItem | null) => Promise<boolean>
     onWorkChange: (work: BangumiItem | null) => void
 }
 
@@ -179,14 +179,16 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
         }
     }, [volumeInfo, enqueueSnackbar, onSave])
 
-    const handleSubmit = useCallback(async (): Promise<boolean> => {
+    const handleSubmit = useCallback(async (workToSave?: BangumiItem | null): Promise<boolean> => {
         if (volumeInfo == null) return false
         setSaving(true)
         // 保存当前值用于撤销
         const workBeforeSave = previousWorkRef.current
+        // 使用传入的参数或当前状态
+        const work = workToSave !== undefined ? workToSave : selectedWork
         try {
             const result = await postApi(`/api/volumes/${volumeInfo.volumeId}/works`, {
-                work: selectedWork,
+                work: work,
             })
             if (!result?.success) {
                 enqueueSnackbar(result?.error || '保存失败', {variant: 'error'})
@@ -194,7 +196,7 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
             }
             // 更新快照
             previousWorkRef.current = initialWorkRef.current
-            initialWorkRef.current = selectedWork
+            initialWorkRef.current = work
             onSave?.()
 
             // Material Design: Snackbar with Undo
@@ -502,7 +504,7 @@ interface WorkFormListProps {
     selectedWork: BangumiItem | null
     onWorkChange: (work: BangumiItem | null) => void
     saving?: boolean
-    onSubmit?: () => Promise<boolean>
+    onSubmit?: (work?: BangumiItem | null) => Promise<boolean>
 }
 
 function WorkFormList({selectedWork, onWorkChange, saving = false, onSubmit}: WorkFormListProps) {
@@ -538,9 +540,9 @@ function WorkFormList({selectedWork, onWorkChange, saving = false, onSubmit}: Wo
     const handleSave = useCallback(async () => {
         if (tempWork !== null) {
             onWorkChange(tempWork)
-            // 如果有提交回调，调用它进行服务器保存
+            // 如果有提交回调，调用它进行服务器保存，直接传递 tempWork
             if (onSubmit) {
-                await onSubmit()
+                await onSubmit(tempWork)
             }
         }
         // 保存后根据是否有作品决定模式
