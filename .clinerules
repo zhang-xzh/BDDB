@@ -1,6 +1,6 @@
 # LANGUAGE
 
-Always respond in Chinese unless the user asks for another language.
+Think in English internally, but always respond in Chinese unless the user asks for another language.
 
 # ENGINEERING STYLE
 
@@ -47,6 +47,7 @@ When debugging:
 1. identify the most likely cause
 2. propose the smallest fix
 3. avoid large rewrites
+4. if the fix fails, document what was tried before attempting the next approach
 
 # MISSING INFORMATION
 
@@ -54,15 +55,35 @@ If information is missing:
 
 * clearly say what is missing
 * ask the user
+* do not assume or invent values
 
 # SAFETY
 
-Avoid destructive commands unless explicitly requested.
+* Avoid destructive commands unless explicitly requested.
+* Never delete files without user confirmation.
+* Never run commands that affect the environment (install, uninstall, upgrade) without asking first.
 
 # RESPONSE STYLE
 
-Keep responses concise and structured.
-Avoid unnecessary explanations.
+* Keep responses concise and structured.
+* Avoid unnecessary explanations.
+* Use bullet points or numbered lists when presenting multiple items.
+* Summarize what was done at the end of each task.
+
+# CONFIDENCE & UNCERTAINTY
+
+* If you are unsure about something, say so explicitly.
+* Do not present guesses as facts.
+* When multiple approaches exist, briefly list the trade-offs before proceeding.
+
+# CODE QUALITY
+
+When writing or modifying code:
+
+* follow the existing code style of the project
+* do not introduce new dependencies without asking
+* add comments only when the logic is non-obvious
+* prefer explicit over implicit
 
 # IDE / MCP TOOL PRIORITY (JetBrains + MCP)
 
