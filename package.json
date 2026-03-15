@@ -14,7 +14,8 @@
     "bangumi:sync": "tsx scripts/syncBangumiMeili.ts full",
     "bangumi:rebuild": "tsx scripts/syncBangumiMeili.ts rebuild",
     "bangumi:stats": "tsx scripts/syncBangumiMeili.ts stats",
-    "bangumi:clear": "tsx scripts/syncBangumiMeili.ts clear"
+    "bangumi:clear": "tsx scripts/syncBangumiMeili.ts clear",
+    "db:migrate": "tsx scripts/migrate-data.ts"
   },
   "dependencies": {
     "@ctrl/qbittorrent": "^9.11.2",

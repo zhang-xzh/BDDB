@@ -188,7 +188,8 @@ const WorkPage: React.FC = () => {
     const refreshVolumes = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetchApi<VolumeWithWork[]>("/api/volumes?with_works=true");
+            // const res = await fetchApi<VolumeWithWork[]>("/api/volumes?with_works=true");
+            const res = await fetchApi<VolumeWithWork[]>("/api/volumes");
             if (res.success && res.data) {
                 setVolumes(res.data);
             }
