@@ -24,3 +24,20 @@ export {
     rebuildIndex,
     syncSingleProduct,
 } from './syncProducts'
+
+// Bangumi 搜索模块
+export {
+    BANGUMI_INDEX,
+    setupBangumiIndex,
+    deleteBangumiIndex,
+    indexBangumiSubject,
+    bulkIndexBangumiSubjects,
+    deleteBangumiSubject,
+    clearAllBangumiSubjects,
+    searchBangumi,
+    getBangumiIndexStats,
+    getBangumiTypeStats,
+    type BangumiSearchDoc,
+    type BangumiSearchResult,
+    type BangumiSearchOptions,
+} from './bangumiSearch'
