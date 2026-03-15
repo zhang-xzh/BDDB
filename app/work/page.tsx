@@ -5,7 +5,7 @@ import {Box, Card, CardContent, Chip, CircularProgress, FormControl, InputLabel,
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import InboxIcon from "@mui/icons-material/Inbox";
-import type {Volume} from "@/lib/mongodb";
+import type {BddbWork, Volume} from "@/lib/mongodb";
 import {fetchApi} from "@/lib/api";
 import WorkEditorContent, {useWorkEditor} from '@/components/WorkEditor';
 import {PAGE_SIZE} from "@/lib/utils";
@@ -21,6 +21,7 @@ function formatCatalogNo(catalogNo: string): string {
 
 interface VolumeWithWork extends Volume {
     workCount?: number
+    works?: BddbWork[]
 }
 
 function matchesFilters(volume: VolumeWithWork, filters: {
@@ -187,7 +188,7 @@ const WorkPage: React.FC = () => {
     const refreshVolumes = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetchApi<VolumeWithWork[]>("/api/volumes");
+            const res = await fetchApi<VolumeWithWork[]>("/api/volumes?with_works=true");
             if (res.success && res.data) {
                 setVolumes(res.data);
             }

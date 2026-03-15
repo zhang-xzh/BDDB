@@ -1,11 +1,12 @@
 export const runtime = 'nodejs';
 
 import {NextRequest, NextResponse} from 'next/server';
-import {getVolumesByTorrent, saveVolumeCompat as saveVolume, deleteStaleVolumes, getAllVolumes, getMediaCountsByVolume, getWorkCountsByVolume} from '@/lib/mongodb';
+import {getVolumesByTorrent, saveVolumeCompat as saveVolume, deleteStaleVolumes, getAllVolumes, getAllVolumesWithWorks, getMediaCountsByVolume, getWorkCountsByVolume} from '@/lib/mongodb';
 
 export async function GET(request: NextRequest) {
     try {
         const torrentId = request.nextUrl.searchParams.get('torrent_id');
+        const withWorks = request.nextUrl.searchParams.get('with_works') === 'true';
 
         if (torrentId) {
             const volumes = await getVolumesByTorrent(torrentId);
@@ -19,13 +20,43 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({success: true, data: result});
         }
 
+        // 使用 MongoDB $lookup 在数据库层面关联查询 works
+        if (withWorks) {
+            const [volumesWithWorks, mediaCounts, workCounts] = await Promise.all([
+                getAllVolumesWithWorks(),
+                getMediaCountsByVolume(),
+                getWorkCountsByVolume()
+            ]);
+
+            const result = volumesWithWorks.map(v => {
+                const id = v._id.toString();
+                return {
+                    ...v,
+                    _id: id,
+                    torrent_id: v.torrent_id.toString(),
+                    file_ids: v.file_ids.map(id => id.toString()),
+                    work_ids: v.work_ids?.map(id => id.toString()) ?? [],
+                    mediaCount: mediaCounts.get(id) ?? 0,
+                    workCount: workCounts.get(id) ?? 0,
+                    works: v.works?.map(w => ({
+                        ...w,
+                        _id: w._id.toString(),
+                    })) ?? [],
+                };
+            });
+
+            return NextResponse.json({success: true, data: result});
+        }
+
+        // 不关联 works 的原始查询
         const [allVolumes, mediaCounts, workCounts] = await Promise.all([
             getAllVolumes(),
             getMediaCountsByVolume(),
             getWorkCountsByVolume()
         ]);
+
         const result = allVolumes.map(v => {
-            const id = v._id.toString()
+            const id = v._id.toString();
             return {
                 ...v,
                 _id: id,
@@ -34,7 +65,7 @@ export async function GET(request: NextRequest) {
                 work_ids: v.work_ids?.map(id => id.toString()) ?? [],
                 mediaCount: mediaCounts.get(id) ?? 0,
                 workCount: workCounts.get(id) ?? 0,
-            }
+            };
         });
 
         return NextResponse.json({success: true, data: result});
