@@ -1,10 +1,10 @@
 'use client'
 
 import React, {useCallback, useMemo, useRef, useState} from 'react'
-import type {FileItem, NodeData} from '@/lib/mongodb'
+import {FileItem, NodeData} from '@/lib/mongodb'
 import {fetchApi, postApi} from '@/lib/api'
 import {buildTree} from '@/lib/utils'
-import {Autocomplete, Box, Button, Card, CardContent, CardHeader, Chip, CircularProgress, Link, Stack, TextField, Typography,} from '@mui/material'
+import {Autocomplete, Box, Button, Card, CardContent, CardHeader, Chip, CircularProgress, Divider, Link, Stack, TextField, Typography,} from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
 import CloseIcon from '@mui/icons-material/Close'
 import SaveIcon from '@mui/icons-material/Save'
@@ -345,7 +345,7 @@ function WorkReadOnlyView({works, onEdit}: WorkReadOnlyViewProps) {
                     <Box key={work.id}>
                         <WorkDetail work={work}/>
                         {index < works.length - 1 && (
-                            <Box sx={{my: 2, borderBottom: '1px solid', borderColor: 'divider'}} />
+                            <Box sx={{my: 2, borderBottom: '1px solid', borderColor: 'divider'}}/>
                         )}
                     </Box>
                 ))}
@@ -423,7 +423,7 @@ function WorkEditView({
     return (
         <Box>
             <Autocomplete<SearchResultItem, true, false, false>
-                sx={{maxWidth: 400, mb: 2, mt: 1}}
+                sx={{maxWidth: 500, mb: 2, mt: 1}}
                 size="small"
                 multiple
                 options={searchResults}
@@ -454,7 +454,7 @@ function WorkEditView({
                             variant="outlined"
                             label={option.name_cn || option.name}
                             size="small"
-                            {...getTagProps({ index })}
+                            {...getTagProps({index})}
                             key={option.id}
                         />
                     ))
@@ -481,14 +481,14 @@ function WorkEditView({
             {/* 选中作品详情预览 */}
             {tempWorks.length > 0 && (
                 <Box sx={{mb: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1}}>
-                    <Stack spacing={1}>
+                    <Stack spacing={1} divider={<Divider/>}>
                         {tempWorks.map((work) => (
                             <Box key={work.id}>
                                 <Typography variant="body2" sx={{fontWeight: 600}}>
                                     {work.name_cn || work.name}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
-                                    {getTypeName(work.type)}
+                                    {getTypeName(work.type)} {work.air_date}
                                 </Typography>
                             </Box>
                         ))}
