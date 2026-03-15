@@ -27,9 +27,9 @@ export interface WorkEditorContentProps {
     selectedMedias: number[]
     visibleMedias: number
     loadMoreMedias: () => void
-    selectedWork: BangumiSubject | null
-    onWorkChange: (work: BangumiSubject | SearchResultItem | null) => void
-    onSubmit?: (work?: BangumiSubject | SearchResultItem | null) => Promise<boolean>
+    selectedWorks: BangumiSubject[]
+    onWorksChange: (works: (BangumiSubject | SearchResultItem)[]) => void
+    onSubmit?: (works?: (BangumiSubject | SearchResultItem)[]) => Promise<boolean>
 }
 
 interface WorkInfo {
@@ -49,11 +49,12 @@ interface UseWorkEditorReturn {
     selectedMedias: number[]
     visibleMedias: number
     loadMoreMedias: () => void
-    selectedWork: BangumiSubject | null
+    selectedWorks: BangumiSubject[]
     open: (volumeId: string, volumeNo?: number, catalogNo?: string) => Promise<void>
     hasChanges: () => boolean
-    handleSubmit: (work?: BangumiSubject | SearchResultItem | null) => Promise<boolean>
-    onWorkChange: (work: BangumiSubject | SearchResultItem | null) => void
+    handleSubmit: () => Promise<boolean>
+    onSubmit: (works?: (BangumiSubject | SearchResultItem)[]) => Promise<boolean>
+    onWorksChange: (works: (BangumiSubject | SearchResultItem)[]) => void
 }
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
@@ -69,24 +70,22 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
     const [treeData, setTreeData] = useState<any[]>([])
     const [nodeData, setNodeData] = useState<Map<string, NodeData>>(new Map())
     const [defaultExpandedKeys, setDefaultExpandedKeys] = useState<string[]>([])
-    const [selectedWork, setSelectedWork] = useState<BangumiSubject | null>(null)
+    const [selectedWorks, setSelectedWorks] = useState<BangumiSubject[]>([])
 
-    const initialWorkRef = useRef<BangumiSubject | null>(null)
-    const previousWorkRef = useRef<BangumiSubject | null>(null)
+    const initialWorksRef = useRef<BangumiSubject[]>([])
+    const previousWorksRef = useRef<BangumiSubject[]>([])
 
     const hasChanges = useCallback((): boolean => {
-        const initial = initialWorkRef.current
-        const current = selectedWork
+        const initial = initialWorksRef.current
+        const current = selectedWorks
 
-        if (!initial && !current) return false
-        if (!initial || !current) return true
-        return initial.id !== current.id
-    }, [selectedWork])
+        if (initial.length === 0 && current.length === 0) return false
+        if (initial.length !== current.length) return true
 
-    const onWorkChange = useCallback((work: BangumiSubject | SearchResultItem | null) => {
-        // SearchResultItem 是 BangumiSubject 的子集，可以直接赋值
-        setSelectedWork(work as BangumiSubject | null)
-    }, [])
+        const initialIds = new Set(initial.map(w => w.id))
+        const currentIds = new Set(current.map(w => w.id))
+        return initial.some(w => !currentIds.has(w.id)) || current.some(w => !initialIds.has(w.id))
+    }, [selectedWorks])
 
     const open = useCallback(async (volumeId: string, volumeNo?: number, catalogNo?: string) => {
         setVolumeInfo({volumeId, volumeNo, catalogNo})
@@ -114,20 +113,20 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
             try {
                 const worksResult = await fetchApi<BangumiSubject[]>(`/api/volumes/${volumeId}/works`)
                 if (worksResult?.success && worksResult.data && worksResult.data.length > 0) {
-                    const savedWork = worksResult.data[0]
-                    setSelectedWork(savedWork)
-                    initialWorkRef.current = savedWork
-                    previousWorkRef.current = savedWork
+                    const savedWorks = worksResult.data
+                    setSelectedWorks(savedWorks)
+                    initialWorksRef.current = savedWorks
+                    previousWorksRef.current = savedWorks
                 } else {
-                    setSelectedWork(null)
-                    initialWorkRef.current = null
-                    previousWorkRef.current = null
+                    setSelectedWorks([])
+                    initialWorksRef.current = []
+                    previousWorksRef.current = []
                 }
             } catch (err) {
                 console.error('加载关联作品失败:', err)
-                setSelectedWork(null)
-                initialWorkRef.current = null
-                previousWorkRef.current = null
+                setSelectedWorks([])
+                initialWorksRef.current = []
+                previousWorksRef.current = []
             }
         } catch (err) {
             console.error('加载数据失败:', err)
@@ -136,19 +135,19 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
         }
     }, [])
 
-    const undoSave = useCallback(async (previousWork: BangumiSubject | null) => {
+    const undoSave = useCallback(async (previousWorks: BangumiSubject[]) => {
         if (volumeInfo == null) return false
         setSaving(true)
         try {
             const result = await postApi(`/api/volumes/${volumeInfo.volumeId}/works`, {
-                work: previousWork,
+                works: previousWorks.length > 0 ? previousWorks : null,
             })
             if (!result?.success) {
                 enqueueSnackbar('撤销失败', {variant: 'error'})
                 return false
             }
-            setSelectedWork(previousWork)
-            initialWorkRef.current = previousWork
+            setSelectedWorks(previousWorks)
+            initialWorksRef.current = previousWorks
             enqueueSnackbar('已撤销', {variant: 'success'})
             onSave?.()
             return true
@@ -161,25 +160,25 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
         }
     }, [volumeInfo, enqueueSnackbar, onSave])
 
-    const handleSubmit = useCallback(async (workToSave?: BangumiSubject | SearchResultItem | null): Promise<boolean> => {
+    const handleSubmit = useCallback(async (worksToSave?: (BangumiSubject | SearchResultItem)[] | null): Promise<boolean> => {
         if (volumeInfo == null) return false
         setSaving(true)
-        const workBeforeSave = previousWorkRef.current
+        const worksBeforeSave = previousWorksRef.current
 
-        // 使用传入的 work 或当前的 selectedWork
-        const work = workToSave !== undefined ? workToSave : selectedWork
+        // 使用传入的 works 或当前的 selectedWorks
+        const works = worksToSave !== undefined ? worksToSave : selectedWorks
 
         try {
             const result = await postApi(`/api/volumes/${volumeInfo.volumeId}/works`, {
-                work: work,
+                works: works && works.length > 0 ? works : null,
             })
             if (!result?.success) {
                 enqueueSnackbar(result?.error || '保存失败', {variant: 'error'})
                 return false
             }
-            previousWorkRef.current = initialWorkRef.current
-            // 保存时 work 可能是 SearchResultItem，但 ref 需要 BangumiSubject
-            initialWorkRef.current = work as BangumiSubject | null
+            previousWorksRef.current = initialWorksRef.current
+            // 保存时 works 可能是 SearchResultItem，但 ref 需要 BangumiSubject
+            initialWorksRef.current = works as BangumiSubject[]
             onSave?.()
 
             const snackbarKey = enqueueSnackbar('作品关联已更新', {
@@ -190,7 +189,7 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
                         color="inherit"
                         onClick={() => {
                             closeSnackbar(key)
-                            undoSave(workBeforeSave)
+                            undoSave(worksBeforeSave)
                         }}
                     >
                         撤销
@@ -206,9 +205,17 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
         } finally {
             setSaving(false)
         }
-    }, [volumeInfo, selectedWork, onSave, enqueueSnackbar, closeSnackbar, undoSave])
+    }, [volumeInfo, selectedWorks, onSave, enqueueSnackbar, closeSnackbar, undoSave])
 
     const selectedMedias = useMemo(() => [] as number[], [])
+
+    const onWorksChange = useCallback((works: (BangumiSubject | SearchResultItem)[]) => {
+        setSelectedWorks(works as BangumiSubject[])
+    }, [])
+
+    const onSubmit = useCallback(async (works?: (BangumiSubject | SearchResultItem)[]): Promise<boolean> => {
+        return handleSubmit(works)
+    }, [handleSubmit])
 
     return {
         loading,
@@ -221,11 +228,12 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
         selectedMedias,
         visibleMedias,
         loadMoreMedias,
-        selectedWork,
+        selectedWorks,
         open,
         hasChanges,
-        handleSubmit,
-        onWorkChange,
+        handleSubmit: async () => await handleSubmit(),
+        onSubmit,
+        onWorksChange,
     }
 }
 
@@ -325,14 +333,23 @@ function WorkDetail({work}: WorkDetailProps) {
 // ─── WorkReadOnlyView (只读模式视图) ─────────────────────────────────────────
 
 interface WorkReadOnlyViewProps {
-    work: BangumiSubject
+    works: BangumiSubject[]
     onEdit: () => void
 }
 
-function WorkReadOnlyView({work, onEdit}: WorkReadOnlyViewProps) {
+function WorkReadOnlyView({works, onEdit}: WorkReadOnlyViewProps) {
     return (
         <Box>
-            <WorkDetail work={work}/>
+            <Stack spacing={2}>
+                {works.map((work, index) => (
+                    <Box key={work.id}>
+                        <WorkDetail work={work}/>
+                        {index < works.length - 1 && (
+                            <Box sx={{my: 2, borderBottom: '1px solid', borderColor: 'divider'}} />
+                        )}
+                    </Box>
+                ))}
+            </Stack>
             <Box sx={{mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider'}}>
                 <Button
                     variant="outlined"
@@ -353,18 +370,18 @@ function WorkReadOnlyView({work, onEdit}: WorkReadOnlyViewProps) {
 type SearchResultItem = BangumiSearchResult['list'][number]
 
 interface WorkEditViewProps {
-    selectedWork: BangumiSubject | null
-    tempWork: BangumiSubject | SearchResultItem | null
-    onTempWorkChange: (work: BangumiSubject | SearchResultItem | null) => void
+    selectedWorks: BangumiSubject[]
+    tempWorks: (BangumiSubject | SearchResultItem)[]
+    onTempWorksChange: (works: (BangumiSubject | SearchResultItem)[]) => void
     onSave: () => void
     onCancel?: () => void
     saving: boolean
 }
 
 function WorkEditView({
-                          selectedWork,
-                          tempWork,
-                          onTempWorkChange,
+                          selectedWorks,
+                          tempWorks,
+                          onTempWorksChange,
                           onSave,
                           onCancel,
                           saving
@@ -391,22 +408,28 @@ function WorkEditView({
         }
     }, [])
 
-    const handleChange = useCallback((_: React.SyntheticEvent, newValue: SearchResultItem | null) => {
-        onTempWorkChange(newValue)
-    }, [onTempWorkChange])
+    const handleChange = useCallback((_: React.SyntheticEvent, newValue: (BangumiSubject | SearchResultItem)[]) => {
+        onTempWorksChange(newValue)
+    }, [onTempWorksChange])
 
-    const hasSelection = tempWork !== null
-    const isChanged = selectedWork?.id !== tempWork?.id
+    const hasSelection = tempWorks.length > 0
+    const isChanged = useMemo(() => {
+        if (selectedWorks.length !== tempWorks.length) return true
+        const selectedIds = new Set(selectedWorks.map(w => w.id))
+        const tempIds = new Set(tempWorks.map(w => w.id))
+        return selectedWorks.some(w => !tempIds.has(w.id)) || tempWorks.some(w => !selectedIds.has(w.id))
+    }, [selectedWorks, tempWorks])
 
     return (
         <Box>
-            <Autocomplete<SearchResultItem, false, false, false>
+            <Autocomplete<SearchResultItem, true, false, false>
                 sx={{maxWidth: 400, mb: 2, mt: 1}}
                 size="small"
+                multiple
                 options={searchResults}
                 getOptionLabel={(option) => option.name_cn || option.name}
                 filterOptions={(x) => x} // 禁用本地过滤，使用 API 结果
-                value={tempWork as SearchResultItem | null}
+                value={tempWorks as SearchResultItem[]}
                 onChange={handleChange}
                 onInputChange={handleSearchChange}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
@@ -425,6 +448,17 @@ function WorkEditView({
                         </Box>
                     </Box>
                 )}
+                renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                        <Chip
+                            variant="outlined"
+                            label={option.name_cn || option.name}
+                            size="small"
+                            {...getTagProps({ index })}
+                            key={option.id}
+                        />
+                    ))
+                }
                 renderInput={(params) => (
                     <TextField
                         {...params}
@@ -445,14 +479,20 @@ function WorkEditView({
             />
 
             {/* 选中作品详情预览 */}
-            {tempWork && (
+            {tempWorks.length > 0 && (
                 <Box sx={{mb: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1}}>
-                    <Typography variant="body2" sx={{fontWeight: 600}}>
-                        {tempWork.name_cn || tempWork.name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {getTypeName(tempWork.type)}
-                    </Typography>
+                    <Stack spacing={1}>
+                        {tempWorks.map((work) => (
+                            <Box key={work.id}>
+                                <Typography variant="body2" sx={{fontWeight: 600}}>
+                                    {work.name_cn || work.name}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    {getTypeName(work.type)}
+                                </Typography>
+                            </Box>
+                        ))}
+                    </Stack>
                 </Box>
             )}
 
@@ -486,50 +526,60 @@ function WorkEditView({
 // ─── WorkFormList (作品信息表单) ─────────────────────────────────────────────
 
 interface WorkFormListProps {
-    selectedWork: BangumiSubject | null
-    onWorkChange: (work: BangumiSubject | SearchResultItem | null) => void
+    selectedWorks: BangumiSubject[]
+    onWorksChange: (works: (BangumiSubject | SearchResultItem)[]) => void
     saving?: boolean
-    onSubmit?: (work?: BangumiSubject | SearchResultItem | null) => Promise<boolean>
+    onSubmit?: (works?: (BangumiSubject | SearchResultItem)[]) => Promise<boolean>
 }
 
-function WorkFormList({selectedWork, onWorkChange, saving = false, onSubmit}: WorkFormListProps) {
+function WorkFormList({selectedWorks, onWorksChange, saving = false, onSubmit}: WorkFormListProps) {
     const [isEditing, setIsEditing] = useState(false)
-    const [tempWork, setTempWork] = useState<BangumiSubject | SearchResultItem | null>(null)
+    const [tempWorks, setTempWorks] = useState<(BangumiSubject | SearchResultItem)[]>([])
 
     React.useEffect(() => {
-        if (selectedWork === null) {
+        if (selectedWorks.length === 0) {
             setIsEditing(true)
-            setTempWork(null)
+            setTempWorks([])
         } else {
             setIsEditing(false)
-            setTempWork(selectedWork)
+            setTempWorks(selectedWorks)
         }
-    }, [selectedWork])
+    }, [selectedWorks])
 
     const handleEdit = useCallback(() => {
-        setTempWork(selectedWork)
+        setTempWorks(selectedWorks)
         setIsEditing(true)
-    }, [selectedWork])
+    }, [selectedWorks])
 
     const handleCancel = useCallback(() => {
-        if (selectedWork) {
-            setTempWork(selectedWork)
+        if (selectedWorks.length > 0) {
+            setTempWorks(selectedWorks)
             setIsEditing(false)
         }
-    }, [selectedWork])
+    }, [selectedWorks])
 
     const handleSave = useCallback(async () => {
-        if (tempWork !== null) {
-            // 获取完整的条目详情（包含 rating、rank、collection 等）
+        if (tempWorks.length > 0) {
+            // 获取所有选中作品的完整条目详情
             try {
-                const fullSubject = await getBangumiSubject(tempWork.id, 'large')
+                const fullSubjects: BangumiSubject[] = []
+                for (const tempWork of tempWorks) {
+                    try {
+                        const fullSubject = await getBangumiSubject(tempWork.id, 'large')
+                        fullSubjects.push(fullSubject)
+                    } catch (err) {
+                        console.error(`[WorkEditor] 获取条目 ${tempWork.id} 详情失败:`, err)
+                        // 如果获取详情失败，使用当前数据
+                        fullSubjects.push(tempWork as BangumiSubject)
+                    }
+                }
 
-                // 先更新父组件的 selectedWork
-                onWorkChange(fullSubject)
+                // 先更新父组件的 selectedWorks
+                onWorksChange(fullSubjects)
 
                 // 如果有 onSubmit，调用它进行保存
                 if (onSubmit) {
-                    const result = await onSubmit(fullSubject)
+                    const result = await onSubmit(fullSubjects)
                     // 如果保存成功，退出编辑模式
                     if (result) {
                         setIsEditing(false)
@@ -537,16 +587,24 @@ function WorkFormList({selectedWork, onWorkChange, saving = false, onSubmit}: Wo
                     return
                 }
             } catch (err) {
-                console.error('[WorkEditor] 获取完整条目详情失败:', err)
-                // 如果获取详情失败，仍然使用当前数据
-                onWorkChange(tempWork)
+                console.error('[WorkEditor] 保存失败:', err)
+                onWorksChange(tempWorks)
                 if (onSubmit) {
-                    await onSubmit(tempWork)
+                    await onSubmit(tempWorks)
+                }
+            }
+        } else {
+            // 没有选中任何作品，清空
+            onWorksChange([])
+            if (onSubmit) {
+                const result = await onSubmit([])
+                if (result) {
+                    setIsEditing(false)
                 }
             }
         }
-        setIsEditing(tempWork === null)
-    }, [tempWork, onWorkChange, onSubmit])
+        setIsEditing(tempWorks.length === 0)
+    }, [tempWorks, onWorksChange, onSubmit])
 
     return (
         <Card variant="outlined">
@@ -558,16 +616,16 @@ function WorkFormList({selectedWork, onWorkChange, saving = false, onSubmit}: Wo
             <CardContent sx={{pt: 1, pb: '8px !important', px: 1.5}}>
                 {isEditing ? (
                     <WorkEditView
-                        selectedWork={selectedWork}
-                        tempWork={tempWork}
-                        onTempWorkChange={setTempWork}
+                        selectedWorks={selectedWorks}
+                        tempWorks={tempWorks}
+                        onTempWorksChange={setTempWorks}
                         onSave={handleSave}
-                        onCancel={selectedWork ? handleCancel : undefined}
+                        onCancel={selectedWorks.length > 0 ? handleCancel : undefined}
                         saving={saving}
                     />
-                ) : selectedWork ? (
+                ) : selectedWorks.length > 0 ? (
                     <WorkReadOnlyView
-                        work={selectedWork}
+                        works={selectedWorks}
                         onEdit={handleEdit}
                     />
                 ) : null}
@@ -596,8 +654,8 @@ export function WorkEditorContent({
                                       selectedMedias,
                                       visibleMedias,
                                       loadMoreMedias,
-                                      selectedWork,
-                                      onWorkChange,
+                                      selectedWorks,
+                                      onWorksChange,
                                       onSubmit,
                                   }: WorkEditorContentProps) {
     const [expandedItems, setExpandedItems] = useState<string[]>(defaultExpandedKeys);
@@ -658,8 +716,8 @@ export function WorkEditorContent({
             {/* 作品信息表单 */}
             <CardContent sx={{pt: 1, px: 2, pb: '8px !important'}}>
                 <WorkFormList
-                    selectedWork={selectedWork}
-                    onWorkChange={onWorkChange}
+                    selectedWorks={selectedWorks}
+                    onWorksChange={onWorksChange}
                     saving={saving}
                     onSubmit={onSubmit}
                 />

@@ -1,12 +1,13 @@
 import {NextRequest, NextResponse} from 'next/server'
 import {ObjectId} from 'mongodb'
 import type {BangumiCollection, BangumiImages, BangumiRating, BddbWork} from '@/lib/mongodb/bddbRepository'
-import {addWorkToVolume, getVolumeById, getWorkById, removeWorkFromVolume, saveWorkFromBangumi} from '@/lib/mongodb/bddbRepository'
+import {getVolumeById, getWorkById, removeWorkFromVolume, saveWorkFromBangumi} from '@/lib/mongodb/bddbRepository'
+import {getMongoCollection} from '@/lib/mongodb/connection'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface SaveWorkRequest {
-    work: {
+    works: Array<{
         id: number
         url: string
         type: number
@@ -20,7 +21,7 @@ interface SaveWorkRequest {
         rating: BangumiRating
         rank: number
         collection: BangumiCollection
-    } | null
+    }> | null
 }
 
 // ─── GET /api/volumes/[id]/works ───────────────────────────────────────────────
@@ -105,31 +106,54 @@ export async function POST(
         }
 
         const body: SaveWorkRequest = await request.json()
-        const {work} = body
+        const {works} = body
 
-        // 如果没有选择作品，清除关联
-        if (!work) {
-            // TODO: 清除 volume 的 work_ids
-            return NextResponse.json({success: true})
+        // 获取 Volume
+        const volume = await getVolumeById(volumeId)
+        if (!volume) {
+            return NextResponse.json(
+                {success: false, error: 'Volume not found'},
+                {status: 404}
+            )
         }
 
-        // 1. 保存/获取 Work
-        const savedWork = await saveWorkFromBangumi(work)
+        // 如果没有选择作品，清除所有关联
+        if (!works || works.length === 0) {
+            const collection = await getMongoCollection('bddb_volumes')
+            await collection.updateOne(
+                {_id: new ObjectId(volumeId)},
+                {$set: {work_ids: [], updated_at: Math.floor(Date.now() / 1000)}}
+            )
+            return NextResponse.json({success: true, data: {workIds: []}})
+        }
 
-        // 2. 关联到 Volume
-        await addWorkToVolume(volumeId, savedWork._id.toString())
+        // 保存所有 works 并获取它们的 _id
+        const savedWorkIds: string[] = []
+        for (const work of works) {
+            const savedWork = await saveWorkFromBangumi(work)
+            savedWorkIds.push(savedWork._id.toString())
+        }
+
+        // 替换 volume 的 work_ids 数组
+        const collection = await getMongoCollection('bddb_volumes')
+        await collection.updateOne(
+            {_id: new ObjectId(volumeId)},
+            {
+                $set: {
+                    work_ids: savedWorkIds.map(id => new ObjectId(id)),
+                    updated_at: Math.floor(Date.now() / 1000)
+                }
+            }
+        )
 
         return NextResponse.json({
             success: true,
-            data: {
-                workId: savedWork._id.toString(),
-                subjectId: savedWork.id,
-            }
+            data: {workIds: savedWorkIds}
         })
     } catch (error) {
         console.error('[API] POST /api/volumes/[id]/works error:', error)
         return NextResponse.json(
-            {success: false, error: 'Failed to save work'},
+            {success: false, error: 'Failed to save works'},
             {status: 500}
         )
     }
