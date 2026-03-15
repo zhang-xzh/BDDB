@@ -391,7 +391,11 @@ function WorkEditView({
     const [searching, setSearching] = useState(false)
 
     // 防抖搜索
-    const handleSearchChange = useCallback(async (_: React.SyntheticEvent, value: string) => {
+    const handleSearchChange = useCallback(async (_: React.SyntheticEvent, value: string, reason: string) => {
+        // 选择选项时不触发搜索，保持当前搜索结果
+        if (reason === 'selectOption') {
+            return
+        }
         setSearchQuery(value)
         if (value.length < 2) {
             setSearchResults([])
@@ -426,6 +430,7 @@ function WorkEditView({
                 sx={{maxWidth: 500, mb: 2, mt: 1}}
                 size="small"
                 multiple
+                disableCloseOnSelect
                 options={searchResults}
                 getOptionLabel={(option) => option.name_cn || option.name}
                 filterOptions={(x) => x} // 禁用本地过滤，使用 API 结果
