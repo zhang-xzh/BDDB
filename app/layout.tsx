@@ -17,6 +17,8 @@ const NAV_ITEMS = [
     {path: '/config', label: '配置'},
 ]
 
+const SIDEBAR_PATHS = ['/torrents', '/media']
+
 const HEADER_H = 56
 
 function AppLayout({children, isDark, onToggle}: {
@@ -27,6 +29,7 @@ function AppLayout({children, isDark, onToggle}: {
     const pathname = usePathname()
     const router = useRouter()
     const currentTab = NAV_ITEMS.find(n => pathname?.startsWith(n.path))?.path ?? false
+    const showSidebar = SIDEBAR_PATHS.some(p => pathname?.startsWith(p))
 
     return (
         <>
@@ -51,21 +54,30 @@ function AppLayout({children, isDark, onToggle}: {
             {/* ── Body ── */}
             <Box sx={{display: 'flex', minHeight: `calc(100vh - ${HEADER_H}px)`}}>
                 {/* Sider */}
+                {showSidebar && (
+                    <Box sx={{
+                        width: '25%', flexShrink: 0,
+                        m: '24px 12px 24px 24px', p: 3,
+                        bgcolor: 'background.paper',
+                        borderRadius: 2,
+                        position: 'sticky',
+                        top: HEADER_H + 24,
+                        alignSelf: 'flex-start',
+                        maxHeight: `calc(100vh - ${HEADER_H}px - 48px)`,
+                        overflow: 'auto',
+                    }}>
+                        <SiderContent/>
+                    </Box>
+                )}
+                {/* Content */}
                 <Box sx={{
-                    width: '25%', flexShrink: 0,
-                    m: '24px 12px 24px 24px', p: 3,
+                    flex: 1,
+                    m: showSidebar ? '24px 24px 24px 12px' : '24px',
+                    p: 3,
                     bgcolor: 'background.paper',
                     borderRadius: 2,
-                    position: 'sticky',
-                    top: HEADER_H + 24,
-                    alignSelf: 'flex-start',
-                    maxHeight: `calc(100vh - ${HEADER_H}px - 48px)`,
-                    overflow: 'auto',
+                    minWidth: 0
                 }}>
-                    <SiderContent/>
-                </Box>
-                {/* Content */}
-                <Box sx={{flex: 1, m: '24px 24px 24px 12px', p: 3, bgcolor: 'background.paper', borderRadius: 2, minWidth: 0}}>
                     {children}
                 </Box>
             </Box>
