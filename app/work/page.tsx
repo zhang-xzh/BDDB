@@ -127,7 +127,7 @@ const VolumeFiltersBar: React.FC<{
                 }}
             />
             <FormControl size="small" sx={{width: 150}}>
-                <InputLabel>关联 Work</InputLabel>
+                <InputLabel>是否处理</InputLabel>
                 <Select
                     value={filterHasWork === undefined ? NONE : String(filterHasWork)}
                     onChange={e => {
@@ -137,8 +137,8 @@ const VolumeFiltersBar: React.FC<{
                     label="关联 Work"
                 >
                     <MenuItem value={NONE}><em>全部</em></MenuItem>
-                    <MenuItem value="true">已关联</MenuItem>
-                    <MenuItem value="false">未关联</MenuItem>
+                    <MenuItem value="true">已处理</MenuItem>
+                    <MenuItem value="false">未处理</MenuItem>
                 </Select>
             </FormControl>
             <Typography variant="body2" color="text.secondary">共 {total} 条</Typography>
@@ -281,7 +281,7 @@ const WorkPage: React.FC = () => {
                         activeKey={activeKey}
                         onChange={handleCollapseChange}
                         renderLabel={renderVolumeLabel}
-                        renderContent={() => <WorkEditorContent {...editor} onSubmit={editor.handleSubmit} />}
+                        renderContent={() => <WorkEditorContent {...editor} onSubmit={editor.handleSubmit}/>}
                     />
                 </Card>
             </Box>
