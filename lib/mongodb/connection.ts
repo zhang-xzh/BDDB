@@ -1,4 +1,4 @@
-import {MongoClient, Document} from 'mongodb'
+import {Document, MongoClient} from 'mongodb'
 
 const MONGO_HOST = process.env.MONGO_HOST || 'localhost'
 const MONGO_PORT = process.env.MONGO_PORT || '27017'
@@ -24,7 +24,7 @@ function resolveBddbDbName(): string {
 const BDDB_DB = resolveBddbDbName()
 const MONGO_URI = process.env.MONGO_URI || `mongodb://${MONGO_HOST}:${MONGO_PORT}`
 
-const g = global as typeof globalThis & {_mongoClient?: MongoClient}
+const g = global as typeof globalThis & { _mongoClient?: MongoClient }
 
 export function getMongoClient(): MongoClient {
     if (!g._mongoClient) {
@@ -32,17 +32,6 @@ export function getMongoClient(): MongoClient {
         console.log(`[mongodb] Connecting to ${MONGO_URI}, suruga_ya=${SURUGA_YA_DB}, bangumi=${BANGUMI_DB}, bddb=${BDDB_DB}, env=${NODE_ENV}`)
     }
     return g._mongoClient
-}
-
-export async function ensureMongoConnected(): Promise<void> {
-    const client = getMongoClient()
-    try {
-        await client.db().admin().ping()
-        console.log('[mongodb] Connected successfully')
-    } catch (error) {
-        console.error('[mongodb] Connection failed:', error)
-        throw error
-    }
 }
 
 // BDDB 运营数据集合（torrents/volumes/medias），按环境使用 bddb_prod/bddb_dev/bddb_test

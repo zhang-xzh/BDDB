@@ -44,7 +44,7 @@ BDDB/
 │   └── useEditorPanel.ts   # Shared editor panel hook
 ├── lib/                    # Utility libraries
 │   ├── mongodb/            # MongoDB storage module
-│   │   ├── index.ts        # Entry point (re-exports connection + repositories)
+│   │   ├── util.ts        # Entry point (re-exports connection + repositories)
 │   │   ├── connection.ts   # MongoDB connection helpers
 │   │   ├── bddbRepository.ts # BDDB CRUD + types
 │   │   └── productRepository.ts # Product-related repository
@@ -71,12 +71,12 @@ const rows = await torrents.find({is_deleted: false}).toArray();
 
 ### Tables
 
-| Table           | Description                          |
-|-----------------|--------------------------------------|
-| `torrents`      | Torrent metadata (flat QB fields)    |
-| embedded `files` in `bddb_torrents` | Files belonging to a torrent |
-| `bddb_volumes`  | Disc/BOX volume metadata             |
-| `bddb_medias`   | Media entries within a volume        |
+| Table                               | Description                       |
+|-------------------------------------|-----------------------------------|
+| `torrents`                          | Torrent metadata (flat QB fields) |
+| embedded `files` in `bddb_torrents` | Files belonging to a torrent      |
+| `bddb_volumes`                      | Disc/BOX volume metadata          |
+| `bddb_medias`                       | Media entries within a volume     |
 
 ### Repository Pattern
 
@@ -100,18 +100,18 @@ await saveVolumeCompat(torrentId, fileIds, data);
 
 ### Core Types
 
-| Type                | Description                                        |
-|---------------------|----------------------------------------------------|
-| `BddbTorrent`       | Torrent record (QB fields + metadata + files[])    |
-| `TorrentWithVolume` | Frontend torrent view with volume summary           |
-| `BddbTorrentFile`   | Embedded file record inside torrent                 |
-| `BddbVolume`        | Disc/BOX volume metadata                            |
-| `VolumeForm`        | Form data for volume editing                       |
-| `MediaType`         | `'bd' \| 'dvd' \| 'cd' \| 'scan'`                  |
-| `BddbMedia`         | Media entry within a volume                        |
-| `MediaForm`         | Form data for media editing                        |
-| `NodeData`          | Per-tree-node assignment state                     |
-| `FileItem`          | Simplified file for editor tree display            |
+| Type                | Description                                     |
+|---------------------|-------------------------------------------------|
+| `BddbTorrent`       | Torrent record (QB fields + metadata + files[]) |
+| `TorrentWithVolume` | Frontend torrent view with volume summary       |
+| `BddbTorrentFile`   | Embedded file record inside torrent             |
+| `BddbVolume`        | Disc/BOX volume metadata                        |
+| `VolumeForm`        | Form data for volume editing                    |
+| `MediaType`         | `'bd' \| 'dvd' \| 'cd' \| 'scan'`               |
+| `BddbMedia`         | Media entry within a volume                     |
+| `MediaForm`         | Form data for media editing                     |
+| `NodeData`          | Per-tree-node assignment state                  |
+| `FileItem`          | Simplified file for editor tree display         |
 
 ## API Conventions
 
@@ -223,7 +223,7 @@ QB_PASS=password           # qBittorrent password
 
 - `lib/mongodb/bddbRepository.ts` — BDDB type definitions + CRUD operations
 - `lib/mongodb/connection.ts` — MongoDB connection helpers
-- `lib/mongodb/index.ts` — Entry point (import everything from here via `@/lib/mongodb`)
+- `lib/mongodb/util.ts` — Entry point (import everything from here via `@/lib/mongodb`)
 - `lib/api.ts` — Frontend API utilities (fetchApi, postApi)
 - `lib/utils.ts` — Shared utilities (PAGE_SIZE, formatSize, buildTree, FlatTree, NodePath)
 - `lib/qb.ts` — qBittorrent client (getQbClient, syncTorrentsFromQb)

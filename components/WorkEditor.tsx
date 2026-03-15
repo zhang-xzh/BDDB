@@ -13,7 +13,7 @@ import InboxIcon from '@mui/icons-material/Inbox'
 import {useSnackbar} from 'notistack'
 import type {EditorTreeNodeProps} from '@/components/EditorTreeNode'
 import {renderEditorTreeNodes} from '@/components/EditorTreeNode'
-import {type BangumiSubject, type BangumiSearchResult, formatDate, getBangumiSubject, getTypeName, searchBangumi} from '@/lib/bangumi'
+import {type BangumiSearchResult, type BangumiSubject, formatDate, getBangumiSubject, getTypeName, searchBangumi} from '@/lib/bangumi'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -382,7 +382,7 @@ function WorkEditView({
         }
         setSearching(true)
         try {
-            const result = await searchBangumi(value, 2, 'small')
+            const result = await searchBangumi(value, 2)
             setSearchResults(result.list)
         } catch (err) {
             console.error('搜索失败:', err)

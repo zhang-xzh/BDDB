@@ -16,7 +16,7 @@
 | `BddbTorrent`       | Torrent record (flat QB fields + metadata)         |
 | `TorrentWithVolume` | `Torrent` extended with `hasVolumes`/`volumeCount` |
 | `BddbTorrentFile`   | Embedded file record in torrent.files              |
-| `BddbVolume`        | Disc/BOX metadata                                   |
+| `BddbVolume`        | Disc/BOX metadata                                  |
 | `VolumeForm`        | Form data for volume editing                       |
 | `MediaType`         | `'bd' \| 'dvd' \| 'cd' \| 'scan'`                  |
 | `BddbMedia`         | Media entry within a volume                        |
@@ -41,8 +41,11 @@ Key functions exported from `lib/mongodb/bddbRepository.ts`:
 // Torrents
 getTorrent(hash)                          // → Torrent | null
 getTorrentByHash(hash)                    // → BddbTorrent | null
-getAllTorrents(includeDeleted?)           // → BddbTorrent[]
-upsertTorrent(record: BddbTorrent)
+getAllTorrents(includeDeleted ?)           // → BddbTorrent[]
+upsertTorrent(record
+:
+BddbTorrent
+)
 softDeleteTorrent(hash)
 
 // Torrent Files
@@ -51,9 +54,8 @@ getTorrentFilesAsFileItems(torrentId)     // → FileItem[]
 softDeleteTorrentFiles(torrentId)
 
 // Volumes
-getAllVolumes(torrentId?)              // → BddbVolume[]
+getAllVolumes(torrentId ?)              // → BddbVolume[]
 getVolumesByTorrentId(torrentId)       // → BddbVolume[]
-getVolumesByFileId(fileId)             // → BddbVolume[]
 getVolumeCounts()                      // → Map<torrentId, count>
 saveVolumeCompat(torrentId, files, data)
 deleteStaleVolumes(torrentId, keepVolumeNos)
@@ -195,7 +197,7 @@ QB_PASS=password           # qBittorrent password
 
 - `lib/mongodb/bddbRepository.ts` — Type definitions + CRUD operations
 - `lib/mongodb/connection.ts` — MongoDB connection helpers
-- `lib/mongodb/index.ts` — Entry point (import everything from here via `@/lib/mongodb`)
+- `lib/mongodb/util.ts` — Entry point (import everything from here via `@/lib/mongodb`)
 - `lib/api.ts` — Frontend API utilities (fetchApi, postApi)
 - `lib/utils.ts` — Shared utilities (PAGE_SIZE, formatSize, buildTree, FlatTree, NodePath)
 - `lib/qb.ts` — qBittorrent client (getQbClient, syncTorrentsFromQb)
