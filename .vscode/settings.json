@@ -4,6 +4,7 @@
         "npx tsc": true,
         "npm install": true,
         "git ls-tree": true,
-        "git add": true
+        "git add": true,
+        "git commit": true
     }
 }

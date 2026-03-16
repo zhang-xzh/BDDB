@@ -144,7 +144,7 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithMedia; isExpanded: boolean }>
     const {token} = theme.useToken()
     return (
         <ExpandBlocker isExpanded={isExpanded}>
-            <Flex align="center" gap={8} style={{width: '100%'}}>
+            <>
                 <Flex style={{width: 56, flexShrink: 0}}>
                     {volume.mediaCount && volume.mediaCount > 0
                         ? <Tag icon={<CheckCircleOutlined/>} color="success" style={{margin: 0}}>{volume.mediaCount}</Tag>
@@ -156,7 +156,7 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithMedia; isExpanded: boolean }>
                 <Typography.Text ellipsis style={{flex: 1, color: token.colorText}}>
                     {volume.volume_name || '无标题'}
                 </Typography.Text>
-            </Flex>
+            </>
         </ExpandBlocker>
     )
 }

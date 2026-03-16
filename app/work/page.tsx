@@ -146,7 +146,7 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithWork; isExpanded: boolean }> 
     const workCount = volume.workCount ?? volume.work_ids?.length ?? 0
     return (
         <ExpandBlocker isExpanded={isExpanded}>
-            <Flex align="center" gap={8} style={{width: '100%'}}>
+            <>
                 <Flex style={{width: 56, flexShrink: 0}}>
                     {workCount > 0
                         ? <Tag icon={<CheckCircleOutlined/>} color="success" style={{margin: 0}}>{workCount}</Tag>
@@ -158,7 +158,7 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithWork; isExpanded: boolean }> 
                 <Typography.Text ellipsis style={{flex: 1, color: token.colorText}}>
                     {volume.volume_name || '无标题'}
                 </Typography.Text>
-            </Flex>
+            </>
         </ExpandBlocker>
     )
 }
