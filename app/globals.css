@@ -1,4 +1,6 @@
-/* 全局重置 - 使用 Ant Design 默认样式 */
+@import "@blueprintjs/core/lib/css/blueprint.css";
+@import "@blueprintjs/icons/lib/css/blueprint-icons.css";
+@import "@blueprintjs/table/lib/css/table.css";
 
 * {
     font-family: 'Maple Mono NF CN', 'Maple Mono', monospace !important;
@@ -24,10 +26,28 @@
 }
 
 /* 暗色模式下的滚动条 */
-[data-theme='dark'] ::-webkit-scrollbar-thumb {
+.bp6-dark ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.2);
 }
 
-[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+.bp6-dark ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.3);
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: #f6f7f9;
+    color: #1c2127;
+    --overlay-bg: rgba(255, 255, 255, 0.6);
+    --muted-color: #8a9ba8;
+    --subtle-bg: rgba(0, 0, 0, 0.04);
+}
+
+body.bp6-dark {
+    background: #252a31;
+    color: #f6f7f9;
+    --overlay-bg: rgba(30, 33, 38, 0.7);
+    --muted-color: #a7b6c2;
+    --subtle-bg: rgba(255, 255, 255, 0.06);
 }

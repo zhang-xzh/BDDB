@@ -4,19 +4,10 @@ import React, {useCallback, useEffect, useMemo, useRef, useState,} from 'react'
 import type {FileItem, Media, MediaForm, MediaType, NodeData} from '@/lib/mongodb'
 import {fetchApi, postApi} from '@/lib/api'
 import {buildTree, FlatTree} from '@/lib/utils'
-import {
-    Box, Button, Card, CardContent, CardHeader, CircularProgress,
-    FormControl, IconButton, InputLabel, MenuItem, Select, Stack,
-    TextField, Typography,
-} from '@mui/material'
-import {SimpleTreeView} from '@mui/x-tree-view/SimpleTreeView'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import EditIcon from '@mui/icons-material/Edit'
-import CloseIcon from '@mui/icons-material/Close'
-import SaveIcon from '@mui/icons-material/Save'
-import InboxIcon from '@mui/icons-material/Inbox'
-import {useSnackbar} from 'notistack'
-import {EditorTreeNode, renderEditorTreeNodes} from '@/components/EditorTreeNode'
+import {Button, Card, HTMLSelect, InputGroup, Intent, Spinner, Tree} from '@blueprintjs/core'
+import type {TreeNodeInfo} from '@blueprintjs/core'
+import {showToast} from '@/lib/toaster'
+import {buildEditorTreeNodes} from '@/components/EditorTreeNode'
 import type {EditorTreeNodeProps} from '@/components/EditorTreeNode'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -98,7 +89,6 @@ const MEDIA_TYPES: { value: MediaType; label: string }[] = [
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
-    const {enqueueSnackbar} = useSnackbar()
     const [saving, setSaving] = useState(false)
     const [loading, setLoading] = useState(false)
     const [submitted, setSubmitted] = useState(false)
@@ -332,7 +322,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
         // 验证所有媒介都有内容标题
         const hasError = selectedMedias.some(m => !mediaForms[m]?.content_title?.trim())
         if (hasError) {
-            enqueueSnackbar('请填写所有媒介的内容标题', {variant: 'error'})
+            showToast('请填写所有媒介的内容标题', Intent.DANGER)
             return false
         }
         setSaving(true)
@@ -358,18 +348,18 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
                     files: mediaMap[m] || [],
                 })),
             })
-            if (!result?.success) { enqueueSnackbar(result?.error || '保存失败', {variant: 'error'}); return false }
-            enqueueSnackbar('保存成功', {variant: 'success'})
+            if (!result?.success) { showToast(result?.error || '保存失败', Intent.DANGER); return false }
+            showToast('保存成功', Intent.SUCCESS)
             onSave?.()
             return true
         } catch (err) {
             console.error('保存失败:', err)
-            enqueueSnackbar('保存失败', {variant: 'error'})
+            showToast('保存失败', Intent.DANGER)
             return false
         } finally {
             setSaving(false)
         }
-    }, [volumeInfo, selectedMedias, mediaForms, nodeData, onSave, enqueueSnackbar])
+    }, [volumeInfo, selectedMedias, mediaForms, nodeData, onSave])
 
     return {
         loading, saving, submitted, volumeInfo, files, treeData, nodeData, defaultExpandedKeys,
@@ -407,37 +397,30 @@ function MediaRow({no, mediaForms, onMediaFormChange, onDeleteMedia, submitted}:
     const form = getMediaForm(mediaForms, no)
     const contentTitleError = submitted && !form.content_title.trim()
     return (
-        <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
-            <Typography variant="body2" fontWeight={600} sx={{minWidth: 60}}>媒介 {no}</Typography>
-            <FormControl size="small" sx={{width: 100}}>
-                <InputLabel>类型</InputLabel>
-                <Select<MediaType>
-                    value={form.media_type}
-                    onChange={e => onMediaFormChange(no, {...form, media_type: e.target.value as MediaType})}
-                    label="类型"
-                >
-                    {MEDIA_TYPES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
-                </Select>
-            </FormControl>
-            <TextField
+        <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
+            <span style={{minWidth: 60, fontWeight: 600, fontSize: 13}}>媒介 {no}</span>
+            <HTMLSelect
+                value={form.media_type}
+                onChange={e => onMediaFormChange(no, {...form, media_type: e.target.value as MediaType})}
+                style={{width: 100}}
+            >
+                {MEDIA_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </HTMLSelect>
+            <InputGroup
                 value={form.content_title}
                 onChange={e => onMediaFormChange(no, {...form, content_title: e.target.value})}
-                label="内容"
-                size="small"
-                sx={{width: 300}}
-                error={contentTitleError}
+                placeholder="内容"
+                style={{width: 300}}
+                intent={contentTitleError ? Intent.DANGER : Intent.NONE}
             />
-            <TextField
+            <InputGroup
                 value={form.description}
                 onChange={e => onMediaFormChange(no, {...form, description: e.target.value})}
-                label="说明"
-                size="small"
-                sx={{width: 400}}
+                placeholder="说明"
+                style={{width: 400}}
             />
-            <IconButton size="small" color="error" onClick={() => onDeleteMedia(no)}>
-                <DeleteOutlineIcon fontSize="small"/>
-            </IconButton>
-        </Box>
+            <Button icon="trash" minimal intent={Intent.DANGER} onClick={() => onDeleteMedia(no)}/>
+        </div>
     )
 }
 
@@ -452,34 +435,27 @@ function MediaReadOnlyView({
     onEdit: () => void
 }) {
     return (
-        <Box>
-            <Box sx={{display: 'flex', flexDirection: 'column', gap: 1}}>
+        <div>
+            <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
                 {selectedMedias.map(no => {
                     const form = getMediaForm(mediaForms, no)
                     const mediaTypeLabel = MEDIA_TYPES.find(t => t.value === form.media_type)?.label || form.media_type
                     return (
-                        <Box key={no} sx={{display: 'flex', alignItems: 'center', gap: 2}}>
-                            <Typography variant="body2" fontWeight={500} sx={{minWidth: 60}}>
+                        <div key={no} style={{display: 'flex', alignItems: 'center', gap: 8}}>
+                            <span style={{minWidth: 60, fontWeight: 500, fontSize: 13}}>
                                 媒介 {no}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            </span>
+                            <span style={{fontSize: 13, color: 'var(--text-secondary, #8a9ba8)'}}>
                                 [{mediaTypeLabel}] {form.content_title || '无内容标题'} {form.description ? `- ${form.description}` : ''}
-                            </Typography>
-                        </Box>
+                            </span>
+                        </div>
                     )
                 })}
-            </Box>
-            <Box sx={{mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider'}}>
-                <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<EditIcon/>}
-                    onClick={onEdit}
-                >
-                    编辑媒介信息
-                </Button>
-            </Box>
-        </Box>
+            </div>
+            <div style={{marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--divider, #30404d)'}}>
+                <Button icon="edit" outlined small onClick={onEdit}>编辑媒介信息</Button>
+            </div>
+        </div>
     )
 }
 
@@ -525,52 +501,34 @@ function MediaFormList({selectedMedias, mediaForms, onMediaFormChange, onDeleteM
     if (selectedMedias.length === 0) return null
 
     return (
-        <Card variant="outlined">
-            <CardHeader title="媒介信息" titleTypographyProps={{variant: 'body2', fontWeight: 600}} sx={{py: 1, px: 1.5}}/>
-            <CardContent sx={{pt: 1, pb: '8px !important', px: 1.5}}>
-                {isEditing ? (
-                    <Box>
-                        <Box sx={{display: 'flex', flexDirection: 'column', gap: 1}}>
-                            {selectedMedias.map(no => (
-                                <MediaRow
-                                    key={no}
-                                    no={no}
-                                    mediaForms={mediaForms}
-                                    onMediaFormChange={onMediaFormChange}
-                                    onDeleteMedia={onDeleteMedia}
-                                    submitted={submitted}
-                                />
-                            ))}
-                        </Box>
-                        <Box sx={{mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider'}}>
-                            <Stack direction="row" spacing={1} justifyContent="flex-start">
-                                <Button
-                                    variant="text"
-                                    size="small"
-                                    startIcon={<CloseIcon/>}
-                                    onClick={handleCancel}
-                                >
-                                    取消
-                                </Button>
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    startIcon={<SaveIcon/>}
-                                    onClick={handleSave}
-                                >
-                                    保存
-                                </Button>
-                            </Stack>
-                        </Box>
-                    </Box>
-                ) : (
-                    <MediaReadOnlyView
-                        selectedMedias={selectedMedias}
-                        mediaForms={mediaForms}
-                        onEdit={handleEdit}
-                    />
-                )}
-            </CardContent>
+        <Card style={{padding: 12}}>
+            <div style={{fontWeight: 600, fontSize: 13, marginBottom: 8}}>媒介信息</div>
+            {isEditing ? (
+                <div>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
+                        {selectedMedias.map(no => (
+                            <MediaRow
+                                key={no}
+                                no={no}
+                                mediaForms={mediaForms}
+                                onMediaFormChange={onMediaFormChange}
+                                onDeleteMedia={onDeleteMedia}
+                                submitted={submitted}
+                            />
+                        ))}
+                    </div>
+                    <div style={{marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--divider, #30404d)', display: 'flex', gap: 8}}>
+                        <Button icon="cross" minimal onClick={handleCancel}>取消</Button>
+                        <Button icon="floppy-disk" intent={Intent.PRIMARY} onClick={handleSave}>保存</Button>
+                    </div>
+                </div>
+            ) : (
+                <MediaReadOnlyView
+                    selectedMedias={selectedMedias}
+                    mediaForms={mediaForms}
+                    onEdit={handleEdit}
+                />
+            )}
         </Card>
     )
 }
@@ -586,6 +544,16 @@ function makeMediaComputeIsMixed(
         const anySet = values.some(v => v !== undefined)
         return anySet && !values.every(v => v === values[0])
     }
+}
+
+// ─── Tree expansion helper ───────────────────────────────────────────────────
+
+function applyExpansion(nodes: TreeNodeInfo[], expanded: Set<string>): TreeNodeInfo[] {
+    return nodes.map(n => ({
+        ...n,
+        isExpanded: expanded.has(String(n.id)),
+        childNodes: n.childNodes ? applyExpansion(n.childNodes, expanded) : undefined,
+    }))
 }
 
 // ─── MediaEditorContent ──────────────────────────────────────────────────────
@@ -614,36 +582,49 @@ export function MediaEditorContent({
         [getComputedNodeValue],
     )
 
+    const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(defaultExpandedKeys))
+
+    useEffect(() => {
+        setExpandedNodes(new Set(defaultExpandedKeys))
+    }, [defaultExpandedKeys])
+
+    const treeNodes = useMemo(
+        () => buildEditorTreeNodes(treeData, nodeContentProps, computeIsMixed),
+        [treeData, nodeContentProps, computeIsMixed],
+    )
+
+    const displayNodes = useMemo(
+        () => applyExpansion(treeNodes, expandedNodes),
+        [treeNodes, expandedNodes],
+    )
+
     return (
-        <Card variant="outlined" sx={{position: 'relative', mx: 2, mt: 1, mb: 2}}>
+        <Card style={{position: 'relative', margin: '4px 16px 16px 16px', padding: 16}}>
             {loading && (
-                <Box sx={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, bgcolor: 'rgba(255,255,255,0.6)'}}>
-                    <CircularProgress/>
-                </Box>
+                <div style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, background: 'var(--overlay-bg)'}}>
+                    <Spinner/>
+                </div>
             )}
-            <CardHeader
-                title={
-                    <Stack direction="row" alignItems="center" spacing={2}>
-                        <Typography variant="subtitle2">文件列表</Typography>
-                        <Typography variant="body2" color="text.secondary">{files.length} 个文件</Typography>
-                    </Stack>
-                }
-                sx={{pt: 2, pb: 1, px: 2}}
-            />
-            <CardContent sx={{pt: 0, px: 2, pb: '8px !important'}}>
+            <div style={{display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8}}>
+                <span style={{fontWeight: 600, fontSize: 14}}>文件列表</span>
+                <span style={{fontSize: 13, color: 'var(--text-secondary, #8a9ba8)'}}>{files.length} 个文件</span>
+            </div>
+            <div>
                 {files.length > 0 ? (
-                    <SimpleTreeView defaultExpandedItems={defaultExpandedKeys}>
-                        {renderEditorTreeNodes(treeData, nodeContentProps, computeIsMixed)}
-                    </SimpleTreeView>
+                    <Tree
+                        contents={displayNodes}
+                        onNodeExpand={n => setExpandedNodes(p => new Set(p).add(String(n.id)))}
+                        onNodeCollapse={n => { const s = new Set(expandedNodes); s.delete(String(n.id)); setExpandedNodes(s) }}
+                    />
                 ) : (
-                    <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, color: 'text.disabled'}}>
-                        <InboxIcon sx={{fontSize: 48, mb: 1}}/>
-                        <Typography>暂无文件数据</Typography>
-                    </Box>
+                    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 0', color: 'var(--text-disabled, #5c7080)'}}>
+                        <span className="bp6-icon bp6-icon-inbox" style={{fontSize: 48, marginBottom: 8}}/>
+                        <span>暂无文件数据</span>
+                    </div>
                 )}
-            </CardContent>
+            </div>
             {selectedMedias.length > 0 && (
-                <CardContent sx={{pt: 1, px: 2, pb: '8px !important'}}>
+                <div style={{marginTop: 8}}>
                     <MediaFormList
                         selectedMedias={selectedMedias}
                         mediaForms={mediaForms}
@@ -652,7 +633,7 @@ export function MediaEditorContent({
                         submitted={submitted}
                         onSubmit={handleSubmit}
                     />
-                </CardContent>
+                </div>
             )}
         </Card>
     )

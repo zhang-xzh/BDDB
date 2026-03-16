@@ -2,6 +2,7 @@
     "chat.tools.terminal.autoApprove": {
         "Set-Content": true,
         "npx tsc": true,
-        "npm install": true
+        "npm install": true,
+        "npm uninstall": true
     }
 }

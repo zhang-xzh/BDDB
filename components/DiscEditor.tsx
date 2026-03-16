@@ -4,18 +4,10 @@ import React, {useCallback, useEffect, useMemo, useRef, useState,} from 'react'
 import type {FileItem, NodeData, VolumeForm, TorrentWithVolume, Volume} from '@/lib/mongodb'
 import {fetchApi, postApi} from '@/lib/api'
 import {buildTree, FlatTree} from '@/lib/utils'
-import {
-    Box, Button, Card, CardContent, CardHeader, CircularProgress,
-    IconButton, Rating, Stack, TextField, Typography,
-} from '@mui/material'
-import {SimpleTreeView} from '@mui/x-tree-view/SimpleTreeView'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import EditIcon from '@mui/icons-material/Edit'
-import CloseIcon from '@mui/icons-material/Close'
-import SaveIcon from '@mui/icons-material/Save'
-import InboxIcon from '@mui/icons-material/Inbox'
-import {useSnackbar} from 'notistack'
-import {EditorTreeNode, renderEditorTreeNodes} from '@/components/EditorTreeNode'
+import {Button, Card, InputGroup, Intent, NumericInput, Spinner, Tree} from '@blueprintjs/core'
+import type {TreeNodeInfo} from '@blueprintjs/core'
+import {showToast} from '@/lib/toaster'
+import {buildEditorTreeNodes} from '@/components/EditorTreeNode'
 import type {EditorTreeNodeProps} from '@/components/EditorTreeNode'
 
 // ─── VolumeFormList ──────────────────────────────────────────────────────────
@@ -45,22 +37,32 @@ function VolumeRow({vol, label, volumeForms, onVolumeFormChange, onDeleteVolume,
     const catalogNoError = submitted && !form.catalog_no.trim()
     const volumeNameError = submitted && !form.volume_name.trim()
     return (
-        <Box sx={{display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap'}}>
-            <Typography variant="body2" fontWeight={500} sx={{minWidth: 60}}>{label}</Typography>
-            <TextField
-                size="small" value={form.catalog_no} label="型番"
+        <div style={{display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap'}}>
+            <span style={{minWidth: 60, fontWeight: 500, fontSize: 14}}>{label}</span>
+            <InputGroup
+                small
+                value={form.catalog_no}
+                placeholder="型番"
+                intent={catalogNoError ? Intent.DANGER : Intent.NONE}
                 onChange={e => onVolumeFormChange(vol, {...form, catalog_no: e.target.value})}
-                error={catalogNoError} sx={{width: 150}}
+                style={{width: 150}}
             />
-            <TextField
-                size="small" value={form.volume_name} label="标题"
+            <InputGroup
+                small
+                value={form.volume_name}
+                placeholder="标题"
+                intent={volumeNameError ? Intent.DANGER : Intent.NONE}
                 onChange={e => onVolumeFormChange(vol, {...form, volume_name: e.target.value})}
-                error={volumeNameError} sx={{width: 700}}
+                style={{width: 700}}
             />
-            <IconButton size="small" color="error" onClick={() => onDeleteVolume(vol)}>
-                <DeleteOutlineIcon fontSize="small"/>
-            </IconButton>
-        </Box>
+            <Button
+                minimal
+                small
+                icon="trash"
+                intent={Intent.DANGER}
+                onClick={() => onDeleteVolume(vol)}
+            />
+        </div>
     )
 }
 
@@ -78,33 +80,32 @@ function VolumeReadOnlyView({
 }) {
     if (worksCount === 1) {
         return (
-            <Box>
-                <Box sx={{display: 'flex', flexDirection: 'column', gap: 1}}>
+            <div>
+                <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
                     {selectedVolumes.map(vol => {
                         const form = getVolumeForm(volumeForms, vol)
                         return (
-                            <Box key={vol} sx={{display: 'flex', alignItems: 'center', gap: 2}}>
-                                <Typography variant="body2" fontWeight={500} sx={{minWidth: 60}}>
+                            <div key={vol} style={{display: 'flex', alignItems: 'center', gap: 16}}>
+                                <span style={{minWidth: 60, fontWeight: 500, fontSize: 14}}>
                                     第{vol}卷
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
+                                </span>
+                                <span style={{color: '#5c7080', fontSize: 14}}>
                                     {form.catalog_no || '无型番'} - {form.volume_name || '无标题'}
-                                </Typography>
-                            </Box>
+                                </span>
+                            </div>
                         )
                     })}
-                </Box>
-                <Box sx={{mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider'}}>
+                </div>
+                <div style={{marginTop: 16, paddingTop: 16, borderTop: '1px solid #d8e1e8'}}>
                     <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<EditIcon/>}
+                        small
+                        icon="edit"
                         onClick={onEdit}
                     >
                         编辑卷信息
                     </Button>
-                </Box>
-            </Box>
+                </div>
+            </div>
         )
     }
 
@@ -117,46 +118,45 @@ function VolumeReadOnlyView({
     })
 
     return (
-        <Box>
-            <Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
+        <div>
+            <div style={{display: 'flex', flexDirection: 'column', gap: 16}}>
                 {Object.entries(groups).sort(([a], [b]) => Number(a) - Number(b)).map(([workIdxStr, vols]) => {
                     const workIdx = Number(workIdxStr)
                     return (
-                        <Box key={workIdx}>
-                            <Typography variant="body2" fontWeight={700} sx={{mb: 1}}>
+                        <div key={workIdx}>
+                            <span style={{fontWeight: 700, fontSize: 14, display: 'block', marginBottom: 8}}>
                                 作品 {workIdx}
-                            </Typography>
-                            <Box sx={{pl: 2, display: 'flex', flexDirection: 'column', gap: 1}}>
+                            </span>
+                            <div style={{paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 8}}>
                                 {vols.sort((a, b) => a - b).map(volNo => {
                                     const encoded = workIdx * 1000 + volNo
                                     const form = getVolumeForm(volumeForms, encoded)
                                     return (
-                                        <Box key={encoded} sx={{display: 'flex', alignItems: 'center', gap: 2}}>
-                                            <Typography variant="body2" fontWeight={500} sx={{minWidth: 60}}>
+                                        <div key={encoded} style={{display: 'flex', alignItems: 'center', gap: 16}}>
+                                            <span style={{minWidth: 60, fontWeight: 500, fontSize: 14}}>
                                                 第{volNo}卷
-                                            </Typography>
-                                            <Typography variant="body2" color="text.secondary">
+                                            </span>
+                                            <span style={{color: '#5c7080', fontSize: 14}}>
                                                 {form.catalog_no || '无型番'} - {form.volume_name || '无标题'}
-                                            </Typography>
-                                        </Box>
+                                            </span>
+                                        </div>
                                     )
                                 })}
-                            </Box>
-                        </Box>
+                            </div>
+                        </div>
                     )
                 })}
-            </Box>
-            <Box sx={{mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider'}}>
+            </div>
+            <div style={{marginTop: 16, paddingTop: 16, borderTop: '1px solid #d8e1e8'}}>
                 <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<EditIcon/>}
+                    small
+                    icon="edit"
                     onClick={onEdit}
                 >
                     编辑卷信息
                 </Button>
-            </Box>
-        </Box>
+            </div>
+        </div>
     )
 }
 
@@ -202,16 +202,14 @@ function VolumeFormList({selectedVolumes, volumeForms, onVolumeFormChange, onDel
     if (selectedVolumes.length === 0) return null
 
     return (
-        <Card variant="outlined">
-            <CardHeader
-                title="卷信息"
-                titleTypographyProps={{variant: 'body2', fontWeight: 600}}
-                sx={{py: 1, px: 1.5, pb: 0.5}}
-            />
-            <CardContent sx={{pt: 1, pb: '8px !important', px: 1.5}}>
+        <Card elevation={0} style={{border: '1px solid #d8e1e8'}}>
+            <div style={{padding: '8px 12px 4px'}}>
+                <span style={{fontWeight: 600, fontSize: 14}}>卷信息</span>
+            </div>
+            <div style={{padding: '4px 12px 8px'}}>
                 {isEditing ? (
-                    <Box>
-                        <Box sx={{display: 'flex', flexDirection: 'column', gap: 1}}>
+                    <div>
+                        <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
                             {selectedVolumes.map(vol => (
                                 <VolumeRow
                                     key={vol}
@@ -223,28 +221,25 @@ function VolumeFormList({selectedVolumes, volumeForms, onVolumeFormChange, onDel
                                     submitted={submitted}
                                 />
                             ))}
-                        </Box>
-                        <Box sx={{mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider'}}>
-                            <Stack direction="row" spacing={1} justifyContent="flex-start">
-                                <Button
-                                    variant="text"
-                                    size="small"
-                                    startIcon={<CloseIcon/>}
-                                    onClick={handleCancel}
-                                >
-                                    取消
-                                </Button>
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    startIcon={<SaveIcon/>}
-                                    onClick={handleSave}
-                                >
-                                    保存
-                                </Button>
-                            </Stack>
-                        </Box>
-                    </Box>
+                        </div>
+                        <div style={{marginTop: 16, paddingTop: 16, borderTop: '1px solid #d8e1e8', display: 'flex', gap: 8}}>
+                            <Button
+                                small
+                                icon="cross"
+                                onClick={handleCancel}
+                            >
+                                取消
+                            </Button>
+                            <Button
+                                small
+                                intent={Intent.PRIMARY}
+                                icon="floppy-disk"
+                                onClick={handleSave}
+                            >
+                                保存
+                            </Button>
+                        </div>
+                    </div>
                 ) : (
                     <VolumeReadOnlyView
                         selectedVolumes={selectedVolumes}
@@ -253,7 +248,7 @@ function VolumeFormList({selectedVolumes, volumeForms, onVolumeFormChange, onDel
                         onEdit={handleEdit}
                     />
                 )}
-            </CardContent>
+            </div>
         </Card>
     )
 }
@@ -298,7 +293,6 @@ export interface UseDiscEditorReturn {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
-    const {enqueueSnackbar} = useSnackbar()
     const [visible, setVisible] = useState(false)
     const [saving, setSaving] = useState(false)
     const [loading, setLoading] = useState(false)
@@ -630,7 +624,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
         setSubmitted(true)
         const hasError = selectedVolumes.some(v => !volumeForms[v]?.catalog_no?.trim() || !volumeForms[v]?.volume_name?.trim())
         if (hasError) {
-            enqueueSnackbar('请填写所有卷的型番和标题', {variant: 'error'});
+            showToast('请填写所有卷的型番和标题', Intent.DANGER);
             return false
         }
         setSaving(true)
@@ -661,21 +655,21 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
                 })),
             })
             if (!result?.success) {
-                enqueueSnackbar(result?.error || '保存失败', {variant: 'error'});
+                showToast(result?.error || '保存失败', Intent.DANGER);
                 return false
             }
-            enqueueSnackbar('保存成功', {variant: 'success'})
+            showToast('保存成功', Intent.SUCCESS)
             setVisible(false)
             onSave?.()
             return true
         } catch (err) {
             console.error('保存失败:', err);
-            enqueueSnackbar('保存失败', {variant: 'error'})
+            showToast('保存失败', Intent.DANGER)
             return false
         } finally {
             setSaving(false)
         }
-    }, [torrentId, selectedVolumes, volumeForms, nodeData, onSave, enqueueSnackbar])
+    }, [torrentId, selectedVolumes, volumeForms, nodeData, onSave])
 
     const handleCancel = useCallback(() => setVisible(false), [])
 
@@ -732,6 +726,14 @@ interface DiscEditorContentProps {
     handleSubmit: () => Promise<boolean>
 }
 
+function applyExpansion(nodes: TreeNodeInfo[], expanded: Set<string>): TreeNodeInfo[] {
+    return nodes.map(n => ({
+        ...n,
+        isExpanded: expanded.has(String(n.id)),
+        childNodes: n.childNodes ? applyExpansion(n.childNodes, expanded) : undefined,
+    }))
+}
+
 export function DiscEditorContent({
                                       loading,
                                       saving,
@@ -757,7 +759,6 @@ export function DiscEditorContent({
                                       submitted,
                                       handleSubmit,
                                   }: DiscEditorContentProps) {
-    const [worksHover, setWorksHover] = useState(-1)
     const fmtVol = useCallback((v: number) => worksCount === 1
         ? `第${v}卷`
         : `作品${Math.floor(v / 1000)}-第${v % 1000}卷`, [worksCount])
@@ -780,82 +781,68 @@ export function DiscEditorContent({
         [getNodeVolume, getNodeSharedVolumes],
     )
 
-    const leafResults = useMemo(() => {
-        const keys: string[] = []
-        nodeData.forEach((data, key) => {
-            if (!data.files?.length) return
-            if (data.volume_no !== undefined || data.shared_volume_nos?.length) keys.push(key)
-        })
-        return keys.sort()
-    }, [nodeData])
+    const treeNodes = useMemo(
+        () => buildEditorTreeNodes(treeData, nodeContentProps, computeIsMixed),
+        [treeData, nodeContentProps, computeIsMixed],
+    )
+
+    const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
+    useEffect(() => {
+        setExpandedNodes(new Set(defaultExpandedKeys))
+    }, [defaultExpandedKeys])
+
+    const displayNodes = useMemo(
+        () => applyExpansion(treeNodes, expandedNodes),
+        [treeNodes, expandedNodes],
+    )
 
     return (
-        <Card variant="outlined" sx={{position: 'relative', mx: 2, mt: 1, mb: 2}}>
+        <Card elevation={0} style={{position: 'relative', margin: '8px 16px 16px', border: '1px solid #d8e1e8'}}>
             {loading && (
-                <Box sx={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, bgcolor: 'rgba(255,255,255,0.6)'}}>
-                    <CircularProgress/>
-                </Box>
+                <div style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, background: 'var(--overlay-bg)'}}>
+                    <Spinner />
+                </div>
             )}
-            <CardHeader
-                title={
-                    <Stack direction="row" alignItems="center"
-                     spacing={2}
-                    >
-                        <Typography variant="subtitle2">文件列表</Typography>
-                        <Typography variant="body2" color="text.secondary">{files.length} 个文件</Typography>
-                        <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
-                            <Typography variant="body2" color="text.secondary" sx={{whiteSpace: 'nowrap'}}>作品数</Typography>
-                            <Rating
-                                value={worksCount}
-                                max={10}
-                                onChange={(_, v) => {
-                                    if (v == null) return
-                                    setWorksCount(v)
-                                    resetVolumeAssignments()
-                                }}
-                                onChangeActive={(_, v) => setWorksHover(v)}
-                                size="small"
-                                sx={{'& .MuiRating-icon': {mx: '1px'}}}
-                                IconContainerComponent={({value: v, ...props}) => {
-                                    const active = worksHover > 0 ? worksHover : worksCount
-                                    const filled = v <= active
-                                    return (
-                                        <span {...props}>
-                                            <Box sx={{
-                                                width: 20, height: 20, borderRadius: '50%',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: 11, fontWeight: 600, lineHeight: 1,
-                                                border: '1px solid',
-                                                borderColor: filled ? 'primary.main' : 'divider',
-                                                bgcolor: filled ? 'primary.main' : 'transparent',
-                                                color: filled ? 'primary.contrastText' : 'text.disabled',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.15s',
-                                            }}>{v}</Box>
-                                        </span>
-                                    )
-                                }}
-                            />
-                        </Box>
-                    </Stack>
-                }
-            
-                sx={{pt: 2, pb: 1, px: 2}}
-            />
-            <CardContent sx={{pt: 0, px: 2, pb: '8px !important'}}>
+            <div style={{padding: '16px 16px 8px', display: 'flex', alignItems: 'center', gap: 16}}>
+                <span style={{fontWeight: 600, fontSize: 14}}>文件列表</span>
+                <span style={{color: '#5c7080', fontSize: 14}}>{files.length} 个文件</span>
+                <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
+                    <span style={{color: '#5c7080', fontSize: 14, whiteSpace: 'nowrap'}}>作品数</span>
+                    <NumericInput
+                        min={1}
+                        max={10}
+                        value={worksCount}
+                        onValueChange={(v) => {
+                            if (v >= 1 && v <= 10) {
+                                setWorksCount(v)
+                                resetVolumeAssignments()
+                            }
+                        }}
+                        style={{width: 60}}
+                        small
+                    />
+                </div>
+            </div>
+            <div style={{padding: '0 16px 8px'}}>
                 {files.length > 0 ? (
-                    <SimpleTreeView defaultExpandedItems={defaultExpandedKeys}>
-                        {renderEditorTreeNodes(treeData, nodeContentProps, computeIsMixed)}
-                    </SimpleTreeView>
+                    <Tree
+                        contents={displayNodes}
+                        onNodeExpand={node => setExpandedNodes(prev => new Set(prev).add(String(node.id)))}
+                        onNodeCollapse={node => {
+                            const s = new Set(expandedNodes)
+                            s.delete(String(node.id))
+                            setExpandedNodes(s)
+                        }}
+                    />
                 ) : (
-                    <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, color: 'text.disabled'}}>
-                        <InboxIcon sx={{fontSize: 48, mb: 1}}/>
-                        <Typography>暂无文件数据</Typography>
-                    </Box>
+                    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 0', color: '#5c7080'}}>
+                        <span style={{fontSize: 48, marginBottom: 8}}>📥</span>
+                        <span>暂无文件数据</span>
+                    </div>
                 )}
-            </CardContent>
+            </div>
             {selectedVolumes.length > 0 && (
-                <CardContent sx={{pt: 1, px: 2, pb: '8px !important'}}>
+                <div style={{padding: '4px 16px 8px'}}>
                     <VolumeFormList
                         selectedVolumes={selectedVolumes}
                         volumeForms={volumeForms}
@@ -865,7 +852,7 @@ export function DiscEditorContent({
                         submitted={submitted}
                         onSubmit={handleSubmit}
                     />
-                </CardContent>
+                </div>
             )}
         </Card>
     )

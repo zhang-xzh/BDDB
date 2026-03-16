@@ -1,17 +1,11 @@
-"use client";
+'use client'
 
-import React, {useCallback, useEffect, useMemo, useState} from "react";
-import {Box, Card, CardContent, Chip, CircularProgress, FormControl, InputLabel, MenuItem, Select, Switch, TextField, Tooltip, Typography,} from "@mui/material";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import HighlightOffIcon from "@mui/icons-material/HighlightOff";
-import InboxIcon from "@mui/icons-material/Inbox";
-import type {TorrentWithVolume} from "@/lib/mongodb";
-import {fetchApi} from "@/lib/api";
-import {DiscEditorContent, useDiscEditor} from "@/components/DiscEditor";
-import {PAGE_SIZE} from "@/lib/utils";
-import ListPagination from "@/components/ListPagination";
-import {useEditorPanel} from "@/components/useEditorPanel";
-import CollapsePageList, {ExpandBlocker} from "@/components/CollapsePageList";
+import React, {useCallback, useEffect, useMemo, useState} from 'react'
+import {Card, HTMLSelect, Icon, InputGroup, NonIdealState, PopoverNext, Spinner, Switch, Tag, Tooltip} from '@blueprintjs/core'
+import {Cell, Column, Table2, SelectionModes} from '@blueprintjs/table'
+import type {TorrentWithVolume} from '@/lib/mongodb'
+import {fetchApi} from '@/lib/api'
+import {DiscEditorContent, useDiscEditor} from '@/components/DiscEditor'
 
 function matchesFilters(torrent: TorrentWithVolume, filters: {
     searchText: string; invertSearch: boolean
@@ -35,7 +29,6 @@ function useTorrentListView(torrents: TorrentWithVolume[]) {
     const [filterCategory, setFilterCategory] = useState<string | undefined>(undefined)
     const [filterHasVolumes, setFilterHasVolumes] = useState<boolean | undefined>(undefined)
     const [filterState, setFilterState] = useState<string | undefined>(undefined)
-    const [currentPage, setCurrentPage] = useState(1)
 
     const categories = useMemo(() =>
             Array.from(new Set(torrents.map(t => t.category).filter((c): c is string => Boolean(c)))),
@@ -55,255 +48,202 @@ function useTorrentListView(torrents: TorrentWithVolume[]) {
             })),
         [torrents, searchText, invertSearch, filterCategory, filterHasVolumes, filterState])
 
-    const pagedTorrents = useMemo(() => {
-        const start = (currentPage - 1) * PAGE_SIZE
-        return filteredTorrents.slice(start, start + PAGE_SIZE)
-    }, [filteredTorrents, currentPage])
-
-    useEffect(() => {
-        setCurrentPage(1)
-    }, [searchText, invertSearch, filterCategory, filterHasVolumes, filterState])
-
     return {
         searchText, setSearchText, invertSearch, setInvertSearch,
         filterCategory, setFilterCategory, filterHasVolumes, setFilterHasVolumes,
-        filterState, setFilterState, currentPage, setCurrentPage, categories, states, filteredTorrents, pagedTorrents,
+        filterState, setFilterState, categories, states, filteredTorrents,
     }
 }
 
-
 // ─── Components ───────────────────────────────────────────────────────────────
 
-const NONE = '__none__'
-
-const TorrentFiltersBar: React.FC<{
-    searchText: string; invertSearch: boolean; filterCategory?: string; filterHasVolumes?: boolean; filterState?: string
-    categories: string[]; states: string[]; total: number
-    onSearchTextChange: (v: string) => void; onInvertSearchChange: (v: boolean) => void
-    onCategoryChange: (v: string | undefined) => void; onHasVolumesChange: (v: boolean | undefined) => void
-    onStateChange: (v: string | undefined) => void
-}> = ({
-          searchText, invertSearch, filterCategory, filterHasVolumes, filterState, categories, states, total,
-          onSearchTextChange, onInvertSearchChange, onCategoryChange, onHasVolumesChange, onStateChange
-      }) => {
-    return (
-        <Box sx={{display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1}}>
-            <TextField
-                value={searchText}
-                onChange={e => onSearchTextChange(e.target.value)}
-                label="搜索种子"
-                size="small"
-                sx={{width: 250}}
-                slotProps={{
-                    input: {
-                        endAdornment: (
-                            <Tooltip title="反向">
-                                <Switch
-                                    checked={invertSearch}
-                                    onChange={e => onInvertSearchChange(e.target.checked)}
-                                    size="small"
-                                />
-                            </Tooltip>
-                        ),
-                    },
-                }}
-            />
-            <FormControl size="small" sx={{width: 200}}>
-                <InputLabel>类别</InputLabel>
-                <Select
-                    value={filterCategory ?? NONE}
-                    onChange={e => onCategoryChange(e.target.value === NONE ? undefined : e.target.value as string)}
-                    label="类别"
-                >
-                    <MenuItem value={NONE}><em>全部</em></MenuItem>
-                    {categories.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-                </Select>
-            </FormControl>
-            <FormControl size="small" sx={{width: 150}}>
-                <InputLabel>状态</InputLabel>
-                <Select
-                    value={filterState ?? NONE}
-                    onChange={e => onStateChange(e.target.value === NONE ? undefined : e.target.value as string)}
-                    label="状态"
-                >
-                    <MenuItem value={NONE}><em>全部</em></MenuItem>
-                    {states.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-                </Select>
-            </FormControl>
-            <FormControl size="small" sx={{width: 150}}>
-                <InputLabel>是否处理</InputLabel>
-                <Select
-                    value={filterHasVolumes === undefined ? NONE : String(filterHasVolumes)}
-                    onChange={e => {
-                        const v = e.target.value
-                        onHasVolumesChange(v === NONE ? undefined : v === 'true')
-                    }}
-                    label="是否处理"
-                >
-                    <MenuItem value={NONE}><em>全部</em></MenuItem>
-                    <MenuItem value="true">已处理</MenuItem>
-                    <MenuItem value="false">未处理</MenuItem>
-                </Select>
-            </FormControl>
-            <Typography variant="body2" color="text.secondary">共 {total} 条</Typography>
-        </Box>
-    )
-}
-
-const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume; isExpanded: boolean }> = ({torrent, isExpanded}) => {
-    return (
-        <ExpandBlocker isExpanded={isExpanded}>
-            <Box sx={{display: 'flex', alignItems: 'center', gap: 1, width: '100%', overflow: 'hidden'}}>
-                <Box sx={{width: 56, flexShrink: 0}}>
-                    {torrent.hasVolumes
-                        ? <Chip
-                            icon={<CheckCircleOutlineIcon/>}
-                            label={torrent.volumeCount}
-                            color="success"
-                            size="small"
-                            sx={{m: 0}}
-                        />
-                        : <HighlightOffIcon color="disabled" fontSize="small"/>
-                    }
-                </Box>
-                <Typography
-                    variant="body2"
-                    noWrap
-                    sx={{
-                        flex: 1,
-                        minWidth: 0,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                    }}
-                >
-                    {torrent.name}
-                </Typography>
-                <Box sx={{width: 200, flexShrink: 0, overflow: 'hidden'}}>
-                    {torrent.category
-                        ? <Chip label={torrent.category} color="primary" size="small" sx={{m: 0, maxWidth: '100%'}}/>
-                        : <Typography variant="body2" color="text.secondary">—</Typography>
-                    }
-                </Box>
-                <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{width: 100, flexShrink: 0, textAlign: 'right'}}
-                >
-                    {torrent.state || '—'}
-                </Typography>
-            </Box>
-        </ExpandBlocker>
-    )
-}
-
 const TorrentsPage: React.FC = () => {
-    const [loading, setLoading] = useState(false);
-    const [torrents, setTorrents] = useState<TorrentWithVolume[]>([]);
+    const [loading, setLoading] = useState(false)
+    const [torrents, setTorrents] = useState<TorrentWithVolume[]>([])
+    const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
 
     const fetchTorrents = useCallback(async () => {
-        setLoading(true);
+        setLoading(true)
         try {
-            const res = await fetchApi<TorrentWithVolume[]>("/api/qb/torrents/info");
-            if (res.success && res.data) setTorrents(res.data);
+            const res = await fetchApi<TorrentWithVolume[]>('/api/qb/torrents/info')
+            if (res.success && res.data) setTorrents(res.data)
         } catch (error) {
-            console.error("获取种子列表失败:", error);
+            console.error('获取种子列表失败:', error)
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
-    }, []);
+    }, [])
 
-    const editor = useDiscEditor(fetchTorrents);
+    const editor = useDiscEditor(fetchTorrents)
     const {
         searchText, setSearchText,
         invertSearch, setInvertSearch,
         filterCategory, setFilterCategory,
         filterHasVolumes, setFilterHasVolumes,
         filterState, setFilterState,
-        currentPage, setCurrentPage,
         categories, states,
-        filteredTorrents, pagedTorrents,
-    } = useTorrentListView(torrents);
-    const {activeKey, handleCollapseChange, closeForPageChange} = useEditorPanel({
-        pagedItems: pagedTorrents,
-        getItemKey: t => t.hash,
-        openItem: t => editor.open(t.hash, t.name, false),
-        editor,
-    });
+        filteredTorrents,
+    } = useTorrentListView(torrents)
+
+    // Sort
+    const [sortKey, setSortKey] = useState<string | null>(null)
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+    const [colWidths, setColWidths] = useState<(number | null)[]>([70, null, 120, 100])
+
+    const sortedTorrents = useMemo(() => {
+        if (!sortKey) return filteredTorrents
+        return [...filteredTorrents].sort((a, b) => {
+            let va: string | number, vb: string | number
+            switch (sortKey) {
+                case 'status': va = a.volumeCount ?? 0; vb = b.volumeCount ?? 0; break
+                case 'name': va = a.name ?? ''; vb = b.name ?? ''; break
+                case 'category': va = a.category ?? ''; vb = b.category ?? ''; break
+                case 'state': va = a.state ?? ''; vb = b.state ?? ''; break
+                default: return 0
+            }
+            if (typeof va === 'string') return sortDir === 'asc' ? va.localeCompare(vb as string) : (vb as string).localeCompare(va)
+            return sortDir === 'asc' ? (va as number) - (vb as number) : (vb as number) - (va as number)
+        })
+    }, [filteredTorrents, sortKey, sortDir])
+
+    const toggleSort = useCallback((key: string) => {
+        if (sortKey === key) {
+            setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+        } else {
+            setSortKey(key)
+            setSortDir('asc')
+        }
+    }, [sortKey])
+
+    const sortIcon = useCallback((key: string) => {
+        if (sortKey !== key) return null
+        return <Icon icon={sortDir === 'asc' ? 'caret-up' : 'caret-down'} size={12}/>
+    }, [sortKey, sortDir])
 
     useEffect(() => {
-        fetchTorrents();
-    }, [fetchTorrents]);
+        fetchTorrents()
+    }, [fetchTorrents])
+
+    // Reset selection when filters change
+    useEffect(() => {
+        setSelectedIdx(null)
+    }, [searchText, invertSearch, filterCategory, filterHasVolumes, filterState])
+
+    const selectedTorrent = selectedIdx !== null ? sortedTorrents[selectedIdx] : null
+
+    const handleRowSelect = useCallback(async (idx: number) => {
+        const t = sortedTorrents[idx]
+        if (!t) return
+        if (selectedIdx === idx) {
+            if (editor.hasChanges()) await editor.handleSubmit()
+            setSelectedIdx(null)
+            return
+        }
+        if (editor.hasChanges()) await editor.handleSubmit()
+        setSelectedIdx(idx)
+        await editor.open(t.hash, t.name, false)
+    }, [sortedTorrents, selectedIdx, editor])
 
     const hasActiveFilters = !!searchText || filterCategory !== undefined || filterHasVolumes !== undefined || filterState !== undefined
 
     const filterBar = (
-        <TorrentFiltersBar
-            searchText={searchText}
-            invertSearch={invertSearch}
-            filterCategory={filterCategory}
-            filterHasVolumes={filterHasVolumes}
-            filterState={filterState}
-            categories={categories}
-            states={states}
-            total={filteredTorrents.length}
-            onSearchTextChange={setSearchText}
-            onInvertSearchChange={setInvertSearch}
-            onCategoryChange={setFilterCategory}
-            onHasVolumesChange={setFilterHasVolumes}
-            onStateChange={setFilterState}
-        />
+        <div style={{display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 12}}>
+            <InputGroup
+                value={searchText}
+                onChange={e => setSearchText(e.currentTarget.value)}
+                placeholder="搜索种子"
+                leftIcon="search"
+                style={{width: 250}}
+                small
+                rightElement={
+                    <Tooltip content="反向搜索">
+                        <Switch checked={invertSearch} onChange={e => setInvertSearch((e.target as HTMLInputElement).checked)} innerLabel="反" style={{marginBottom: 0, marginRight: 4}}/>
+                    </Tooltip>
+                }
+            />
+            <HTMLSelect value={filterCategory ?? ''} onChange={e => setFilterCategory(e.target.value || undefined)} options={[{label: '全部类别', value: ''}, ...categories.map(c => ({label: c, value: c}))]}/>
+            <HTMLSelect value={filterState ?? ''} onChange={e => setFilterState(e.target.value || undefined)} options={[{label: '全部状态', value: ''}, ...states.map(s => ({label: s, value: s}))]}/>
+            <HTMLSelect value={filterHasVolumes === undefined ? '' : String(filterHasVolumes)} onChange={e => { const v = e.target.value; setFilterHasVolumes(v === '' ? undefined : v === 'true') }} options={[{label: '全部', value: ''}, {label: '已处理', value: 'true'}, {label: '未处理', value: 'false'}]}/>
+            <span className="bp6-text-muted" style={{fontSize: 13}}>共 {filteredTorrents.length} 条</span>
+        </div>
     )
 
     if (filteredTorrents.length === 0 && !loading) {
         return (
-            <Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
+            <div style={{display: 'flex', flexDirection: 'column', gap: 12}}>
                 {filterBar}
-                <Card>
-                    <CardContent sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, py: 4}}>
-                        <InboxIcon sx={{fontSize: 48, color: 'text.disabled'}}/>
-                        <Typography color="text.secondary">
-                            {hasActiveFilters ? '无匹配结果' : '暂无种子数据'}
-                        </Typography>
-                    </CardContent>
-                </Card>
-            </Box>
+                <NonIdealState
+                    icon="inbox"
+                    title={hasActiveFilters ? '无匹配结果' : '暂无种子数据'}
+                />
+            </div>
         )
     }
 
     return (
-        <Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
+        <div style={{display: 'flex', flexDirection: 'column', gap: 12}}>
             {filterBar}
-            <Box sx={{position: 'relative'}}>
+            <div style={{position: 'relative'}}>
                 {loading && (
-                    <Box sx={{
+                    <div style={{
                         position: 'absolute', inset: 0, zIndex: 1,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        bgcolor: 'rgba(255,255,255,0.6)',
+                        background: 'var(--overlay-bg)',
                     }}>
-                        <CircularProgress/>
-                    </Box>
+                        <Spinner/>
+                    </div>
                 )}
-                <Card>
-                    <CollapsePageList
-                        items={pagedTorrents}
-                        getKey={t => t.hash}
-                        activeKey={activeKey}
-                        onChange={handleCollapseChange}
-                        renderLabel={(t, isExpanded) => <TorrentRowLabel torrent={t} isExpanded={isExpanded}/>}
-                        renderContent={() => <DiscEditorContent {...editor} />}
-                    />
-                </Card>
-            </Box>
-            <ListPagination
-                currentPage={currentPage}
-                total={filteredTorrents.length}
-                onPageChange={(page) => {
-                    closeForPageChange();
-                    setCurrentPage(page);
-                }}
+                <Table2
+                    numRows={sortedTorrents.length}
+                    enableRowResizing={false}
+                    columnWidths={colWidths}
+                    onColumnWidthChanged={(idx, size) => setColWidths(prev => { const n = [...prev]; n[idx] = size; return n })}
+                    selectionModes={SelectionModes.ROWS_AND_CELLS}
+                    enableMultipleSelection={false}
+                    onSelection={regions => {
+                        const rowIdx = regions?.[0]?.rows?.[0]
+                        if (rowIdx !== undefined) handleRowSelect(rowIdx)
+                    }}
+                    getCellClipboardData={(row, col) => {
+                        const t = sortedTorrents[row]
+                        if (!t) return ''
+                        switch (col) {
+                            case 0: return t.hasVolumes ? `✓${t.volumeCount}` : '✗'
+                            case 1: return t.name ?? ''
+                            case 2: return t.category ?? ''
+                            case 3: return t.state ?? ''
+                            default: return ''
+                        }
+                    }}
+                >
+                    <Column name="状态" nameRenderer={(name) => <span style={{cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2}} onClick={() => toggleSort('status')}>{name}{sortIcon('status')}</span>} cellRenderer={row => {
+                        const t = sortedTorrents[row]
+                        return <Cell>
+                            {t?.hasVolumes
+                                ? <span><Icon icon="tick-circle" intent="success" size={12}/> {t.volumeCount}</span>
+                                : <Icon icon="disable" className="bp6-text-muted" size={12}/>}
+                        </Cell>
+                    }}/>
+                    <Column name="名称" nameRenderer={(name) => <span style={{cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2}} onClick={() => toggleSort('name')}>{name}{sortIcon('name')}</span>} cellRenderer={row => <Cell>{sortedTorrents[row]?.name}</Cell>}/>
+                    <Column name="类别" nameRenderer={(name) => <span style={{cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2}} onClick={() => toggleSort('category')}>{name}{sortIcon('category')}</span>} cellRenderer={row => {
+                        const cat = sortedTorrents[row]?.category
+                        return <Cell>{cat ? <Tag minimal>{cat}</Tag> : '—'}</Cell>
+                    }}/>
+                    <Column name="状态" nameRenderer={(name) => <span style={{cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2}} onClick={() => toggleSort('state')}>{name}{sortIcon('state')}</span>} cellRenderer={row => <Cell>{sortedTorrents[row]?.state || '—'}</Cell>}/>
+                </Table2>
+            </div>
+            <PopoverNext
+                isOpen={selectedTorrent !== null}
+                content={<Card style={{padding: 12, maxWidth: 900}}><DiscEditorContent {...editor} /></Card>}
+                placement="bottom-start"
+                arrow={false}
+                canEscapeKeyClose
+                onClose={() => setSelectedIdx(null)}
+                usePortal={false}
+                renderTarget={({ref, ...targetProps}) => <div ref={ref} {...targetProps} style={{width: '100%', height: 0}} />}
             />
-        </Box>
-    );
-};
+        </div>
+    )
+}
 
-export default TorrentsPage;
+export default TorrentsPage

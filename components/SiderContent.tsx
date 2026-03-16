@@ -1,10 +1,9 @@
 'use client'
 
 import React, {useCallback, useEffect, useRef, useState} from 'react'
-import {Accordion, AccordionDetails, AccordionSummary, Box, Chip, CircularProgress, Dialog, DialogContent, IconButton, InputAdornment, TextField, Typography,} from '@mui/material'
-import SearchIcon from '@mui/icons-material/Search'
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import InboxIcon from '@mui/icons-material/Inbox'
+import {Button, Collapse, Dialog, DialogBody, Icon, InputGroup, Spinner, Tag} from '@blueprintjs/core'
+import {Intent} from '@blueprintjs/core'
+import {showToast} from '@/lib/toaster'
 import type {ProductSearchDoc} from '@/lib/meilisearch/productSearch'
 
 interface SearchResponse {
@@ -24,6 +23,12 @@ interface ApiResponse {
 }
 
 const PAGE_SIZE = 20
+
+const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('已复制: ' + text, Intent.SUCCESS)
+    })
+}
 
 const SiderContent: React.FC = () => {
     const [searchText, setSearchText] = useState('')
@@ -50,7 +55,6 @@ const SiderContent: React.FC = () => {
                 return
             }
 
-            // 转换 API 返回的数据结构
             setSearchResult({
                 products: apiData.data || [],
                 total: apiData.total || 0,
@@ -67,7 +71,6 @@ const SiderContent: React.FC = () => {
         }
     }
 
-    // 加载更多数据
     const loadMore = useCallback(async () => {
         if (!searchResult || loadingMore || !hasMore) return
 
@@ -100,14 +103,12 @@ const SiderContent: React.FC = () => {
         }
     }, [searchResult, loadingMore, hasMore, searchText])
 
-    // 监听滚动事件
     useEffect(() => {
         const container = scrollContainerRef.current
         if (!container) return
 
         const handleScroll = () => {
             const {scrollTop, scrollHeight, clientHeight} = container
-            // 滚动超过 70% 时提前触发加载，确保流畅体验
             const scrollPercent = (scrollTop + clientHeight) / scrollHeight
             if (scrollPercent > 0.7) {
                 loadMore()
@@ -118,7 +119,6 @@ const SiderContent: React.FC = () => {
         return () => container.removeEventListener('scroll', handleScroll)
     }, [loadMore])
 
-    // 格式化日期显示
     const formatDate = (dateStr?: string) => {
         if (!dateStr) return null
         try {
@@ -129,140 +129,124 @@ const SiderContent: React.FC = () => {
         }
     }
 
-    // 生成产品列表项
     const products = searchResult?.products || []
 
     return (
-        <Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
-            <TextField
-                fullWidth size="small"
-                label="搜索产品"
+        <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
+            <InputGroup
+                leftIcon="search"
+                placeholder="搜索产品"
                 value={searchText}
                 onChange={e => setSearchText(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                slotProps={{
-                    input: {
-                        endAdornment: (
-                            <InputAdornment position="end">
-                                {loading
-                                    ? <CircularProgress size={16}/>
-                                    : <IconButton size="small" onClick={handleSearch}><SearchIcon fontSize="small"/></IconButton>
-                                }
-                            </InputAdornment>
-                        )
-                    }
-                }}
+                rightElement={
+                    loading
+                        ? <Spinner size={16}/>
+                        : <Button minimal icon="search" onClick={handleSearch}/>
+                }
             />
 
-            <Box ref={scrollContainerRef} sx={{overflow: 'auto', maxHeight: 'calc(100vh - 220px)'}}>
+            <div ref={scrollContainerRef} style={{overflow: 'auto', flex: 1}}>
                 {searchResult ? (
                     products.length > 0 ? (
-                        <Box>
-                            <Typography variant="caption" color="text.secondary" sx={{px: 1, display: 'block', mb: 1}}>
+                        <div>
+                            <div style={{fontSize: 12, color: '#8a9ba8', padding: '0 4px', marginBottom: 6}}>
                                 共找到 {searchResult.total} 个结果{hasMore && '（滚动加载更多）'}
-                            </Typography>
+                            </div>
                             {products.map((product, i) => {
                                 const thumbnailUrl = product.images?.[0]
                                 const releaseDate = formatDate(product.release_date)
                                 const itemKey = `${product.model_number ?? product.title}-${i}`
+                                const isExpanded = expandedKey === itemKey
                                 return (
-                                    <Accordion
-                                        key={itemKey}
-                                        variant="outlined"
-                                        disableGutters
-                                        expanded={expandedKey === itemKey}
-                                        onChange={() => {}}
-                                    >
-                                        <AccordionSummary
-                                            sx={{
-                                                px: 1,
-                                                alignItems: 'flex-start',
-                                                userSelect: 'text',
-                                                '& .MuiAccordionSummary-content': {
-                                                    width: '100%',
-                                                },
-                                            }}
-                                        >
-                                            <Box sx={{display: 'flex', gap: 1.5, alignItems: 'flex-start', width: '100%'}}>
-                                                {/* 缩略图 */}
-                                                {thumbnailUrl ? (
-                                                    <Box
-                                                        component="img" src={thumbnailUrl} alt={product.title}
-                                                        onClick={() => setSelectedImage(thumbnailUrl)}
-                                                        sx={{width: 60, height: 60, objectFit: 'cover', borderRadius: 1, flexShrink: 0, cursor: 'pointer'}}
-                                                    />
-                                                ) : (
-                                                    <Box sx={{width: 60, height: 60, borderRadius: 1, flexShrink: 0, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                                        <Typography variant="caption" color="text.disabled">无图</Typography>
-                                                    </Box>
-                                                )}
-                                                <Box sx={{flex: 1, minWidth: 0}}>
-                                                    <Typography variant="body2" fontWeight={600} sx={{wordBreak: 'break-word'}}>
-                                                        {product.title}
-                                                    </Typography>
-                                                    <Box sx={{display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5, alignItems: 'center', justifyContent: 'space-between'}}>
-                                                        <Box sx={{display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center'}}>
-                                                            {product.model_number && <Chip label={product.model_number} size="small" color="primary" variant="outlined"/>}
-                                                            {releaseDate && <Chip label={releaseDate} size="small" color="success" variant="outlined"/>}
-                                                        </Box>
-                                                        <ExpandMoreIcon
-                                                            onClick={(e) => {
-                                                                e.stopPropagation()
-                                                                setExpandedKey(expandedKey === itemKey ? null : itemKey)
-                                                            }}
-                                                            sx={{
-                                                                cursor: 'pointer',
-                                                                transform: expandedKey === itemKey ? 'rotate(180deg)' : 'rotate(0deg)',
-                                                                transition: 'transform 0.3s',
-                                                            }}
-                                                        />
-                                                    </Box>
-                                                </Box>
-                                            </Box>
-                                        </AccordionSummary>
-                                        <AccordionDetails sx={{px: 1.5, py: 1}}>
-                                            {product.note_raw ? (
-                                                <Box
-                                                    sx={{fontSize: 13, lineHeight: 1.6, bgcolor: 'action.hover', p: 1.5, borderRadius: 1}}
-                                                    dangerouslySetInnerHTML={{__html: product.note_raw}}
+                                    <div key={itemKey} style={{borderBottom: '1px solid #30404d', padding: '6px 4px'}}>
+                                        <div style={{display: 'flex', gap: 8, alignItems: 'flex-start'}}>
+                                            {thumbnailUrl ? (
+                                                <img
+                                                    src={thumbnailUrl} alt={product.title}
+                                                    onClick={() => setSelectedImage(thumbnailUrl)}
+                                                    style={{width: 50, height: 50, objectFit: 'cover', borderRadius: 3, flexShrink: 0, cursor: 'pointer'}}
                                                 />
                                             ) : (
-                                                <Typography variant="caption" color="text.secondary">暂无详细说明</Typography>
+                                                <div style={{width: 50, height: 50, borderRadius: 3, flexShrink: 0, background: '#30404d', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                                    <span style={{fontSize: 11, color: '#5c7080'}}>无图</span>
+                                                </div>
                                             )}
-                                        </AccordionDetails>
-                                    </Accordion>
+                                            <div style={{flex: 1, minWidth: 0}}>
+                                                <span
+                                                    style={{fontSize: 13, fontWeight: 600, wordBreak: 'break-word', cursor: 'pointer'}}
+                                                    onClick={() => copyToClipboard(product.title)}
+                                                    title="点击复制标题"
+                                                >
+                                                    {product.title}
+                                                </span>
+                                                <div style={{display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4, alignItems: 'center', justifyContent: 'space-between'}}>
+                                                    <div style={{display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center'}}>
+                                                        {product.model_number && (
+                                                            <Tag
+                                                                minimal interactive intent={Intent.PRIMARY}
+                                                                onClick={() => copyToClipboard(product.model_number!)}
+                                                                title="点击复制型号"
+                                                            >
+                                                                {product.model_number}
+                                                            </Tag>
+                                                        )}
+                                                        {releaseDate && (
+                                                            <Tag minimal intent={Intent.SUCCESS}>{releaseDate}</Tag>
+                                                        )}
+                                                    </div>
+                                                    <Button
+                                                        minimal small
+                                                        icon={isExpanded ? 'chevron-up' : 'chevron-down'}
+                                                        onClick={() => setExpandedKey(isExpanded ? null : itemKey)}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <Collapse isOpen={isExpanded}>
+                                            <div style={{padding: '6px 0 2px 0'}}>
+                                                {product.note_raw ? (
+                                                    <div
+                                                        style={{fontSize: 12, lineHeight: 1.6, background: '#252a31', padding: 8, borderRadius: 3}}
+                                                        dangerouslySetInnerHTML={{__html: product.note_raw}}
+                                                    />
+                                                ) : (
+                                                    <span style={{fontSize: 12, color: '#5c7080'}}>暂无详细说明</span>
+                                                )}
+                                            </div>
+                                        </Collapse>
+                                    </div>
                                 )
                             })}
                             {loadingMore && (
-                                <Box sx={{display: 'flex', justifyContent: 'center', py: 2}}>
-                                    <CircularProgress size={20}/>
-                                </Box>
+                                <div style={{display: 'flex', justifyContent: 'center', padding: '12px 0'}}>
+                                    <Spinner size={20}/>
+                                </div>
                             )}
-                        </Box>
+                        </div>
                     ) : (
-                        <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, gap: 1}}>
-                            <InboxIcon sx={{fontSize: 40, color: 'text.disabled'}}/>
-                            <Typography variant="body2" color="text.secondary">未找到相关产品</Typography>
-                        </Box>
+                        <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 0', gap: 8}}>
+                            <Icon icon="inbox" size={36} style={{color: '#5c7080'}}/>
+                            <span style={{fontSize: 13, color: '#8a9ba8'}}>未找到相关产品</span>
+                        </div>
                     )
                 ) : (
-                    <Typography variant="body2" color="text.secondary" sx={{px: 1}}>输入关键词搜索产品</Typography>
+                    <span style={{fontSize: 13, color: '#8a9ba8', padding: '0 4px'}}>输入关键词搜索产品</span>
                 )}
-            </Box>
+            </div>
 
-            <Dialog open={!!selectedImage} onClose={() => setSelectedImage(null)} maxWidth="lg">
-                <DialogContent sx={{p: 0, bgcolor: 'transparent'}}>
+            <Dialog isOpen={!!selectedImage} onClose={() => setSelectedImage(null)} style={{width: 'auto', paddingBottom: 0}}>
+                <DialogBody>
                     {selectedImage && (
-                        <Box
-                            component="img"
+                        <img
                             src={selectedImage}
                             alt="大图预览"
-                            sx={{width: '100%', height: 'auto', maxHeight: '80vh', objectFit: 'contain'}}
+                            style={{width: '100%', height: 'auto', maxHeight: '80vh', objectFit: 'contain'}}
                         />
                     )}
-                </DialogContent>
+                </DialogBody>
             </Dialog>
-        </Box>
+        </div>
     )
 }
 

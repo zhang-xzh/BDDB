@@ -4,15 +4,10 @@ import React, {useCallback, useMemo, useRef, useState} from 'react'
 import {FileItem, NodeData} from '@/lib/mongodb'
 import {fetchApi, postApi} from '@/lib/api'
 import {buildTree} from '@/lib/utils'
-import {Autocomplete, Box, Button, Card, CardContent, CardHeader, Chip, CircularProgress, Divider, Link, Stack, TextField, Typography,} from '@mui/material'
-import EditIcon from '@mui/icons-material/Edit'
-import CloseIcon from '@mui/icons-material/Close'
-import SaveIcon from '@mui/icons-material/Save'
-import {SimpleTreeView} from '@mui/x-tree-view/SimpleTreeView'
-import InboxIcon from '@mui/icons-material/Inbox'
-import {useSnackbar} from 'notistack'
-import type {EditorTreeNodeProps} from '@/components/EditorTreeNode'
-import {renderEditorTreeNodes} from '@/components/EditorTreeNode'
+import {Button, Card, Divider, Icon, Intent, MenuItem, Spinner, Tag, Tree} from '@blueprintjs/core'
+import type {TreeNodeInfo} from '@blueprintjs/core'
+import {MultiSelect} from '@blueprintjs/select'
+import {showToast} from '@/lib/toaster'
 import {type BangumiSearchResult, type BangumiSubject, formatDate, getBangumiSubject, getTypeName, searchBangumi} from '@/lib/bangumi'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -60,7 +55,6 @@ interface UseWorkEditorReturn {
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
-    const {enqueueSnackbar, closeSnackbar} = useSnackbar()
     const [saving, setSaving] = useState(false)
     const [loading, setLoading] = useState(false)
     const [volumeInfo, setVolumeInfo] = useState<WorkInfo | null>(null)
@@ -143,22 +137,22 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
                 works: previousWorks.length > 0 ? previousWorks : null,
             })
             if (!result?.success) {
-                enqueueSnackbar('撤销失败', {variant: 'error'})
+                showToast('撤销失败', Intent.DANGER)
                 return false
             }
             setSelectedWorks(previousWorks)
             initialWorksRef.current = previousWorks
-            enqueueSnackbar('已撤销', {variant: 'success'})
+            showToast('已撤销', Intent.SUCCESS)
             onSave?.()
             return true
         } catch (err) {
             console.error('撤销失败:', err)
-            enqueueSnackbar('撤销失败', {variant: 'error'})
+            showToast('撤销失败', Intent.DANGER)
             return false
         } finally {
             setSaving(false)
         }
-    }, [volumeInfo, enqueueSnackbar, onSave])
+    }, [volumeInfo, onSave])
 
     const handleSubmit = useCallback(async (worksToSave?: (BangumiSubject | SearchResultItem)[] | null): Promise<boolean> => {
         if (volumeInfo == null) return false
@@ -173,7 +167,7 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
                 works: works && works.length > 0 ? works : null,
             })
             if (!result?.success) {
-                enqueueSnackbar(result?.error || '保存失败', {variant: 'error'})
+                showToast(result?.error || '保存失败', Intent.DANGER)
                 return false
             }
             previousWorksRef.current = initialWorksRef.current
@@ -181,31 +175,17 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
             initialWorksRef.current = works as BangumiSubject[]
             onSave?.()
 
-            const snackbarKey = enqueueSnackbar('作品关联已更新', {
-                variant: 'success',
-                action: (key) => (
-                    <Button
-                        size="small"
-                        color="inherit"
-                        onClick={() => {
-                            closeSnackbar(key)
-                            undoSave(worksBeforeSave)
-                        }}
-                    >
-                        撤销
-                    </Button>
-                ),
-            })
+            showToast('作品关联已更新', Intent.SUCCESS)
 
             return true
         } catch (err) {
             console.error('保存失败:', err)
-            enqueueSnackbar('保存失败', {variant: 'error'})
+            showToast('保存失败', Intent.DANGER)
             return false
         } finally {
             setSaving(false)
         }
-    }, [volumeInfo, selectedWorks, onSave, enqueueSnackbar, closeSnackbar, undoSave])
+    }, [volumeInfo, selectedWorks, onSave])
 
     const selectedMedias = useMemo(() => [] as number[], [])
 
@@ -247,14 +227,10 @@ interface InfoRowProps {
 function InfoRow({label, value}: InfoRowProps) {
     if (!value || value === '-') return null
     return (
-        <Box sx={{display: 'flex', alignItems: 'baseline', gap: 1, py: 0.5}}>
-            <Typography variant="body2" color="text.secondary" sx={{minWidth: 80, flexShrink: 0}}>
-                {label}
-            </Typography>
-            <Typography variant="body2" sx={{flex: 1}}>
-                {value}
-            </Typography>
-        </Box>
+        <div style={{display: 'flex', alignItems: 'baseline', gap: 8, padding: '4px 0'}}>
+            <span style={{minWidth: 80, flexShrink: 0, fontSize: 14, color: '#8a9ba8'}}>{label}</span>
+            <span style={{flex: 1, fontSize: 14}}>{value}</span>
+        </div>
     )
 }
 
@@ -266,18 +242,14 @@ interface WorkDetailProps {
 
 function WorkDetail({work}: WorkDetailProps) {
     return (
-        <Box>
+        <div>
             {/* 标题区域 */}
-            <Box sx={{mb: 2, pb: 1, borderBottom: '1px solid', borderColor: 'divider'}}>
-                <Typography variant="h6" sx={{fontSize: '1.1rem', fontWeight: 600}}>
-                    {work.name_cn || work.name}
-                </Typography>
+            <div style={{marginBottom: 16, paddingBottom: 8, borderBottom: '1px solid #d3d8de'}}>
+                <div style={{fontSize: '1.1rem', fontWeight: 600}}>{work.name_cn || work.name}</div>
                 {work.name_cn && work.name !== work.name_cn && (
-                    <Typography variant="body2" color="text.secondary" sx={{mt: 0.5}}>
-                        {work.name}
-                    </Typography>
+                    <div style={{marginTop: 4, fontSize: 14, color: '#8a9ba8'}}>{work.name}</div>
                 )}
-            </Box>
+            </div>
 
             {/* 基本信息 */}
             <InfoRow label="日文标题" value={work.name}/>
@@ -296,37 +268,27 @@ function WorkDetail({work}: WorkDetailProps) {
             )}
 
             {/* Bangumi 链接 */}
-            <Box sx={{display: 'flex', alignItems: 'baseline', gap: 1, py: 0.5}}>
-                <Typography variant="body2" color="text.secondary" sx={{minWidth: 80}}>
-                    Bangumi
-                </Typography>
-                <Link
-                    href={work.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variant="body2"
-                    sx={{flex: 1}}
-                >
+            <div style={{display: 'flex', alignItems: 'baseline', gap: 8, padding: '4px 0'}}>
+                <span style={{minWidth: 80, fontSize: 14, color: '#8a9ba8'}}>Bangumi</span>
+                <a href={work.url} target="_blank" rel="noopener noreferrer" style={{flex: 1, fontSize: 14}}>
                     {work.url}
-                </Link>
-            </Box>
+                </a>
+            </div>
 
             {/* 收藏统计 */}
             {work.collection && (
-                <Box sx={{mt: 2, pt: 1, borderTop: '1px solid', borderColor: 'divider'}}>
-                    <Typography variant="body2" color="text.secondary" sx={{mb: 1}}>
-                        收藏统计
-                    </Typography>
-                    <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 1}}>
-                        <Chip label={`想看: ${work.collection.wish}`} size="small" variant="outlined"/>
-                        <Chip label={`看过: ${work.collection.collect}`} size="small" variant="outlined"/>
-                        <Chip label={`在看: ${work.collection.doing}`} size="small" variant="outlined"/>
-                        <Chip label={`搁置: ${work.collection.on_hold}`} size="small" variant="outlined"/>
-                        <Chip label={`抛弃: ${work.collection.dropped}`} size="small" variant="outlined"/>
-                    </Box>
-                </Box>
+                <div style={{marginTop: 16, paddingTop: 8, borderTop: '1px solid #d3d8de'}}>
+                    <div style={{marginBottom: 8, fontSize: 14, color: '#8a9ba8'}}>收藏统计</div>
+                    <div style={{display: 'flex', flexWrap: 'wrap', gap: 8}}>
+                        <Tag minimal>想看: {work.collection.wish}</Tag>
+                        <Tag minimal>看过: {work.collection.collect}</Tag>
+                        <Tag minimal>在看: {work.collection.doing}</Tag>
+                        <Tag minimal>搁置: {work.collection.on_hold}</Tag>
+                        <Tag minimal>抛弃: {work.collection.dropped}</Tag>
+                    </div>
+                </div>
             )}
-        </Box>
+        </div>
     )
 }
 
@@ -339,28 +301,21 @@ interface WorkReadOnlyViewProps {
 
 function WorkReadOnlyView({works, onEdit}: WorkReadOnlyViewProps) {
     return (
-        <Box>
-            <Stack spacing={2}>
+        <div>
+            <div style={{display: 'flex', flexDirection: 'column', gap: 16}}>
                 {works.map((work, index) => (
-                    <Box key={work.id}>
+                    <div key={work.id}>
                         <WorkDetail work={work}/>
                         {index < works.length - 1 && (
-                            <Box sx={{my: 2, borderBottom: '1px solid', borderColor: 'divider'}}/>
+                            <div style={{margin: '16px 0', borderBottom: '1px solid #d3d8de'}}/>
                         )}
-                    </Box>
+                    </div>
                 ))}
-            </Stack>
-            <Box sx={{mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider'}}>
-                <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<EditIcon/>}
-                    onClick={onEdit}
-                >
-                    更换作品
-                </Button>
-            </Box>
-        </Box>
+            </div>
+            <div style={{marginTop: 16, paddingTop: 16, borderTop: '1px solid #d3d8de'}}>
+                <Button small outlined icon="edit" onClick={onEdit}>更换作品</Button>
+            </div>
+        </div>
     )
 }
 
@@ -386,35 +341,8 @@ function WorkEditView({
                           onCancel,
                           saving
                       }: WorkEditViewProps) {
-    const [searchQuery, setSearchQuery] = useState('')
     const [searchResults, setSearchResults] = useState<BangumiSearchResult['list']>([])
     const [searching, setSearching] = useState(false)
-
-    // 防抖搜索
-    const handleSearchChange = useCallback(async (_: React.SyntheticEvent, value: string, reason: string) => {
-        // 选择选项时不触发搜索，保持当前搜索结果
-        if (reason === 'selectOption') {
-            return
-        }
-        setSearchQuery(value)
-        if (value.length < 2) {
-            setSearchResults([])
-            return
-        }
-        setSearching(true)
-        try {
-            const result = await searchBangumi(value, 2)
-            setSearchResults(result.list)
-        } catch (err) {
-            console.error('搜索失败:', err)
-        } finally {
-            setSearching(false)
-        }
-    }, [])
-
-    const handleChange = useCallback((_: React.SyntheticEvent, newValue: (BangumiSubject | SearchResultItem)[]) => {
-        onTempWorksChange(newValue)
-    }, [onTempWorksChange])
 
     const hasSelection = tempWorks.length > 0
     const isChanged = useMemo(() => {
@@ -425,105 +353,78 @@ function WorkEditView({
     }, [selectedWorks, tempWorks])
 
     return (
-        <Box>
-            <Autocomplete<SearchResultItem, true, false, false>
-                sx={{maxWidth: 500, mb: 2, mt: 1}}
-                size="small"
-                multiple
-                options={searchResults}
-                getOptionLabel={(option) => option.name_cn || option.name}
-                filterOptions={(x) => x} // 禁用本地过滤，使用 API 结果
-                value={tempWorks as SearchResultItem[]}
-                onChange={handleChange}
-                onInputChange={handleSearchChange}
-                isOptionEqualToValue={(option, value) => option.id === value.id}
-                loading={searching}
-                renderOption={(props, option) => (
-                    <Box component="li" {...props}>
-                        <Box sx={{display: 'flex', flexDirection: 'column', py: 0.5}}>
-                            <Typography variant="body2" sx={{fontWeight: 500}}>
-                                {option.name_cn || option.name}
-                            </Typography>
-                            {(option.name_cn && option.name !== option.name_cn) && (
-                                <Typography variant="caption" color="text.secondary">
-                                    {option.name}
-                                </Typography>
-                            )}
-                        </Box>
-                    </Box>
-                )}
-                renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                        <Chip
-                            variant="outlined"
-                            label={option.name_cn || option.name}
-                            size="small"
-                            {...getTagProps({index})}
-                            key={option.id}
+        <div>
+            <div style={{maxWidth: 500, marginBottom: 16, marginTop: 8}}>
+                <MultiSelect<SearchResultItem>
+                    items={searchResults}
+                    selectedItems={tempWorks as SearchResultItem[]}
+                    itemRenderer={(item, {handleClick, modifiers}) => (
+                        <MenuItem
+                            key={item.id}
+                            text={item.name_cn || item.name}
+                            label={item.name_cn && item.name !== item.name_cn ? item.name : undefined}
+                            onClick={handleClick}
+                            active={modifiers.active}
+                            roleStructure="listoption"
                         />
-                    ))
-                }
-                renderInput={(params) => (
-                    <TextField
-                        {...params}
-                        label="搜索作品"
-                        placeholder="输入日文或中文标题..."
-                        size="small"
-                        InputProps={{
-                            ...params.InputProps,
-                            endAdornment: (
-                                <React.Fragment>
-                                    {searching ? <CircularProgress color="inherit" size={20}/> : null}
-                                    {params.InputProps.endAdornment}
-                                </React.Fragment>
-                            ),
-                        }}
-                    />
-                )}
-            />
+                    )}
+                    tagRenderer={item => item.name_cn || item.name}
+                    onItemSelect={item => {
+                        const exists = tempWorks.find(w => w.id === item.id)
+                        if (exists) onTempWorksChange(tempWorks.filter(w => w.id !== item.id))
+                        else onTempWorksChange([...tempWorks, item])
+                    }}
+                    onRemove={(item) => onTempWorksChange(tempWorks.filter(w => w.id !== (item as any).id))}
+                    tagInputProps={{
+                        onRemove: (_, index) => onTempWorksChange(tempWorks.filter((_, i) => i !== index)),
+                        placeholder: '输入日文或中文标题...',
+                    }}
+                    onQueryChange={async (query) => {
+                        if (query.length < 2) { setSearchResults([]); return }
+                        setSearching(true)
+                        try { const result = await searchBangumi(query, 2); setSearchResults(result.list) }
+                        catch (err) { console.error('搜索失败:', err) }
+                        finally { setSearching(false) }
+                    }}
+                    itemPredicate={() => true}
+                    noResults={<MenuItem disabled text={searching ? '搜索中...' : '无结果'}/>}
+                    popoverProps={{minimal: true}}
+                />
+            </div>
 
             {/* 选中作品详情预览 */}
             {tempWorks.length > 0 && (
-                <Box sx={{mb: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1}}>
-                    <Stack spacing={1} divider={<Divider/>}>
-                        {tempWorks.map((work) => (
-                            <Box key={work.id}>
-                                <Typography variant="body2" sx={{fontWeight: 600}}>
-                                    {work.name_cn || work.name}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
+                <div style={{marginBottom: 16, padding: 12, background: 'var(--subtle-bg)', borderRadius: 4}}>
+                    {tempWorks.map((work, index) => (
+                        <React.Fragment key={work.id}>
+                            <div>
+                                <div style={{fontSize: 14, fontWeight: 600}}>{work.name_cn || work.name}</div>
+                                <div style={{fontSize: 12, color: '#8a9ba8'}}>
                                     {getTypeName(work.type)} {work.air_date}
-                                </Typography>
-                            </Box>
-                        ))}
-                    </Stack>
-                </Box>
+                                </div>
+                            </div>
+                            {index < tempWorks.length - 1 && <Divider style={{margin: '8px 0'}}/>}
+                        </React.Fragment>
+                    ))}
+                </div>
             )}
 
             {/* 操作按钮 */}
-            <Stack direction="row" spacing={1} justifyContent="flex-start" sx={{mt: 1}}>
+            <div style={{display: 'flex', gap: 8, marginTop: 8}}>
                 {onCancel && (
-                    <Button
-                        variant="text"
-                        size="small"
-                        startIcon={<CloseIcon/>}
-                        onClick={onCancel}
-                        disabled={saving}
-                    >
-                        取消
-                    </Button>
+                    <Button small icon="cross" onClick={onCancel} disabled={saving}>取消</Button>
                 )}
                 <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<SaveIcon/>}
+                    small
+                    intent={Intent.PRIMARY}
+                    icon="floppy-disk"
                     onClick={onSave}
                     disabled={!hasSelection || !isChanged || saving}
                 >
                     保存
                 </Button>
-            </Stack>
-        </Box>
+            </div>
+        </div>
     )
 }
 
@@ -611,13 +512,9 @@ function WorkFormList({selectedWorks, onWorksChange, saving = false, onSubmit}: 
     }, [tempWorks, onWorksChange, onSubmit])
 
     return (
-        <Card variant="outlined">
-            <CardHeader
-                title="作品信息"
-                titleTypographyProps={{variant: 'body2', fontWeight: 600}}
-                sx={{py: 1, px: 1.5, pb: 0.5}}
-            />
-            <CardContent sx={{pt: 1, pb: '8px !important', px: 1.5}}>
+        <Card style={{padding: 0}}>
+            <div style={{padding: '8px 12px 4px', fontWeight: 600, fontSize: 14}}>作品信息</div>
+            <div style={{padding: '8px 12px 8px'}}>
                 {isEditing ? (
                     <WorkEditView
                         selectedWorks={selectedWorks}
@@ -633,17 +530,21 @@ function WorkFormList({selectedWorks, onWorksChange, saving = false, onSubmit}: 
                         onEdit={handleEdit}
                     />
                 ) : null}
-            </CardContent>
+            </div>
         </Card>
     )
 }
 
-// ─── WorkEditor isMixed 计算 ─────────────────────────────────────────────────
+// ─── Tree helpers ────────────────────────────────────────────────────────────
 
-function makeWorkComputeIsMixed() {
-    return (leafKeys: string[], isLeaf: boolean): boolean => {
-        return false
-    }
+function buildBPTreeNodes(nodes: any[], expandedSet: Set<string>): TreeNodeInfo[] {
+    return nodes.map(node => ({
+        id: node.key,
+        label: node.title,
+        icon: node.isLeaf ? 'document' as const : 'folder-open' as const,
+        isExpanded: expandedSet.has(node.key as string),
+        childNodes: node.children?.length > 0 ? buildBPTreeNodes(node.children, expandedSet) : undefined,
+    }))
 }
 
 // ─── WorkEditorContent ───────────────────────────────────────────────────────
@@ -662,70 +563,69 @@ export function WorkEditorContent({
                                       onWorksChange,
                                       onSubmit,
                                   }: WorkEditorContentProps) {
-    const [expandedItems, setExpandedItems] = useState<string[]>(defaultExpandedKeys);
+    const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(defaultExpandedKeys))
 
     React.useEffect(() => {
-        setExpandedItems(defaultExpandedKeys);
-    }, [defaultExpandedKeys]);
+        setExpandedNodes(new Set(defaultExpandedKeys))
+    }, [defaultExpandedKeys])
 
-    const nodeContentProps = useMemo<Omit<EditorTreeNodeProps, 'title' | 'nodeKey' | 'isLeaf' | 'isMixed'>>(() => ({
-        formatValue: (v: number) => `媒介 ${v}`,
-        visibleCount: visibleMedias,
-        onLoadMore: loadMoreMedias,
-        readOnly: true,
-        getSingleValue: () => undefined,
-        getIsShared: () => false,
-        getSharedValues: () => [],
-        onSingleChange: () => {
-        },
-        onSharedChange: () => {
-        },
-        onToggleShared: () => {
-        },
-    }), [visibleMedias, loadMoreMedias])
+    const treeContents = useMemo(
+        () => buildBPTreeNodes(treeData, expandedNodes),
+        [treeData, expandedNodes],
+    )
 
-    const computeIsMixed = useMemo(() => makeWorkComputeIsMixed(), [])
+    const handleNodeExpand = useCallback((node: TreeNodeInfo) => {
+        setExpandedNodes(prev => {
+            const next = new Set(prev)
+            next.add(node.id as string)
+            return next
+        })
+    }, [])
+
+    const handleNodeCollapse = useCallback((node: TreeNodeInfo) => {
+        setExpandedNodes(prev => {
+            const next = new Set(prev)
+            next.delete(node.id as string)
+            return next
+        })
+    }, [])
 
     return (
-        <Card variant="outlined" sx={{position: 'relative', mx: 2, mt: 1, mb: 2}}>
+        <Card style={{position: 'relative', margin: '8px 16px 16px'}}>
             {(loading || saving) && (
-                <Box sx={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, bgcolor: 'rgba(255,255,255,0.6)'}}>
-                    <CircularProgress/>
-                </Box>
+                <div style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, background: 'var(--overlay-bg)'}}>
+                    <Spinner/>
+                </div>
             )}
-            <CardHeader
-                title={
-                    <Stack direction="row" alignItems="center" spacing={2}>
-                        <Typography variant="subtitle2">文件列表</Typography>
-                        <Typography variant="body2" color="text.secondary">{files.length} 个文件</Typography>
-                    </Stack>
-                }
-                sx={{pt: 2, pb: 1, px: 2}}
-            />
-            <CardContent sx={{pt: 0, px: 2, pb: '8px !important'}}>
+            <div style={{padding: '16px 16px 8px'}}>
+                <div style={{display: 'flex', alignItems: 'center', gap: 16}}>
+                    <span style={{fontWeight: 600, fontSize: 14}}>文件列表</span>
+                    <span style={{fontSize: 14, color: '#8a9ba8'}}>{files.length} 个文件</span>
+                </div>
+            </div>
+            <div style={{padding: '0 16px 8px'}}>
                 {files.length > 0 ? (
-                    <SimpleTreeView
-                        expandedItems={expandedItems}
-                        onExpandedItemsChange={(_, items) => setExpandedItems(items)}
-                    >
-                        {renderEditorTreeNodes(treeData, nodeContentProps, computeIsMixed)}
-                    </SimpleTreeView>
+                    <Tree
+                        contents={treeContents}
+                        onNodeExpand={handleNodeExpand}
+                        onNodeCollapse={handleNodeCollapse}
+                    />
                 ) : (
-                    <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, color: 'text.disabled'}}>
-                        <InboxIcon sx={{fontSize: 48, mb: 1}}/>
-                        <Typography>暂无文件数据</Typography>
-                    </Box>
+                    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 0', color: '#a7b6c2'}}>
+                        <Icon icon="inbox" size={48} style={{marginBottom: 8}}/>
+                        <span>暂无文件数据</span>
+                    </div>
                 )}
-            </CardContent>
+            </div>
             {/* 作品信息表单 */}
-            <CardContent sx={{pt: 1, px: 2, pb: '8px !important'}}>
+            <div style={{padding: '8px 16px 8px'}}>
                 <WorkFormList
                     selectedWorks={selectedWorks}
                     onWorksChange={onWorksChange}
                     saving={saving}
                     onSubmit={onSubmit}
                 />
-            </CardContent>
+            </div>
         </Card>
     )
 }
