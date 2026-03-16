@@ -210,33 +210,6 @@ export function getEpisodeUrl(episodeId: number): string {
     return `https://bgm.tv/ep/${episodeId}`
 }
 
-/**
- * 获取条目封面图片 URL
- * @param subjectId 条目 ID
- * @param size 图片尺寸: l=large, c=common, m=medium, s=small, g=grid
- */
-export function getSubjectCoverUrl(subjectId: number, size: 'l' | 'c' | 'm' | 's' | 'g' = 'l'): string {
-    return `https://lain.bgm.tv/pic/cover/${size}/${Math.floor(subjectId / 100) % 100}/${subjectId % 100}/${subjectId}.jpg`
-}
-
-/**
- * 获取人物头像 URL
- * @param personId 人物 ID
- * @param size 图片尺寸: l=large, c=common, m=medium, s=small, g=grid
- */
-export function getPersonImageUrl(personId: number, size: 'l' | 'c' | 'm' | 's' | 'g' = 'l'): string {
-    return `https://lain.bgm.tv/pic/crt/${size}/${Math.floor(personId / 100) % 100}/${personId % 100}/${personId}.jpg`
-}
-
-/**
- * 获取角色图片 URL
- * @param characterId 角色 ID
- * @param size 图片尺寸: l=large, c=common, m=medium, s=small, g=grid
- */
-export function getCharacterImageUrl(characterId: number, size: 'l' | 'c' | 'm' | 's' | 'g' = 'l'): string {
-    return `https://lain.bgm.tv/pic/crt/${size}/${Math.floor(characterId / 100) % 100}/${characterId % 100}/${characterId}.jpg`
-}
-
 // ==================== API 调用 ====================
 
 /**
@@ -278,13 +251,7 @@ export async function searchBangumi(
             summary: item.summary,
             air_date: item.date || '',
             air_weekday: getWeekday(item.date),
-            images: {
-                large: item.cover_url.replace('/m/', '/l/'),
-                common: item.cover_url.replace('/m/', '/c/'),
-                medium: item.cover_url,
-                small: item.cover_url.replace('/m/', '/s/'),
-                grid: item.cover_url.replace('/m/', '/g/'),
-            },
+            images: {},
         })),
     }
 }
@@ -326,13 +293,7 @@ export async function getBangumiSubject(
         name: char.name,
         name_cn: char.name_cn || '',
         role_name: getRoleTypeName(char.role_type),
-        images: {
-            large: getCharacterImageUrl(char.character_id, 'l'),
-            common: getCharacterImageUrl(char.character_id, 'c'),
-            medium: getCharacterImageUrl(char.character_id, 'm'),
-            small: getCharacterImageUrl(char.character_id, 's'),
-            grid: getCharacterImageUrl(char.character_id, 'g'),
-        },
+        images: {},
     }))
 
     // 转换制作人员列表
@@ -342,13 +303,7 @@ export async function getBangumiSubject(
         name: person.name,
         name_cn: person.name_cn || '',
         jobs: [person.position],
-        images: {
-            large: getPersonImageUrl(person.person_id, 'l'),
-            common: getPersonImageUrl(person.person_id, 'c'),
-            medium: getPersonImageUrl(person.person_id, 'm'),
-            small: getPersonImageUrl(person.person_id, 's'),
-            grid: getPersonImageUrl(person.person_id, 'g'),
-        },
+        images: {},
     }))
 
     // 转换评分详情
@@ -366,11 +321,11 @@ export async function getBangumiSubject(
         air_date: data.date || '',
         air_weekday: getWeekday(data.date),
         images: {
-            large: getSubjectCoverUrl(data._id, 'l'),
-            common: getSubjectCoverUrl(data._id, 'c'),
-            medium: getSubjectCoverUrl(data._id, 'm'),
-            small: getSubjectCoverUrl(data._id, 's'),
-            grid: getSubjectCoverUrl(data._id, 'g'),
+            large: "",
+            common: "",
+            medium: "",
+            small: "",
+            grid: ""
         },
         rating: {
             score: data.meta?.score || 0,

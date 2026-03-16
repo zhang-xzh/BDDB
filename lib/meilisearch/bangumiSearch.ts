@@ -29,7 +29,7 @@ export interface BangumiSearchDoc {
     /** 排名 */
     rank?: number
     /** 封面图片 URL */
-    cover_url: string
+    cover_url?: string
     /** 条目页面 URL */
     url: string
     /** 标签 */

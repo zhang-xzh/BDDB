@@ -1,5 +1,5 @@
 import {getBangumiCollection} from './connection'
-import {type BangumiCollection, type BangumiImages, type BangumiRating, getCharacterImageUrl, getCharacterUrl, getEpisodeUrl, getPersonImageUrl, getPersonUrl, getSubjectCoverUrl, getSubjectUrl, getTypeName, getWeekday, getWeekdayName, ROLE_TYPE_NAMES, SUBJECT_TYPE_NAMES, WEEKDAY_NAMES,} from '@/lib/bangumi'
+import {type BangumiCollection, type BangumiImages, type BangumiRating, getCharacterUrl, getEpisodeUrl, getPersonUrl, getSubjectUrl, getTypeName, getWeekday, getWeekdayName, ROLE_TYPE_NAMES, SUBJECT_TYPE_NAMES, WEEKDAY_NAMES,} from '@/lib/bangumi'
 
 // Bangumi 条目类型定义 (基于 MONGODB_SCHEMA.md)
 export interface BangumiSubjectDoc {
@@ -259,9 +259,6 @@ export {
     getPersonUrl,
     getCharacterUrl,
     getEpisodeUrl,
-    getSubjectCoverUrl,
-    getPersonImageUrl,
-    getCharacterImageUrl,
     getWeekday,
     getTypeName,
     getWeekdayName,

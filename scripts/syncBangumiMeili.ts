@@ -7,24 +7,9 @@
 //   stats    - 显示索引统计
 //   clear    - 清空索引
 
-import {
-    ensureMeiliConnected,
-    setupBangumiIndex,
-    deleteBangumiIndex,
-    bulkIndexBangumiSubjects,
-    clearAllBangumiSubjects,
-    getBangumiIndexStats,
-    BANGUMI_INDEX,
-} from '../lib/meilisearch'
-import {
-    getAllSubjects,
-    getTotalSubjectsCount,
-    type BangumiSubjectDoc,
-    SUBJECT_TYPE_NAMES,
-    getSubjectCoverUrl,
-    getSubjectUrl,
-} from '../lib/mongodb/bangumiRepository'
-import type {BangumiSearchDoc} from '../lib/meilisearch/bangumiSearch'
+import type {BangumiSearchDoc} from '@/lib/meilisearch'
+import {BANGUMI_INDEX, bulkIndexBangumiSubjects, clearAllBangumiSubjects, deleteBangumiIndex, ensureMeiliConnected, getBangumiIndexStats, setupBangumiIndex,} from '@/lib/meilisearch'
+import {type BangumiSubjectDoc, getAllSubjects, getSubjectUrl, getTotalSubjectsCount, SUBJECT_TYPE_NAMES,} from '@/lib/mongodb'
 
 /**
  * 将 BangumiSubjectDoc 转换为搜索文档
@@ -42,7 +27,6 @@ function convertToSearchDoc(subject: BangumiSubjectDoc): BangumiSearchDoc {
         date: subject.date,
         score: subject.meta?.score,
         rank: subject.meta?.rank,
-        cover_url: getSubjectCoverUrl(subject._id, 'm'),
         url: getSubjectUrl(subject._id),
         tags: subject.meta?.tags || [],
         nsfw: subject.nsfw || false,
