@@ -3,6 +3,7 @@
         "Set-Content": true,
         "npx tsc": true,
         "npm install": true,
-        "git ls-tree": true
+        "git ls-tree": true,
+        "git add": true
     }
 }
