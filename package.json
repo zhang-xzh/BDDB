@@ -24,7 +24,6 @@
     "@mui/icons-material": "^7.3.9",
     "@mui/material": "^7.3.9",
     "@mui/x-tree-view": "^8.27.2",
-    "@seald-io/nedb": "^4.1.2",
     "@types/mongodb": "^4.0.6",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
