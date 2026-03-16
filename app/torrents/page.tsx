@@ -9,7 +9,7 @@ import {DiscEditorContent, useDiscEditor} from "@/components/DiscEditor";
 import {PAGE_SIZE} from "@/lib/utils";
 import ListPagination from "@/components/ListPagination";
 import {useEditorPanel} from "@/components/useEditorPanel";
-import CollapsePageList, {ExpandBlocker, ListHeader} from "@/components/CollapsePageList";
+import CollapsePageList, {ExpandBlocker} from "@/components/CollapsePageList";
 
 function matchesFilters(torrent: TorrentWithVolume, filters: {
     searchText: string; invertSearch: boolean
@@ -112,31 +112,27 @@ const TorrentFiltersBar: React.FC<{
     )
 }
 
-const TorrentListHeader: React.FC = () => (
-    <ListHeader columns={[
-        {label: '卷', style: {width: 56, flexShrink: 0}},
-        {label: '名称', style: {flex: 1}},
-        {label: '类别', style: {width: 200, flexShrink: 0}},
-        {label: '状态', style: {width: 100, flexShrink: 0, textAlign: 'right'}},
-    ]}/>
-)
-
 const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume; isExpanded: boolean }> = ({torrent, isExpanded}) => {
     const {token} = theme.useToken()
     return (
         <ExpandBlocker isExpanded={isExpanded}>
-            <Flex align="center" gap={8} style={{width: '100%'}}>
+            <>
                 <Flex style={{width: 56, flexShrink: 0}}>
                     {torrent.hasVolumes
                         ? <Tag icon={<CheckCircleOutlined/>} color="success" style={{margin: 0}}>{torrent.volumeCount}</Tag>
                         : <Tag icon={<CloseCircleOutlined/>} color="default" style={{margin: 0}}/>}
                 </Flex>
-                <Typography.Text
-                    ellipsis
-                    style={{flex: 1, color: token.colorText}}
-                >
-                    {torrent.name}
-                </Typography.Text>
+                <div style={{
+                    flex: 1,
+                    minWidth: 0,
+                    overflow: 'auto',
+                    whiteSpace: 'nowrap',
+                    cursor: 'text',
+                }}>
+                    <Typography.Text style={{color: token.colorText, display: 'inline-block'}}>
+                        {torrent.name}
+                    </Typography.Text>
+                </div>
                 <Flex style={{width: 200, flexShrink: 0, overflow: 'hidden'}}>
                     {torrent.category
                         ? <Tag color="blue" style={{margin: 0, maxWidth: '100%'}}>{torrent.category}</Tag>
@@ -159,7 +155,7 @@ const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume; isExpanded: boolea
                 >
                     {torrent.state || '—'}
                 </Typography.Text>
-            </Flex>
+            </>
         </ExpandBlocker>
     )
 }
@@ -256,7 +252,6 @@ const TorrentsPage: React.FC = () => {
             />
             <Spin spinning={loading}>
                 <Card styles={{body: {padding: 0}}}>
-                    <TorrentListHeader/>
                     <CollapsePageList
                         items={pagedTorrents}
                         getKey={t => t.hash}
