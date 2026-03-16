@@ -133,14 +133,6 @@ const VolumeFiltersBar: React.FC<{
     )
 }
 
-const VolumeListHeader: React.FC = () => (
-    <ListHeader columns={[
-        {label: '作品', style: {width: 56, flexShrink: 0}},
-        {label: '编号', style: {width: 120, flexShrink: 0}},
-        {label: '名称', style: {flex: 1}},
-    ]}/>
-)
-
 const VolumeRowLabel: React.FC<{ volume: VolumeWithWork; isExpanded: boolean }> = ({volume, isExpanded}) => {
     const {token} = theme.useToken()
     const workCount = volume.workCount ?? volume.work_ids?.length ?? 0
@@ -155,9 +147,17 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithWork; isExpanded: boolean }> 
                 <Typography.Text style={{width: 120, flexShrink: 0, color: token.colorText, fontFamily: 'monospace'}}>
                     {formatCatalogNo(volume.catalog_no)}
                 </Typography.Text>
-                <Typography.Text ellipsis style={{flex: 1, color: token.colorText}}>
-                    {volume.volume_name || '无标题'}
-                </Typography.Text>
+                <div style={{
+                    flex: 1,
+                    minWidth: 0,
+                    overflow: 'auto',
+                    whiteSpace: 'nowrap',
+                    cursor: 'text',
+                }}>
+                    <Typography.Text style={{color: token.colorText, display: 'inline-block'}}>
+                        {volume.volume_name || '无标题'}
+                    </Typography.Text>
+                </div>
             </>
         </ExpandBlocker>
     )
@@ -246,7 +246,6 @@ const WorkPage: React.FC = () => {
             />
             <Spin spinning={loading}>
                 <Card styles={{body: {padding: 0}}}>
-                    <VolumeListHeader/>
                     <CollapsePageList
                         items={pagedVolumes}
                         getKey={v => v._id}
