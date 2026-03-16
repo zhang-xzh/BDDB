@@ -5,7 +5,7 @@ import type {FileItem, NodeData, VolumeForm, TorrentWithVolume, Volume} from '@/
 import {fetchApi, postApi} from '@/lib/api'
 import {buildTree, FlatTree} from '@/lib/utils'
 import {Button, Card, Cascader, Empty, Input, InputNumber, message, Modal, Select, Space, Spin, Switch, Tree, Typography,} from 'antd'
-import {DeleteOutlined} from '@ant-design/icons'
+import {DeleteOutlined, EditOutlined} from '@ant-design/icons'
 import type {DataNode} from 'antd/es/tree'
 
 export interface DiscEditorRef {
@@ -522,6 +522,45 @@ function VolumeFormList({
     )
 }
 
+function VolumeReadOnlyView({
+                                selectedVolumes,
+                                volumeForms,
+                                worksCount,
+                                onEdit,
+                            }: {
+    selectedVolumes: number[]
+    volumeForms: Record<number, VolumeForm>
+    worksCount: number
+    onEdit: () => void
+}) {
+    if (selectedVolumes.length === 0) {
+        return <Empty description="暂无卷信息" image={Empty.PRESENTED_IMAGE_SIMPLE}/>
+    }
+
+    return (
+        <Card size="small" title="卷信息" styles={{body: {padding: 12}}}>
+            <Space direction="vertical" style={{width: '100%'}} size={12}>
+                {selectedVolumes.map(vol => {
+                    const form = volumeForms[vol] || {catalog_no: '', volume_name: ''}
+                    const label = worksCount === 1
+                        ? `第${vol}卷`
+                        : `作品 ${Math.floor(vol / 1000)} · 第${vol % 1000}卷`
+                    return (
+                        <Space key={vol} style={{width: '100%'}} size={8}>
+                            <Typography.Text strong>{label}</Typography.Text>
+                            <Typography.Text>{form.catalog_no?.trim() ? form.catalog_no : '—'}</Typography.Text>
+                            <Typography.Text type="secondary">{form.volume_name?.trim() ? form.volume_name : '—'}</Typography.Text>
+                        </Space>
+                    )
+                })}
+                <Button icon={<EditOutlined/>} onClick={onEdit}>
+                    编辑卷信息
+                </Button>
+            </Space>
+        </Card>
+    )
+}
+
 // ─── TreeNodeContent ──────────────────────────────────────────────────────────
 
 const toCascaderVal = (vn: number | undefined): [number, number] | undefined =>
@@ -666,6 +705,19 @@ export function DiscEditorContent({
                                       handleSubmit: externalSubmit,
                                   }: DiscEditorContentProps) {
     const [submitted, setSubmitted] = useState(false)
+    const [isEditing, setIsEditing] = useState(false)
+    const autoModeAppliedRef = useRef(false)
+
+    useEffect(() => {
+        if (loading) {
+            autoModeAppliedRef.current = false
+            return
+        }
+
+        if (autoModeAppliedRef.current) return
+        setIsEditing(selectedVolumes.length === 0)
+        autoModeAppliedRef.current = true
+    }, [loading, selectedVolumes.length])
 
     const handleSubmit = () => {
         setSubmitted(true)
@@ -689,35 +741,56 @@ export function DiscEditorContent({
     return (
         <Spin spinning={loading}>
             <Space orientation="vertical" style={{width: '100%', paddingTop: 8}} size={12}>
-                {files.length > 0 ? (
-                    <Card size="small" title={
-                        <Space>
-                            <span>文件列表</span>
-                            <span style={{color: '#999', fontWeight: 'normal'}}>{files.length} 个文件</span>
-                            <InputNumber
-                                min={1} value={worksCount}
-                                onChange={val => {
-                                    setWorksCount(val ?? 1);
-                                    resetVolumeAssignments()
-                                }}
-                                addonBefore="作品数" size="small" mode="spinner" style={{width: 100}}
-                            />
-                        </Space>
-                    } styles={{body: {padding: 12}}}>
-                        <Tree<DataNode>
-                            treeData={treeData}
-                            defaultExpandedKeys={defaultExpandedKeys}
-                            titleRender={titleRender}
+                {isEditing ? (
+                    <>
+                        {selectedVolumes.length > 0 && (
+                            <Space>
+                                <Button onClick={() => {
+                                    setSubmitted(false)
+                                    setIsEditing(false)
+                                }}>
+                                    取消编辑
+                                </Button>
+                            </Space>
+                        )}
+                        {files.length > 0 ? (
+                            <Card size="small" title={
+                                <Space>
+                                    <span>文件列表</span>
+                                    <span style={{color: '#999', fontWeight: 'normal'}}>{files.length} 个文件</span>
+                                    <InputNumber
+                                        min={1} value={worksCount}
+                                        onChange={val => {
+                                            setWorksCount(val ?? 1);
+                                            resetVolumeAssignments()
+                                        }}
+                                        addonBefore="作品数" size="small" mode="spinner" style={{width: 100}}
+                                    />
+                                </Space>
+                            } styles={{body: {padding: 12}}}>
+                                <Tree<DataNode>
+                                    treeData={treeData}
+                                    defaultExpandedKeys={defaultExpandedKeys}
+                                    titleRender={titleRender}
+                                />
+                            </Card>
+                        ) : (
+                            <Empty description="暂无文件数据"/>
+                        )}
+                        <VolumeFormList
+                            selectedVolumes={selectedVolumes} volumeForms={volumeForms}
+                            onVolumeFormChange={updateVolumeForm} onDeleteVolume={deleteVolume}
+                            worksCount={worksCount} submitted={submitted}
                         />
-                    </Card>
+                    </>
                 ) : (
-                    <Empty description="暂无文件数据"/>
+                    <VolumeReadOnlyView
+                        selectedVolumes={selectedVolumes}
+                        volumeForms={volumeForms}
+                        worksCount={worksCount}
+                        onEdit={() => setIsEditing(true)}
+                    />
                 )}
-                <VolumeFormList
-                    selectedVolumes={selectedVolumes} volumeForms={volumeForms}
-                    onVolumeFormChange={updateVolumeForm} onDeleteVolume={deleteVolume}
-                    worksCount={worksCount} submitted={submitted}
-                />
             </Space>
         </Spin>
     )

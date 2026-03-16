@@ -5,7 +5,7 @@ import type {FileItem, Media, MediaForm, MediaType, NodeData} from '@/lib/mongod
 import {fetchApi, postApi} from '@/lib/api'
 import {buildTree, FlatTree} from '@/lib/utils'
 import {Button, Card, Empty, Input, message, Select, Space, Spin, Switch, Tree, Typography,} from 'antd'
-import {DeleteOutlined} from '@ant-design/icons'
+import {DeleteOutlined, EditOutlined} from '@ant-design/icons'
 import type {DataNode} from 'antd/es/tree'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -80,6 +80,9 @@ const MEDIA_TYPES: { value: MediaType; label: string }[] = [
     {value: 'cd', label: 'CD'},
     {value: 'scan', label: '扫图'},
 ]
+
+const getMediaTypeLabel = (type: MediaType | undefined) =>
+    MEDIA_TYPES.find(item => item.value === type)?.label || '未设置'
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
@@ -558,6 +561,42 @@ function MediaFormList({
     )
 }
 
+function MediaReadOnlyView({
+                               selectedMedias,
+                               mediaForms,
+                               onEdit,
+                           }: {
+    selectedMedias: number[]
+    mediaForms: Record<number, MediaForm>
+    onEdit: () => void
+}) {
+    if (selectedMedias.length === 0) {
+        return <Empty description="暂无媒介信息" image={Empty.PRESENTED_IMAGE_SIMPLE}/>
+    }
+
+    return (
+        <Card size="small" title="媒介信息" styles={{body: {padding: 12}}}>
+            <Space direction="vertical" style={{width: '100%'}} size={12}>
+                {selectedMedias.map(no => {
+                    const form = mediaForms[no] || {media_type: 'bd', content_title: '', description: ''}
+                    return (
+                        <Space key={no} style={{width: '100%'}} size={8}>
+                            <Typography.Text strong>
+                                序号 {no} · {getMediaTypeLabel(form.media_type)}
+                            </Typography.Text>
+                            <Typography.Text>{form.content_title?.trim() ? form.content_title : '—'}</Typography.Text>
+                            <Typography.Text type="secondary">{form.description?.trim() ? form.description : '—'}</Typography.Text>
+                        </Space>
+                    )
+                })}
+                <Button icon={<EditOutlined/>} onClick={onEdit}>
+                    编辑媒介
+                </Button>
+            </Space>
+        </Card>
+    )
+}
+
 // ─── TreeNodeContent ──────────────────────────────────────────────────────────
 
 interface TreeNodeContentProps {
@@ -673,6 +712,20 @@ export function MediaEditorContent({
                                        resetMediaAssignments,
                                        deleteMedia,
                                    }: MediaEditorContentProps) {
+    const [isEditing, setIsEditing] = useState(false)
+    const autoModeAppliedRef = useRef(false)
+
+    useEffect(() => {
+        if (loading) {
+            autoModeAppliedRef.current = false
+            return
+        }
+
+        if (autoModeAppliedRef.current) return
+        setIsEditing(selectedMedias.length === 0)
+        autoModeAppliedRef.current = true
+    }, [loading, selectedMedias.length])
+
     const titleRender = useMemo(
         () =>
             (node: DataNode) => (
@@ -706,34 +759,53 @@ export function MediaEditorContent({
     return (
         <Spin spinning={loading}>
             <Space orientation="vertical" style={{width: '100%', paddingTop: 8}} size={12}>
-                {files.length > 0 ? (
-                    <Card
-                        size="small"
-                        title={
+                {isEditing ? (
+                    <>
+                        {selectedMedias.length > 0 && (
                             <Space>
-                                <span>文件列表</span>
-                                <span style={{color: '#999', fontWeight: 'normal'}}>
-                                    {files.length} 个文件
-                                </span>
+                                <Button onClick={() => setIsEditing(false)}>
+                                    取消编辑
+                                </Button>
                             </Space>
-                        }
-                        styles={{body: {padding: 12}}}
-                    >
-                        <Tree<DataNode>
-                            treeData={treeData}
-                            defaultExpandedKeys={defaultExpandedKeys}
-                            titleRender={titleRender}
+                        )}
+
+                        {files.length > 0 ? (
+                            <Card
+                                size="small"
+                                title={
+                                    <Space>
+                                        <span>文件列表</span>
+                                        <span style={{color: '#999', fontWeight: 'normal'}}>
+                                            {files.length} 个文件
+                                        </span>
+                                    </Space>
+                                }
+                                styles={{body: {padding: 12}}}
+                            >
+                                <Tree<DataNode>
+                                    treeData={treeData}
+                                    defaultExpandedKeys={defaultExpandedKeys}
+                                    titleRender={titleRender}
+                                />
+                            </Card>
+                        ) : (
+                            <Empty description="暂无文件数据"/>
+                        )}
+
+                        <MediaFormList
+                            selectedMedias={selectedMedias}
+                            mediaForms={mediaForms}
+                            onMediaFormChange={updateMediaForm}
+                            onDeleteMedia={deleteMedia}
                         />
-                    </Card>
+                    </>
                 ) : (
-                    <Empty description="暂无文件数据"/>
+                    <MediaReadOnlyView
+                        selectedMedias={selectedMedias}
+                        mediaForms={mediaForms}
+                        onEdit={() => setIsEditing(true)}
+                    />
                 )}
-                <MediaFormList
-                    selectedMedias={selectedMedias}
-                    mediaForms={mediaForms}
-                    onMediaFormChange={updateMediaForm}
-                    onDeleteMedia={deleteMedia}
-                />
             </Space>
         </Spin>
     )
