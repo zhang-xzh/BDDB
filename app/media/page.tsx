@@ -11,8 +11,6 @@ import ListPagination from "@/components/ListPagination";
 import {useEditorPanel} from "@/components/useEditorPanel";
 import CollapsePageList, {ExpandBlocker, ListHeader} from "@/components/CollapsePageList";
 
-// ─── Constants & Utilities ────────────────────────────────────────────────────
-
 function formatCatalogNo(catalogNo: string): string {
     return catalogNo || '无编号'
 }
@@ -41,8 +39,6 @@ function matchesFilters(volume: VolumeWithMedia, filters: {
     }
     return true
 }
-
-// ─── Hooks ────────────────────────────────────────────────────────────────────
 
 function useVolumeListView(volumes: VolumeWithMedia[]) {
     const [searchCatalogNo, setSearchCatalogNo] = useState('')
@@ -76,9 +72,6 @@ function useVolumeListView(volumes: VolumeWithMedia[]) {
         currentPage, setCurrentPage, filteredVolumes, pagedVolumes,
     }
 }
-
-
-// ─── Components ───────────────────────────────────────────────────────────────
 
 const VolumeFiltersBar: React.FC<{
     searchCatalogNo: string
@@ -168,8 +161,7 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithMedia; isExpanded: boolean }>
     )
 }
 
-
-const VolumePage: React.FC = () => {
+const MediaPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [volumes, setVolumes] = useState<VolumeWithMedia[]>([]);
 
@@ -267,4 +259,4 @@ const VolumePage: React.FC = () => {
     );
 };
 
-export default VolumePage;
+export default MediaPage;

@@ -14,10 +14,8 @@ const {Title, Text} = Typography
 
 const menuItems = [
     {key: '/torrents', label: '种子管理'},
-    {key: '/volume', label: '媒介管理'},
+    {key: '/media', label: '媒介管理'},
     {key: '/work', label: '作品管理'},
-    {key: '/series', label: '系列管理'},
-    {key: '/storage', label: '数据管理'},
     {key: '/config', label: '配置'},
 ]
 
@@ -29,6 +27,7 @@ function AppLayout({children, isDark, onToggle}: {
     const {token} = theme.useToken()
     const pathname = usePathname()
     const router = useRouter()
+    const selectedKey = menuItems.find(item => pathname?.startsWith(item.key))?.key ?? ''
 
     return (
         <App>
@@ -37,7 +36,7 @@ function AppLayout({children, isDark, onToggle}: {
                     <Title level={4} style={{margin: 0, color: token.colorWhite}}>BDDB</Title>
                     <Divider orientation="vertical" style={{borderColor: token.colorSplit}}/>
                     <Menu
-                        selectedKeys={[pathname]}
+                        selectedKeys={selectedKey ? [selectedKey] : []}
                         onSelect={({key}) => router.push(String(key))}
                         theme="dark"
                         mode="horizontal"

@@ -10,7 +10,11 @@
     "meili:sync": "tsx scripts/syncMeilisearch.ts full",
     "meili:rebuild": "tsx scripts/syncMeilisearch.ts rebuild",
     "meili:stats": "tsx scripts/syncMeilisearch.ts stats",
-    "meili:clear": "tsx scripts/syncMeilisearch.ts clear"
+    "meili:clear": "tsx scripts/syncMeilisearch.ts clear",
+    "bangumi:sync": "tsx scripts/syncBangumiMeili.ts full",
+    "bangumi:rebuild": "tsx scripts/syncBangumiMeili.ts rebuild",
+    "bangumi:stats": "tsx scripts/syncBangumiMeili.ts stats",
+    "bangumi:clear": "tsx scripts/syncBangumiMeili.ts clear"
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.0",

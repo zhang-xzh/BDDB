@@ -1,5 +1,5 @@
-import {getProductsCollection, type MongoProduct} from '../mongodb/productRepository'
-import {setupProductsIndex, deleteProductsIndex} from './client'
+import {getProductsCollection, type MongoProduct} from '@/lib/mongodb'
+import {deleteProductsIndex, setupProductsIndex} from './client'
 import {bulkIndexProducts, clearAllProducts, type ProductSearchDoc} from './productSearch'
 
 // 将 MongoDB 产品转换为 Meilisearch 文档
@@ -23,7 +23,7 @@ function convertToSearchDoc(product: MongoProduct): ProductSearchDoc {
 // 全量同步
 export async function syncAllProducts(
     onProgress?: (processed: number, total: number) => void
-): Promise<{total: number; indexed: number}> {
+): Promise<{ total: number; indexed: number }> {
     const collection = getProductsCollection()
 
     // 获取总数

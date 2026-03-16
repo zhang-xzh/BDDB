@@ -46,10 +46,12 @@ function CollapsePageList<T>({items, getKey, activeKey, onChange, renderLabel, r
     const collapseItems = useMemo(() =>
             items.map(item => {
                 const key = getKey(item)
+                const isExpanded = activeKey === key
                 return {
                     key,
-                    label: renderLabel(item, activeKey === key),
-                    children: activeKey === key ? renderContent(item) : null,
+                    label: renderLabel(item, isExpanded),
+                    children: isExpanded ? renderContent(item) : null,
+                    collapsible: isExpanded ? 'icon' as const : 'header' as const,
                 }
             }),
         [items, getKey, activeKey, renderLabel, renderContent])

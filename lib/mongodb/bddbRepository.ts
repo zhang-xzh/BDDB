@@ -2,6 +2,7 @@ import {getMongoCollection} from './connection'
 import type {Collection, Filter} from 'mongodb'
 import {ObjectId} from 'mongodb'
 import type {Torrent as QbTorrent, TorrentFile as QbTorrentFile,} from "@ctrl/qbittorrent";
+import type {BangumiCharacter, BangumiCollection, BangumiImages, BangumiRating, BangumiStaff} from '@/lib/bangumi';
 
 // ─── 类型定义 ─────────────────────────────────────────────────────────────────
 
@@ -30,6 +31,7 @@ export interface BddbVolume {
     created_at: number
     updated_at: number
     file_ids: ObjectId[]
+    work_ids?: ObjectId[]
 }
 
 export type MediaType = 'bd' | 'dvd' | 'cd' | 'scan'
@@ -47,6 +49,43 @@ export interface BddbMedia {
     created_at: number
     updated_at: number
     file_ids: ObjectId[]
+}
+
+// 重新导出 Bangumi 相关类型
+export type {BangumiImages, BangumiRating, BangumiCollection, BangumiCharacter, BangumiStaff}
+
+// Work 接口 - 1:1 复制 Bangumi API 数据结构
+export interface BddbWork {
+    _id: ObjectId
+
+    // Bangumi API 原始字段
+    id: number                    // Bangumi subject ID
+    url: string                   // bgm.tv/subject/{id}
+    type: number                  // 条目类型 (1=书籍, 2=动画, 3=音乐, 4=游戏, 6=三次元)
+    name: string                  // 日文/原名
+    name_cn: string               // 中文译名
+    summary: string               // 剧情简介
+    eps: number                   // 话数
+    air_date: string              // 放送开始日期
+    air_weekday: number           // 放送星期 (1-7)
+
+    // 图片
+    images: BangumiImages
+
+    // 评分
+    rating: BangumiRating
+    rank: number                  // 排名
+
+    // 收藏统计
+    collection: BangumiCollection
+
+    // 角色和制作人员（可选，large 响应才有）
+    crt?: BangumiCharacter[]
+    staff?: BangumiStaff[]
+
+    // 内部字段
+    created_at: number
+    updated_at: number
 }
 
 // 前端序列化类型（ObjectId -> string）
@@ -82,6 +121,7 @@ export interface Volume {
     is_deleted: boolean
     updated_at: number
     file_ids: string[]
+    work_ids?: string[]
 }
 
 export interface Media {
@@ -140,6 +180,10 @@ function getMediasCollection(): Collection<BddbMedia> {
     return getMongoCollection<BddbMedia>('bddb_medias')
 }
 
+function getWorksCollection(): Collection<BddbWork> {
+    return getMongoCollection<BddbWork>('bddb_works')
+}
+
 // ─── 种子相关 ─────────────────────────────────────────────────────────────────
 
 /**
@@ -190,23 +234,6 @@ export async function getTorrentById(id: string | ObjectId): Promise<BddbTorrent
 }
 
 /**
- * 根据 ID 获取种子（不包含软删除）
- */
-export async function getActiveTorrentById(id: string | ObjectId): Promise<BddbTorrent | null> {
-    try {
-        const collection = getTorrentsCollection()
-        const torrent = await collection.findOne({
-            _id: typeof id === 'string' ? new ObjectId(id) : id,
-            is_deleted: false,
-        })
-        return torrent || null
-    } catch (error) {
-        console.error('[mongodb] getActiveTorrentById error:', error)
-        return null
-    }
-}
-
-/**
  * 创建或更新种子
  */
 export async function upsertTorrent(torrent: BddbTorrent): Promise<void> {
@@ -232,37 +259,6 @@ export async function upsertTorrent(torrent: BddbTorrent): Promise<void> {
 }
 
 /**
- * 批量创建或更新种子
- */
-export async function upsertTorrents(torrents: BddbTorrent[]): Promise<void> {
-    try {
-        const collection = getTorrentsCollection()
-        const now = Math.floor(Date.now() / 1000)
-
-        const operations = torrents.map(torrent => ({
-            updateOne: {
-                filter: {hash: torrent.hash},
-                update: {
-                    $set: {
-                        ...torrent,
-                        updated_at: now,
-                        created_at: torrent.created_at || now,
-                    },
-                },
-                upsert: true,
-            },
-        }))
-
-        if (operations.length > 0) {
-            await collection.bulkWrite(operations, {ordered: false})
-        }
-    } catch (error) {
-        console.error('[mongodb] upsertTorrents error:', error)
-        throw error
-    }
-}
-
-/**
  * 软删除种子
  */
 export async function softDeleteTorrent(hash: string): Promise<void> {
@@ -276,33 +272,6 @@ export async function softDeleteTorrent(hash: string): Promise<void> {
     } catch (error) {
         console.error('[mongodb] softDeleteTorrent error:', error)
         throw error
-    }
-}
-
-/**
- * 硬删除种子
- */
-export async function deleteTorrent(hash: string): Promise<void> {
-    try {
-        const collection = getTorrentsCollection()
-        await collection.deleteOne({hash})
-    } catch (error) {
-        console.error('[mongodb] deleteTorrent error:', error)
-        throw error
-    }
-}
-
-/**
- * 获取种子数量
- */
-export async function getTorrentCount(includeDeleted = false): Promise<number> {
-    try {
-        const collection = getTorrentsCollection()
-        const filter: Filter<BddbTorrent> = includeDeleted ? {} : {is_deleted: false}
-        return await collection.countDocuments(filter)
-    } catch (error) {
-        console.error('[mongodb] getTorrentCount error:', error)
-        return 0
     }
 }
 
@@ -321,23 +290,6 @@ export async function getVolumesByTorrentId(torrentId: string | ObjectId): Promi
         return await collection.find(filter).sort({volume_no: 1}).toArray()
     } catch (error) {
         console.error('[mongodb] getVolumesByTorrentId error:', error)
-        return []
-    }
-}
-
-/**
- * 根据文件 ID 获取卷列表（不包含软删除）
- */
-export async function getVolumesByFileId(fileId: string | ObjectId): Promise<BddbVolume[]> {
-    try {
-        const collection = getVolumesCollection()
-        const filter: Filter<BddbVolume> = {
-            file_ids: typeof fileId === 'string' ? new ObjectId(fileId) : fileId,
-            is_deleted: false,
-        }
-        return await collection.find(filter).sort({volume_no: 1}).toArray()
-    } catch (error) {
-        console.error('[mongodb] getVolumesByFileId error:', error)
         return []
     }
 }
@@ -365,6 +317,38 @@ export async function getAllVolumes(torrentId?: string | ObjectId): Promise<Bddb
 }
 
 /**
+ * 获取所有卷并关联查询 works 数据（使用 MongoDB $lookup 聚合管道）
+ */
+export async function getAllVolumesWithWorks(torrentId?: string | ObjectId): Promise<Array<BddbVolume & { works: BddbWork[] }>> {
+    try {
+        const collection = getVolumesCollection()
+        const matchStage: Record<string, unknown> = {is_deleted: false}
+
+        if (torrentId) {
+            matchStage.torrent_id = typeof torrentId === 'string' ? new ObjectId(torrentId) : torrentId
+        }
+
+        const pipeline = [
+            {$match: matchStage},
+            {
+                $lookup: {
+                    from: 'bddb_works',
+                    localField: 'work_ids',
+                    foreignField: '_id',
+                    as: 'works',
+                },
+            },
+            {$sort: {volume_no: 1}},
+        ]
+
+        return await collection.aggregate(pipeline).toArray() as Array<BddbVolume & { works: BddbWork[] }>
+    } catch (error) {
+        console.error('[mongodb] getAllVolumesWithWorks error:', error)
+        return []
+    }
+}
+
+/**
  * 保存卷
  */
 export async function saveVolume(volume: BddbVolume): Promise<void> {
@@ -386,92 +370,6 @@ export async function saveVolume(volume: BddbVolume): Promise<void> {
     } catch (error) {
         console.error('[mongodb] saveVolume error:', error)
         throw error
-    }
-}
-
-/**
- * 批量保存卷
- */
-export async function saveVolumes(volumes: BddbVolume[]): Promise<void> {
-    try {
-        const collection = getVolumesCollection()
-        const now = Math.floor(Date.now() / 1000)
-
-        const operations = volumes.map(volume => ({
-            updateOne: {
-                filter: {
-                    torrent_id: volume.torrent_id,
-                    volume_no: volume.volume_no,
-                },
-                update: {
-                    $set: {
-                        ...volume,
-                        updated_at: now,
-                        created_at: volume.created_at || now,
-                    },
-                },
-                upsert: true,
-            },
-        }))
-
-        if (operations.length > 0) {
-            await collection.bulkWrite(operations, {ordered: false})
-        }
-    } catch (error) {
-        console.error('[mongodb] saveVolumes error:', error)
-        throw error
-    }
-}
-
-/**
- * 软删除卷
- */
-export async function softDeleteVolume(id: string | ObjectId): Promise<void> {
-    try {
-        const collection = getVolumesCollection()
-        const now = Math.floor(Date.now() / 1000)
-        await collection.updateOne(
-            {_id: typeof id === 'string' ? new ObjectId(id) : id},
-            {$set: {is_deleted: true, updated_at: now}}
-        )
-    } catch (error) {
-        console.error('[mongodb] softDeleteVolume error:', error)
-        throw error
-    }
-}
-
-/**
- * 删除卷
- */
-export async function deleteVolume(id: string | ObjectId): Promise<void> {
-    try {
-        const collection = getVolumesCollection()
-        await collection.deleteOne({_id: typeof id === 'string' ? new ObjectId(id) : id})
-    } catch (error) {
-        console.error('[mongodb] deleteVolume error:', error)
-        throw error
-    }
-}
-
-/**
- * 获取卷数量
- */
-export async function getVolumeCount(torrentId?: string | ObjectId): Promise<number> {
-    try {
-        const collection = getVolumesCollection()
-        let filter: Filter<BddbVolume> = {is_deleted: false}
-
-        if (torrentId) {
-            filter = {
-                ...filter,
-                torrent_id: typeof torrentId === 'string' ? new ObjectId(torrentId) : torrentId,
-            }
-        }
-
-        return await collection.countDocuments(filter)
-    } catch (error) {
-        console.error('[mongodb] getVolumeCount error:', error)
-        return 0
     }
 }
 
@@ -538,45 +436,6 @@ export async function getMediasByVolumeId(volumeId: string | ObjectId): Promise<
 }
 
 /**
- * 根据文件 ID 获取媒体列表（不包含软删除）
- */
-export async function getMediasByFileId(fileId: string | ObjectId): Promise<BddbMedia[]> {
-    try {
-        const collection = getMediasCollection()
-        const filter: Filter<BddbMedia> = {
-            file_ids: typeof fileId === 'string' ? new ObjectId(fileId) : fileId,
-            is_deleted: false,
-        }
-        return await collection.find(filter).sort({media_no: 1}).toArray()
-    } catch (error) {
-        console.error('[mongodb] getMediasByFileId error:', error)
-        return []
-    }
-}
-
-/**
- * 获取所有媒体（不包含软删除）
- */
-export async function getAllMedias(volumeId?: string | ObjectId): Promise<BddbMedia[]> {
-    try {
-        const collection = getMediasCollection()
-        let filter: Filter<BddbMedia> = {is_deleted: false}
-
-        if (volumeId) {
-            filter = {
-                ...filter,
-                volume_id: typeof volumeId === 'string' ? new ObjectId(volumeId) : volumeId,
-            }
-        }
-
-        return await collection.find(filter).sort({media_no: 1}).toArray()
-    } catch (error) {
-        console.error('[mongodb] getAllMedias error:', error)
-        return []
-    }
-}
-
-/**
  * 保存媒体
  */
 export async function saveMedia(media: BddbMedia): Promise<void> {
@@ -602,90 +461,156 @@ export async function saveMedia(media: BddbMedia): Promise<void> {
     }
 }
 
+// ─── Works 相关 ───────────────────────────────────────────────────────────────
+
 /**
- * 批量保存媒体
+ * 获取所有 volume 的 work 数量（聚合，用于列表页）
+ * 基于 volume 的 work_ids 字段统计
  */
-export async function saveMedias(medias: BddbMedia[]): Promise<void> {
+export async function getWorkCountsByVolume(): Promise<Map<string, number>> {
     try {
-        const collection = getMediasCollection()
+        const collection = getVolumesCollection()
+        const result = await collection.aggregate([
+            {$match: {is_deleted: false}},
+            {$project: {work_ids: {$ifNull: ['$work_ids', []]}}},
+            {$project: {count: {$size: '$work_ids'}}},
+        ]).toArray()
+        const counts = new Map<string, number>()
+        for (const item of result) {
+            counts.set(item._id.toString(), item.count)
+        }
+        return counts
+    } catch (error) {
+        console.error('[mongodb] getWorkCountsByVolume error:', error)
+        return new Map()
+    }
+}
+
+/**
+ * 根据 ID 获取 work
+ */
+export async function getWorkById(id: string | ObjectId): Promise<BddbWork | null> {
+    try {
+        const collection = getWorksCollection()
+        return await collection.findOne({
+            _id: typeof id === 'string' ? new ObjectId(id) : id,
+        })
+    } catch (error) {
+        console.error('[mongodb] getWorkById error:', error)
+        return null
+    }
+}
+
+/**
+ * 根据 Bangumi subject ID 获取 work
+ */
+export async function getWorkByBangumiSubjectId(subjectId: number): Promise<BddbWork | null> {
+    try {
+        const collection = getWorksCollection()
+        return await collection.findOne({id: subjectId})
+    } catch (error) {
+        console.error('[mongodb] getWorkByBangumiSubjectId error:', error)
+        return null
+    }
+}
+
+/**
+ * 从 Bangumi API 数据保存 work（如果不存在则创建，存在则更新）
+ * 1:1 复制 Bangumi API 数据结构
+ */
+export async function saveWorkFromBangumi(bangumiData: Partial<BddbWork>): Promise<BddbWork> {
+    try {
+        const collection = getWorksCollection()
         const now = Math.floor(Date.now() / 1000)
 
-        const operations = medias.map(media => ({
-            updateOne: {
-                filter: {
-                    volume_id: media.volume_id,
-                    media_no: media.media_no,
-                    media_type: media.media_type,
-                },
-                update: {
-                    $set: {
-                        ...media,
-                        updated_at: now,
-                        created_at: media.created_at || now,
-                    },
-                },
-                upsert: true,
-            },
-        }))
+        // 查找是否已存在
+        const existingWork = await getWorkByBangumiSubjectId(bangumiData.id!)
 
-        if (operations.length > 0) {
-            await collection.bulkWrite(operations, {ordered: false})
+        const workData: Omit<BddbWork, '_id'> = {
+            id: bangumiData.id!,
+            url: bangumiData.url || '',
+            type: bangumiData.type || 2,
+            name: bangumiData.name || '',
+            name_cn: bangumiData.name_cn || '',
+            summary: bangumiData.summary || '',
+            eps: bangumiData.eps || 0,
+            air_date: bangumiData.air_date || '',
+            air_weekday: bangumiData.air_weekday || 0,
+            images: bangumiData.images || {large: '', common: '', medium: '', small: '', grid: ''},
+            rating: bangumiData.rating || {score: 0, total: 0, count: {}},
+            rank: bangumiData.rank || 0,
+            collection: bangumiData.collection || {wish: 0, collect: 0, doing: 0, on_hold: 0, dropped: 0},
+            crt: bangumiData.crt,
+            staff: bangumiData.staff,
+            created_at: existingWork?.created_at || now,
+            updated_at: now,
+        }
+
+        if (existingWork) {
+            // 更新现有 work
+            await collection.updateOne(
+                {_id: existingWork._id},
+                {$set: workData}
+            )
+            return {...existingWork, ...workData}
+        } else {
+            // 创建新 work
+            const newWork: BddbWork = {
+                _id: new ObjectId(),
+                ...workData,
+            }
+            await collection.insertOne(newWork)
+            return newWork
         }
     } catch (error) {
-        console.error('[mongodb] saveMedias error:', error)
+        console.error('[mongodb] saveWorkFromBangumi error:', error)
         throw error
     }
 }
 
 /**
- * 软删除媒体
+ * 将 work 关联到 Volume
  */
-export async function softDeleteMedia(id: string | ObjectId): Promise<void> {
+export async function addWorkToVolume(volumeId: string | ObjectId, workId: string | ObjectId): Promise<void> {
     try {
-        const collection = getMediasCollection()
+        const collection = getVolumesCollection()
+        const vid = typeof volumeId === 'string' ? new ObjectId(volumeId) : volumeId
+        const wid = typeof workId === 'string' ? new ObjectId(workId) : workId
         const now = Math.floor(Date.now() / 1000)
+
         await collection.updateOne(
-            {_id: typeof id === 'string' ? new ObjectId(id) : id},
-            {$set: {is_deleted: true, updated_at: now}}
+            {_id: vid},
+            {
+                $addToSet: {work_ids: wid},
+                $set: {updated_at: now}
+            }
         )
     } catch (error) {
-        console.error('[mongodb] softDeleteMedia error:', error)
+        console.error('[mongodb] addWorkToVolume error:', error)
         throw error
     }
 }
 
 /**
- * 删除媒体
+ * 从 Volume 移除 work 关联
  */
-export async function deleteMedia(id: string | ObjectId): Promise<void> {
+export async function removeWorkFromVolume(volumeId: string | ObjectId, workId: string | ObjectId): Promise<void> {
     try {
-        const collection = getMediasCollection()
-        await collection.deleteOne({_id: typeof id === 'string' ? new ObjectId(id) : id})
-    } catch (error) {
-        console.error('[mongodb] deleteMedia error:', error)
-        throw error
-    }
-}
+        const collection = getVolumesCollection()
+        const vid = typeof volumeId === 'string' ? new ObjectId(volumeId) : volumeId
+        const wid = typeof workId === 'string' ? new ObjectId(workId) : workId
+        const now = Math.floor(Date.now() / 1000)
 
-/**
- * 获取媒体数量
- */
-export async function getMediaCount(volumeId?: string | ObjectId): Promise<number> {
-    try {
-        const collection = getMediasCollection()
-        let filter: Filter<BddbMedia> = {is_deleted: false}
-
-        if (volumeId) {
-            filter = {
-                ...filter,
-                volume_id: typeof volumeId === 'string' ? new ObjectId(volumeId) : volumeId,
+        await collection.updateOne(
+            {_id: vid},
+            {
+                $pull: {work_ids: wid},
+                $set: {updated_at: now}
             }
-        }
-
-        return await collection.countDocuments(filter)
+        )
     } catch (error) {
-        console.error('[mongodb] getMediaCount error:', error)
-        return 0
+        console.error('[mongodb] removeWorkFromVolume error:', error)
+        throw error
     }
 }
 
@@ -699,41 +624,14 @@ export async function clearAllData(): Promise<void> {
         const torrentsCollection = getTorrentsCollection()
         const volumesCollection = getVolumesCollection()
         const mediasCollection = getMediasCollection()
+        const worksCollection = getWorksCollection()
 
         await torrentsCollection.deleteMany({})
         await volumesCollection.deleteMany({})
         await mediasCollection.deleteMany({})
+        await worksCollection.deleteMany({})
     } catch (error) {
         console.error('[mongodb] clearAllData error:', error)
-        throw error
-    }
-}
-
-/**
- * 初始化索引
- */
-export async function initIndexes(): Promise<void> {
-    try {
-        const torrentsCollection = getTorrentsCollection()
-        const volumesCollection = getVolumesCollection()
-        const mediasCollection = getMediasCollection()
-
-        // torrents 索引
-        await torrentsCollection.createIndex({hash: 1}, {unique: true})
-        await torrentsCollection.createIndex({is_deleted: 1, added_on: -1})
-        await torrentsCollection.createIndex({state: 1})
-        await torrentsCollection.createIndex({category: 1})
-
-        // volumes 索引
-        await volumesCollection.createIndex({torrent_id: 1, is_deleted: 1})
-        await volumesCollection.createIndex({volume_no: 1})
-        await volumesCollection.createIndex({catalog_no: 1})
-
-        // medias 索引
-        await mediasCollection.createIndex({volume_id: 1, is_deleted: 1})
-        await mediasCollection.createIndex({media_no: 1, media_type: 1})
-    } catch (error) {
-        console.error('[mongodb] initIndexes error:', error)
         throw error
     }
 }
@@ -750,7 +648,7 @@ export async function getTorrent(hash: string): Promise<BddbTorrent | null> {
 /**
  * 获取种子文件列表转换为 FileItem 格式
  */
-export async function getTorrentFilesAsFileItems(torrentId: string | ObjectId): Promise<{id: string; name: string; size: number; progress: number}[]> {
+export async function getTorrentFilesAsFileItems(torrentId: string | ObjectId): Promise<{ id: string; name: string; size: number; progress: number }[]> {
     try {
         const torrent = await getTorrentById(torrentId)
         if (!torrent) return []
@@ -850,7 +748,7 @@ export async function deleteStaleVolumes(torrentId: string | ObjectId, keepVolum
 /**
  * 删除过期媒体 (保留指定 media_no + media_type 的媒体，其余软删除)
  */
-export async function deleteStaleMedias(volumeId: string | ObjectId, keepMedias: {media_no: number; media_type: MediaType}[]): Promise<void> {
+export async function deleteStaleMedias(volumeId: string | ObjectId, keepMedias: { media_no: number; media_type: MediaType }[]): Promise<void> {
     try {
         const collection = getMediasCollection()
         const vid = typeof volumeId === 'string' ? new ObjectId(volumeId) : volumeId
@@ -897,7 +795,7 @@ export async function getVolumeById(volumeId: string | ObjectId): Promise<BddbVo
 /**
  * 获取卷的文件列表 (从关联的种子中解析)
  */
-export async function getVolumeFilesAsFileItems(volumeId: string | ObjectId): Promise<{id: string; name: string; size: number; progress: number}[]> {
+export async function getVolumeFilesAsFileItems(volumeId: string | ObjectId): Promise<{ id: string; name: string; size: number; progress: number }[]> {
     try {
         const volume = await getVolumeById(volumeId)
         if (!volume) return []
@@ -926,7 +824,7 @@ export async function getVolumeFilesAsFileItems(volumeId: string | ObjectId): Pr
 export async function saveVolumeCompat(
     torrentId: string | ObjectId,
     fileIds: string[],
-    data: {volume_no?: number; catalog_no?: string; volume_name?: string}
+    data: { volume_no?: number; catalog_no?: string; volume_name?: string }
 ): Promise<void> {
     const tid = typeof torrentId === 'string' ? new ObjectId(torrentId) : torrentId
     const volume: BddbVolume = {
@@ -949,7 +847,7 @@ export async function saveVolumeCompat(
 export async function saveMediaCompat(
     volumeId: string | ObjectId,
     fileIds: string[],
-    data: {media_no?: number; media_type?: MediaType; content_title?: string; description?: string}
+    data: { media_no?: number; media_type?: MediaType; content_title?: string; description?: string }
 ): Promise<void> {
     const vid = typeof volumeId === 'string' ? new ObjectId(volumeId) : volumeId
     const media: BddbMedia = {
@@ -967,24 +865,7 @@ export async function saveMediaCompat(
     await saveMedia(media)
 }
 
-/**
- * 获取所有种子文件名 (用于计算路径前缀)
- */
-export async function getAllTorrentFileNames(torrentId: string | ObjectId): Promise<string[]> {
-    try {
-        const torrent = await getTorrentById(torrentId)
-        if (!torrent) return []
-        return torrent.files.map(f => f.name)
-    } catch (error) {
-        console.error('[mongodb] getAllTorrentFileNames error:', error)
-        return []
-    }
-}
-
 // ─── 兼容旧命名导出（删除 lib/db 后直接使用）────────────────────────────────
 
 export const getVolumesByTorrent = getVolumesByTorrentId
-export const getVolumesByFile = getVolumesByFileId
 export const getMediasByVolume = getMediasByVolumeId
-export const saveVolumeLegacy = saveVolumeCompat
-export const saveMediaLegacy = saveMediaCompat
