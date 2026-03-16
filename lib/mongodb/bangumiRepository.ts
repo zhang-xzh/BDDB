@@ -1,5 +1,5 @@
 import {getBangumiCollection} from './connection'
-import {type BangumiCollection, type BangumiImages, type BangumiRating, getCharacterUrl, getEpisodeUrl, getPersonUrl, getSubjectUrl, getTypeName, getWeekday, getWeekdayName, ROLE_TYPE_NAMES, SUBJECT_TYPE_NAMES, WEEKDAY_NAMES,} from '@/lib/bangumi'
+import {type BangumiCollection, type BangumiImages, type BangumiRating, ROLE_TYPE_NAMES, SUBJECT_TYPE_NAMES, WEEKDAY_NAMES,} from '@/lib/bangumi'
 
 // Bangumi 条目类型定义 (基于 MONGODB_SCHEMA.md)
 export interface BangumiSubjectDoc {
@@ -250,18 +250,6 @@ export function getSubjectCharactersCollection() {
 
 export function getSubjectRelationsCollection() {
     return getBangumiCollection<BangumiSubjectRelationDoc>('subject_relations')
-}
-
-// ============ URL 生成工具函数 ============
-// 从 @/lib/bangumi 导入并重新导出
-export {
-    getSubjectUrl,
-    getPersonUrl,
-    getCharacterUrl,
-    getEpisodeUrl,
-    getWeekday,
-    getTypeName,
-    getWeekdayName,
 }
 
 // ============ 查询函数 ============

@@ -9,7 +9,8 @@
 
 import type {BangumiSearchDoc} from '@/lib/meilisearch'
 import {BANGUMI_INDEX, bulkIndexBangumiSubjects, clearAllBangumiSubjects, deleteBangumiIndex, ensureMeiliConnected, getBangumiIndexStats, setupBangumiIndex,} from '@/lib/meilisearch'
-import {type BangumiSubjectDoc, getAllSubjects, getSubjectUrl, getTotalSubjectsCount, SUBJECT_TYPE_NAMES,} from '@/lib/mongodb'
+import {type BangumiSubjectDoc, getAllSubjects, getTotalSubjectsCount, SUBJECT_TYPE_NAMES,} from '@/lib/mongodb'
+import {getSubjectUrl} from '@/lib/bangumi'
 
 /**
  * 将 BangumiSubjectDoc 转换为搜索文档
