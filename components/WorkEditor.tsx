@@ -430,7 +430,6 @@ function WorkEditView({
                 sx={{maxWidth: 500, mb: 2, mt: 1}}
                 size="small"
                 multiple
-                disableCloseOnSelect
                 options={searchResults}
                 getOptionLabel={(option) => option.name_cn || option.name}
                 filterOptions={(x) => x} // 禁用本地过滤，使用 API 结果
