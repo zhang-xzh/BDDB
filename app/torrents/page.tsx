@@ -1,66 +1,34 @@
 'use client'
 
-import React, {useCallback, useEffect, useMemo, useState} from 'react'
-import {Card, HTMLSelect, Icon, InputGroup, NonIdealState, PopoverNext, Spinner, Switch, Tag, Tooltip} from '@blueprintjs/core'
-import {Cell, Column, Table2, SelectionModes} from '@blueprintjs/table'
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {Icon, Menu, MenuDivider, MenuItem, NonIdealState, Spinner, Tag} from '@blueprintjs/core'
+import {Cell, Column, ColumnHeaderCell, Table2, SelectionModes} from '@blueprintjs/table'
 import type {TorrentWithVolume} from '@/lib/mongodb'
 import {fetchApi} from '@/lib/api'
 import {DiscEditorContent, useDiscEditor} from '@/components/DiscEditor'
+import FloatingPanel from '@/components/FloatingPanel'
 
-function matchesFilters(torrent: TorrentWithVolume, filters: {
-    searchText: string; invertSearch: boolean
-    filterCategory?: string; filterHasVolumes?: boolean; filterState?: string
-}): boolean {
-    const {searchText, invertSearch, filterCategory, filterHasVolumes, filterState} = filters
-    if (searchText) {
-        const match = torrent.name?.toLowerCase().includes(searchText.toLowerCase())
-        if (invertSearch ? match : !match) return false
-    }
-    if (filterCategory !== undefined && torrent.category !== filterCategory) return false
-    if (filterHasVolumes !== undefined && !!torrent.hasVolumes !== filterHasVolumes) return false
-    return !(filterState !== undefined && torrent.state !== filterState);
-}
-
-// ─── Hooks ────────────────────────────────────────────────────────────────────
-
-function useTorrentListView(torrents: TorrentWithVolume[]) {
-    const [searchText, setSearchText] = useState('')
-    const [invertSearch, setInvertSearch] = useState(false)
-    const [filterCategory, setFilterCategory] = useState<string | undefined>(undefined)
-    const [filterHasVolumes, setFilterHasVolumes] = useState<boolean | undefined>(undefined)
-    const [filterState, setFilterState] = useState<string | undefined>(undefined)
-
-    const categories = useMemo(() =>
-            Array.from(new Set(torrents.map(t => t.category).filter((c): c is string => Boolean(c)))),
-        [torrents])
-
-    const states = useMemo(() =>
-            Array.from(new Set(torrents.map(t => t.state).filter((s): s is string => Boolean(s)))),
-        [torrents])
-
-    const filteredTorrents = useMemo(() =>
-            torrents.filter(t => matchesFilters(t, {
-                searchText,
-                invertSearch,
-                filterCategory,
-                filterHasVolumes,
-                filterState
-            })),
-        [torrents, searchText, invertSearch, filterCategory, filterHasVolumes, filterState])
-
-    return {
-        searchText, setSearchText, invertSearch, setInvertSearch,
-        filterCategory, setFilterCategory, filterHasVolumes, setFilterHasVolumes,
-        filterState, setFilterState, categories, states, filteredTorrents,
-    }
-}
-
-// ─── Components ───────────────────────────────────────────────────────────────
+type SortDir = 'asc' | 'desc' | null
 
 const TorrentsPage: React.FC = () => {
     const [loading, setLoading] = useState(false)
     const [torrents, setTorrents] = useState<TorrentWithVolume[]>([])
     const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
+
+    // Column widths
+    const containerRef = useRef<HTMLDivElement>(null)
+    const [colWidths, setColWidths] = useState<(number | null)[]>([70, null, 120, 120])
+
+    // Sort
+    const [sortKey, setSortKey] = useState<string | null>(null)
+    const [sortDir, setSortDir] = useState<SortDir>(null)
+
+    // Filters
+    const [filterCategory, setFilterCategory] = useState<string | null>(null)
+    const [filterState, setFilterState] = useState<string | null>(null)
+    const [filterHasVolumes, setFilterHasVolumes] = useState<boolean | null>(null)
+    const [nameSearch, setNameSearch] = useState('')
+    const rowClickRef = useRef<{ row: number | null; ts: number }>({row: null, ts: 0})
 
     const fetchTorrents = useCallback(async () => {
         setLoading(true)
@@ -75,23 +43,45 @@ const TorrentsPage: React.FC = () => {
     }, [])
 
     const editor = useDiscEditor(fetchTorrents)
-    const {
-        searchText, setSearchText,
-        invertSearch, setInvertSearch,
-        filterCategory, setFilterCategory,
-        filterHasVolumes, setFilterHasVolumes,
-        filterState, setFilterState,
-        categories, states,
-        filteredTorrents,
-    } = useTorrentListView(torrents)
+
+    useEffect(() => { fetchTorrents() }, [fetchTorrents])
+
+    // Auto-size columns based on content
+    useEffect(() => {
+        if (torrents.length === 0) return
+        const totalWidth = containerRef.current?.clientWidth ?? 1200
+        const statusW = 70
+        const charW = 8
+        const pad = 24
+        const catW = Math.min(220, Math.max(80, pad + charW * Math.max(...torrents.map(t => (t.category ?? '').length), 4)))
+        const stateW = Math.min(160, Math.max(80, pad + charW * Math.max(...torrents.map(t => (t.state ?? '').length), 6)))
+        const nameW = Math.max(200, totalWidth - statusW - catW - stateW - 2)
+        setColWidths([statusW, nameW, catW, stateW])
+    }, [torrents])
+
+    // Unique values for filter menus
+    const categories = useMemo(() =>
+        Array.from(new Set(torrents.map(t => t.category).filter(Boolean) as string[])).sort(),
+    [torrents])
+
+    const states = useMemo(() =>
+        Array.from(new Set(torrents.map(t => t.state).filter(Boolean) as string[])).sort(),
+    [torrents])
+
+    // Filter
+    const filteredTorrents = useMemo(() => {
+        return torrents.filter(t => {
+            if (nameSearch && !t.name?.toLowerCase().includes(nameSearch.toLowerCase())) return false
+            if (filterCategory !== null && t.category !== filterCategory) return false
+            if (filterState !== null && t.state !== filterState) return false
+            if (filterHasVolumes !== null && !!t.hasVolumes !== filterHasVolumes) return false
+            return true
+        })
+    }, [torrents, nameSearch, filterCategory, filterState, filterHasVolumes])
 
     // Sort
-    const [sortKey, setSortKey] = useState<string | null>(null)
-    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
-    const [colWidths, setColWidths] = useState<(number | null)[]>([70, null, 120, 100])
-
     const sortedTorrents = useMemo(() => {
-        if (!sortKey) return filteredTorrents
+        if (!sortKey || !sortDir) return filteredTorrents
         return [...filteredTorrents].sort((a, b) => {
             let va: string | number, vb: string | number
             switch (sortKey) {
@@ -106,90 +96,114 @@ const TorrentsPage: React.FC = () => {
         })
     }, [filteredTorrents, sortKey, sortDir])
 
-    const toggleSort = useCallback((key: string) => {
-        if (sortKey === key) {
-            setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-        } else {
-            setSortKey(key)
-            setSortDir('asc')
-        }
-    }, [sortKey])
-
-    const sortIcon = useCallback((key: string) => {
-        if (sortKey !== key) return null
-        return <Icon icon={sortDir === 'asc' ? 'caret-up' : 'caret-down'} size={12}/>
-    }, [sortKey, sortDir])
-
-    useEffect(() => {
-        fetchTorrents()
-    }, [fetchTorrents])
-
-    // Reset selection when filters change
-    useEffect(() => {
-        setSelectedIdx(null)
-    }, [searchText, invertSearch, filterCategory, filterHasVolumes, filterState])
-
-    const selectedTorrent = selectedIdx !== null ? sortedTorrents[selectedIdx] : null
+    // Reset selection on filter change
+    useEffect(() => { setSelectedIdx(null) }, [nameSearch, filterCategory, filterState, filterHasVolumes])
 
     const handleRowSelect = useCallback(async (idx: number) => {
         const t = sortedTorrents[idx]
         if (!t) return
-        if (selectedIdx === idx) {
-            if (editor.hasChanges()) await editor.handleSubmit()
-            setSelectedIdx(null)
-            return
-        }
         if (editor.hasChanges()) await editor.handleSubmit()
         setSelectedIdx(idx)
         await editor.open(t.hash, t.name, false)
-    }, [sortedTorrents, selectedIdx, editor])
+    }, [sortedTorrents, editor])
 
-    const hasActiveFilters = !!searchText || filterCategory !== undefined || filterHasVolumes !== undefined || filterState !== undefined
+    const handleDialogClose = useCallback(async () => {
+        if (selectedIdx === null) return
+        if (!editor.hasChanges()) {
+            setSelectedIdx(null)
+            return
+        }
+        const ok = await editor.handleSubmit()
+        if (ok) setSelectedIdx(null)
+    }, [selectedIdx, editor])
 
-    const filterBar = (
-        <div style={{display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 12}}>
-            <InputGroup
-                value={searchText}
-                onChange={e => setSearchText(e.currentTarget.value)}
-                placeholder="搜索种子"
-                leftIcon="search"
-                style={{width: 250}}
-                small
-                rightElement={
-                    <Tooltip content="反向搜索">
-                        <Switch checked={invertSearch} onChange={e => setInvertSearch((e.target as HTMLInputElement).checked)} innerLabel="反" style={{marginBottom: 0, marginRight: 4}}/>
-                    </Tooltip>
-                }
-            />
-            <HTMLSelect value={filterCategory ?? ''} onChange={e => setFilterCategory(e.target.value || undefined)} options={[{label: '全部类别', value: ''}, ...categories.map(c => ({label: c, value: c}))]}/>
-            <HTMLSelect value={filterState ?? ''} onChange={e => setFilterState(e.target.value || undefined)} options={[{label: '全部状态', value: ''}, ...states.map(s => ({label: s, value: s}))]}/>
-            <HTMLSelect value={filterHasVolumes === undefined ? '' : String(filterHasVolumes)} onChange={e => { const v = e.target.value; setFilterHasVolumes(v === '' ? undefined : v === 'true') }} options={[{label: '全部', value: ''}, {label: '已处理', value: 'true'}, {label: '未处理', value: 'false'}]}/>
-            <span className="bp6-text-muted" style={{fontSize: 13}}>共 {filteredTorrents.length} 条</span>
-        </div>
+    // ─── Sort helpers ─────────────────────────────────────────────
+    const applySortAsc = (key: string) => { setSortKey(key); setSortDir('asc') }
+    const applySortDesc = (key: string) => { setSortKey(key); setSortDir('desc') }
+    const clearSort = () => { setSortKey(null); setSortDir(null) }
+
+    const sortMenuItems = (key: string) => (
+        <>
+            <MenuItem icon="sort-asc" text="升序" active={sortKey === key && sortDir === 'asc'} onClick={() => applySortAsc(key)}/>
+            <MenuItem icon="sort-desc" text="降序" active={sortKey === key && sortDir === 'desc'} onClick={() => applySortDesc(key)}/>
+            {sortKey === key && <MenuItem icon="disable" text="取消排序" onClick={clearSort}/>}
+        </>
     )
 
-    if (filteredTorrents.length === 0 && !loading) {
-        return (
-            <div style={{display: 'flex', flexDirection: 'column', gap: 12}}>
-                {filterBar}
-                <NonIdealState
-                    icon="inbox"
-                    title={hasActiveFilters ? '无匹配结果' : '暂无种子数据'}
-                />
-            </div>
-        )
+    // ─── Column header renderers ──────────────────────────────────
+    const menuProps = {usePortal: true, placement: 'bottom' as const, rootBoundary: 'document' as const}
+
+    const statusHeaderRenderer = () => (
+        <ColumnHeaderCell name="状态" menuPopoverProps={menuProps} menuRenderer={() => (
+            <Menu>
+                {sortMenuItems('status')}
+                <MenuDivider title="筛选"/>
+                <MenuItem icon={filterHasVolumes === null ? 'tick' : undefined} text="全部" onClick={() => setFilterHasVolumes(null)}/>
+                <MenuItem icon={filterHasVolumes === true ? 'tick' : undefined} text="已处理" onClick={() => setFilterHasVolumes(true)}/>
+                <MenuItem icon={filterHasVolumes === false ? 'tick' : undefined} text="未处理" onClick={() => setFilterHasVolumes(false)}/>
+            </Menu>
+        )}/>
+    )
+
+    const nameHeaderRenderer = () => (
+        <ColumnHeaderCell name={nameSearch ? `名称 (${nameSearch})` : '名称'} menuPopoverProps={menuProps} menuRenderer={() => (
+            <Menu>
+                {sortMenuItems('name')}
+                <MenuDivider title="搜索"/>
+                <li className="bp6-menu-header" style={{padding: '4px 8px'}}>
+                    <input
+                        className="bp6-input bp6-small bp6-fill"
+                        placeholder="搜索名称..."
+                        value={nameSearch}
+                        onChange={e => setNameSearch(e.target.value)}
+                        onClick={e => e.stopPropagation()}
+                        autoFocus
+                    />
+                </li>
+                {nameSearch && <MenuItem icon="cross" text="清除搜索" onClick={() => setNameSearch('')}/>}
+            </Menu>
+        )}/>
+    )
+
+    const categoryHeaderRenderer = () => (
+        <ColumnHeaderCell name="类别" menuPopoverProps={menuProps} menuRenderer={() => (
+            <Menu>
+                {sortMenuItems('category')}
+                <MenuDivider title="筛选"/>
+                <MenuItem icon={filterCategory === null ? 'tick' : undefined} text="全部" onClick={() => setFilterCategory(null)}/>
+                {categories.map(c => (
+                    <MenuItem key={c} icon={filterCategory === c ? 'tick' : undefined} text={c} onClick={() => setFilterCategory(c)}/>
+                ))}
+            </Menu>
+        )}/>
+    )
+
+    const stateHeaderRenderer = () => (
+        <ColumnHeaderCell name="qBit状态" menuPopoverProps={menuProps} menuRenderer={() => (
+            <Menu>
+                {sortMenuItems('state')}
+                <MenuDivider title="筛选"/>
+                <MenuItem icon={filterState === null ? 'tick' : undefined} text="全部" onClick={() => setFilterState(null)}/>
+                {states.map(s => (
+                    <MenuItem key={s} icon={filterState === s ? 'tick' : undefined} text={s} onClick={() => setFilterState(s)}/>
+                ))}
+            </Menu>
+        )}/>
+    )
+
+    // ─── Render ───────────────────────────────────────────────────
+    if (sortedTorrents.length === 0 && !loading) {
+        return <NonIdealState icon="inbox" title="暂无种子数据"/>
     }
 
+    const hasActiveFilter = filterCategory !== null || filterState !== null || filterHasVolumes !== null || nameSearch !== ''
+    const selectedTorrent = selectedIdx !== null ? sortedTorrents[selectedIdx] : null
+
     return (
-        <div style={{display: 'flex', flexDirection: 'column', gap: 12}}>
-            {filterBar}
-            <div style={{position: 'relative'}}>
+        <div style={{display: 'flex', flexDirection: 'column', height: '100%'}}>
+            <div ref={containerRef} style={{position: 'relative', flex: 1, minHeight: 0}}>
                 {loading && (
-                    <div style={{
-                        position: 'absolute', inset: 0, zIndex: 1,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: 'var(--overlay-bg)',
-                    }}>
+                    <div style={{position: 'absolute', inset: 0, zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--overlay-bg)'}}>
                         <Spinner/>
                     </div>
                 )}
@@ -202,7 +216,15 @@ const TorrentsPage: React.FC = () => {
                     enableMultipleSelection={false}
                     onSelection={regions => {
                         const rowIdx = regions?.[0]?.rows?.[0]
-                        if (rowIdx !== undefined) handleRowSelect(rowIdx)
+                        if (rowIdx === undefined) return
+                        setSelectedIdx(rowIdx)
+                        const now = Date.now()
+                        if (rowClickRef.current.row === rowIdx && now - rowClickRef.current.ts < 300) {
+                            void handleRowSelect(rowIdx)
+                            rowClickRef.current = {row: null, ts: 0}
+                            return
+                        }
+                        rowClickRef.current = {row: rowIdx, ts: now}
                     }}
                     getCellClipboardData={(row, col) => {
                         const t = sortedTorrents[row]
@@ -216,7 +238,7 @@ const TorrentsPage: React.FC = () => {
                         }
                     }}
                 >
-                    <Column name="状态" nameRenderer={(name) => <span style={{cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2}} onClick={() => toggleSort('status')}>{name}{sortIcon('status')}</span>} cellRenderer={row => {
+                    <Column name="状态" columnHeaderCellRenderer={statusHeaderRenderer} cellRenderer={row => {
                         const t = sortedTorrents[row]
                         return <Cell>
                             {t?.hasVolumes
@@ -224,24 +246,35 @@ const TorrentsPage: React.FC = () => {
                                 : <Icon icon="disable" className="bp6-text-muted" size={12}/>}
                         </Cell>
                     }}/>
-                    <Column name="名称" nameRenderer={(name) => <span style={{cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2}} onClick={() => toggleSort('name')}>{name}{sortIcon('name')}</span>} cellRenderer={row => <Cell>{sortedTorrents[row]?.name}</Cell>}/>
-                    <Column name="类别" nameRenderer={(name) => <span style={{cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2}} onClick={() => toggleSort('category')}>{name}{sortIcon('category')}</span>} cellRenderer={row => {
+                    <Column name="名称" columnHeaderCellRenderer={nameHeaderRenderer} cellRenderer={row => <Cell>{sortedTorrents[row]?.name}</Cell>}/>
+                    <Column name="类别" columnHeaderCellRenderer={categoryHeaderRenderer} cellRenderer={row => {
                         const cat = sortedTorrents[row]?.category
                         return <Cell>{cat ? <Tag minimal>{cat}</Tag> : '—'}</Cell>
                     }}/>
-                    <Column name="状态" nameRenderer={(name) => <span style={{cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2}} onClick={() => toggleSort('state')}>{name}{sortIcon('state')}</span>} cellRenderer={row => <Cell>{sortedTorrents[row]?.state || '—'}</Cell>}/>
+                    <Column name="qBit状态" columnHeaderCellRenderer={stateHeaderRenderer} cellRenderer={row => <Cell>{sortedTorrents[row]?.state || '—'}</Cell>}/>
                 </Table2>
             </div>
-            <PopoverNext
-                isOpen={selectedTorrent !== null}
-                content={<Card style={{padding: 12, maxWidth: 900}}><DiscEditorContent {...editor} /></Card>}
-                placement="bottom-start"
-                arrow={false}
-                canEscapeKeyClose
-                onClose={() => setSelectedIdx(null)}
-                usePortal={false}
-                renderTarget={({ref, ...targetProps}) => <div ref={ref} {...targetProps} style={{width: '100%', height: 0}} />}
-            />
+            {hasActiveFilter && (
+                <div style={{padding: '4px 8px', fontSize: 12, color: 'var(--muted-color)'}}>
+                    共 {sortedTorrents.length} / {torrents.length} 条
+                    {filterCategory && <Tag minimal style={{marginLeft: 4}} onRemove={() => setFilterCategory(null)}>类别: {filterCategory}</Tag>}
+                    {filterState && <Tag minimal style={{marginLeft: 4}} onRemove={() => setFilterState(null)}>状态: {filterState}</Tag>}
+                    {filterHasVolumes !== null && <Tag minimal style={{marginLeft: 4}} onRemove={() => setFilterHasVolumes(null)}>{filterHasVolumes ? '已处理' : '未处理'}</Tag>}
+                    {nameSearch && <Tag minimal style={{marginLeft: 4}} onRemove={() => setNameSearch('')}>搜索: {nameSearch}</Tag>}
+                </div>
+            )}
+            <FloatingPanel
+                title={selectedTorrent ? `种子编辑 - ${selectedTorrent.name}` : '种子编辑'}
+                icon="edit"
+                isOpen={selectedIdx !== null}
+                onClose={() => { void handleDialogClose() }}
+                width={1100}
+                maxHeight={700}
+                zIndex={25}
+                showCloseButton
+            >
+                <DiscEditorContent {...editor} />
+            </FloatingPanel>
         </div>
     )
 }

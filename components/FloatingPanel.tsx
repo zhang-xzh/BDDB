@@ -2,29 +2,49 @@
 
 import React, {useCallback, useEffect, useRef, useState} from 'react'
 import {Button, Icon} from '@blueprintjs/core'
+import type {IconName} from '@blueprintjs/icons'
 
 interface FloatingPanelProps {
     title: string
     defaultOpen?: boolean
+    isOpen?: boolean
+    onOpenChange?: (open: boolean) => void
+    onClose?: () => void
     defaultPosition?: {x: number; y: number}
     width?: number
     maxHeight?: number
+    icon?: IconName
+    zIndex?: number
+    showCloseButton?: boolean
     children: React.ReactNode
 }
 
 export default function FloatingPanel({
     title,
     defaultOpen = false,
+    isOpen,
+    onOpenChange,
+    onClose,
     defaultPosition,
     width = 320,
     maxHeight = 500,
+    icon = 'search',
+    zIndex = 18,
+    showCloseButton = false,
     children,
 }: FloatingPanelProps) {
-    const [open, setOpen] = useState(defaultOpen)
+    const [openState, setOpenState] = useState(defaultOpen)
     const [pos, setPos] = useState(defaultPosition ?? {x: -1, y: -1})
     const [dragging, setDragging] = useState(false)
     const dragOffset = useRef({x: 0, y: 0})
     const panelRef = useRef<HTMLDivElement>(null)
+    const isControlled = isOpen !== undefined
+    const open = isControlled ? isOpen : openState
+
+    const setOpen = useCallback((nextOpen: boolean) => {
+        if (!isControlled) setOpenState(nextOpen)
+        onOpenChange?.(nextOpen)
+    }, [isControlled, onOpenChange])
 
     // 初始化默认位置到右下角
     useEffect(() => {
@@ -78,7 +98,7 @@ export default function FloatingPanel({
                 left: pos.x,
                 top: pos.y,
                 width: open ? width : 'auto',
-                zIndex: 18,
+                zIndex,
                 padding: 0,
                 overflow: 'hidden',
                 userSelect: dragging ? 'none' : undefined,
@@ -96,14 +116,24 @@ export default function FloatingPanel({
                 }}
                 onMouseDown={onMouseDown}
             >
-                <Icon icon="search" size={14}/>
+                <Icon icon={icon} size={14}/>
                 <span style={{flex: 1, fontSize: 13, fontWeight: 600}}>{title}</span>
                 <Button
                     minimal
                     small
                     icon={open ? 'minus' : 'plus'}
+                    onMouseDown={e => e.stopPropagation()}
                     onClick={() => setOpen(!open)}
                 />
+                {showCloseButton && (
+                    <Button
+                        minimal
+                        small
+                        icon="cross"
+                        onMouseDown={e => e.stopPropagation()}
+                        onClick={() => onClose?.()}
+                    />
+                )}
             </div>
             {/* 内容 */}
             {open && (

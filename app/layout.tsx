@@ -2,7 +2,7 @@
 
 import React, {useEffect, useState} from 'react'
 import {usePathname, useRouter} from 'next/navigation'
-import {Button, Navbar, Tab, Tabs} from '@blueprintjs/core'
+import {Button, Navbar, OverlaysProvider, Tab, Tabs} from '@blueprintjs/core'
 import FloatingPanel from '@/components/FloatingPanel'
 import SiderContent from '@/components/SiderContent'
 import './globals.css'
@@ -80,9 +80,11 @@ export default function RootLayout({children}: Readonly<{ children: React.ReactN
             <title>BDDB</title>
         </head>
         <body className={isDark ? 'bp6-dark' : ''}>
-            <AppLayout isDark={isDark} onToggle={onToggle}>
-                {children}
-            </AppLayout>
+            <OverlaysProvider>
+                <AppLayout isDark={isDark} onToggle={onToggle}>
+                    {children}
+                </AppLayout>
+            </OverlaysProvider>
         </body>
         </html>
     )

@@ -4,8 +4,9 @@ import React, {useCallback, useEffect, useMemo, useRef, useState,} from 'react'
 import type {FileItem, Media, MediaForm, MediaType, NodeData} from '@/lib/mongodb'
 import {fetchApi, postApi} from '@/lib/api'
 import {buildTree, FlatTree} from '@/lib/utils'
-import {Button, Card, HTMLSelect, InputGroup, Intent, Spinner, Tree} from '@blueprintjs/core'
+import {Button, Card, InputGroup, Intent, MenuItem, Spinner, Tree} from '@blueprintjs/core'
 import type {TreeNodeInfo} from '@blueprintjs/core'
+import {Select} from '@blueprintjs/select'
 import {showToast} from '@/lib/toaster'
 import {buildEditorTreeNodes} from '@/components/EditorTreeNode'
 import type {EditorTreeNodeProps} from '@/components/EditorTreeNode'
@@ -85,6 +86,8 @@ const MEDIA_TYPES: { value: MediaType; label: string }[] = [
     {value: 'cd', label: 'CD'},
     {value: 'scan', label: '扫图'},
 ]
+
+const MediaTypeSelect = Select.ofType<{ value: MediaType; label: string }>()
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
@@ -396,16 +399,30 @@ function MediaRow({no, mediaForms, onMediaFormChange, onDeleteMedia, submitted}:
 }) {
     const form = getMediaForm(mediaForms, no)
     const contentTitleError = submitted && !form.content_title.trim()
+    const selectedType = MEDIA_TYPES.find(t => t.value === form.media_type) ?? MEDIA_TYPES[0]
     return (
         <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
             <span style={{minWidth: 60, fontWeight: 600, fontSize: 13}}>媒介 {no}</span>
-            <HTMLSelect
-                value={form.media_type}
-                onChange={e => onMediaFormChange(no, {...form, media_type: e.target.value as MediaType})}
-                style={{width: 100}}
+            <MediaTypeSelect
+                items={MEDIA_TYPES}
+                filterable={false}
+                activeItem={selectedType}
+                onItemSelect={item => onMediaFormChange(no, {...form, media_type: item.value})}
+                itemRenderer={(item, {handleClick, modifiers}) => (
+                    <MenuItem
+                        key={item.value}
+                        text={item.label}
+                        active={modifiers.active}
+                        onClick={handleClick}
+                    />
+                )}
             >
-                {MEDIA_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </HTMLSelect>
+                <Button
+                    text={selectedType.label}
+                    rightIcon="double-caret-vertical"
+                    style={{width: 100}}
+                />
+            </MediaTypeSelect>
             <InputGroup
                 value={form.content_title}
                 onChange={e => onMediaFormChange(no, {...form, content_title: e.target.value})}
