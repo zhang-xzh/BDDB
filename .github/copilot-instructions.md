@@ -1,229 +1,161 @@
-# GitHub Copilot Instructions for BDDB Project
+# LANGUAGE
 
-This file provides context and guidelines for GitHub Copilot when working with the BDDB codebase.
+Think in English internally, but always respond in Chinese unless the user asks for another language.
 
-## Project Overview
+# ENGINEERING STYLE
 
-BDDB is a Next.js 16 + React 19 + TypeScript torrent/disc management system for organizing qBittorrent downloads into
-disc/BOX volumes. It uses **MongoDB** for persistence and Ant Design 6 for the UI.
+Behave like a careful senior software engineer.
 
-### Tech Stack
+Priorities:
 
-- **Framework**: Next.js 16 (App Router)
-- **Language**: TypeScript 5.9
-- **UI Library**: Ant Design 6 + @ant-design/icons
-- **Storage**: MongoDB via `mongodb` driver
-- **qBittorrent Client**: @ctrl/qbittorrent
-- **ID**: MongoDB ObjectId
+* correctness
+* minimal code changes
+* maintainability
+* simplicity
 
-### Project Structure
+# PLAN BEFORE ACTION
 
-```
-BDDB/
-├── app/                    # Next.js App Router
-│   ├── api/                # API routes
-│   │   ├── qb/torrents/    # qBittorrent proxy APIs (sync/info/files/delete/rebuild)
-│   │   ├── store/flush/    # Persistence flush no-op API
-│   │   ├── torrents/files/ # Torrent file query API
-│   │   └── volumes/        # Volume & media management APIs
-│   ├── config/             # Configuration page
-│   ├── series/             # Series management page
-│   ├── storage/            # Data management page
-│   ├── torrents/           # Torrent list page
-│   ├── volume/             # Volume management page
-│   ├── work/               # Work management page
-│   ├── globals.css         # Global styles
-│   ├── layout.tsx          # Root layout (Ant Design ConfigProvider + nav menu)
-│   └── page.tsx            # Home — redirects to /torrents
-├── components/             # Shared React components
-│   ├── DiscEditor/         # Disc editor (VolumeFormList.tsx)
-│   ├── DiscEditor.tsx      # Disc editor entry component
-│   ├── MediaEditor.tsx     # Media editor component
-│   ├── CollapsePageList.tsx
-│   ├── ListPagination.tsx
-│   └── useEditorPanel.ts   # Shared editor panel hook
-├── lib/                    # Utility libraries
-│   ├── mongodb/            # MongoDB storage module
-│   │   ├── util.ts        # Entry point (re-exports connection + repositories)
-│   │   ├── connection.ts   # MongoDB connection helpers
-│   │   ├── bddbRepository.ts # BDDB CRUD + types
-│   │   └── productRepository.ts # Product-related repository
-│   ├── api.ts              # Frontend API utilities (fetchApi, postApi)
-│   ├── utils.ts           # Shared utilities (PAGE_SIZE, formatSize, buildTree, FlatTree, NodePath)
-│   └── qb.ts               # qBittorrent client wrapper + sync logic
-└── data/                   # Local data directory (optional)
-```
+Before modifying code:
 
-## Storage Architecture
+1. identify the problem
+2. explain the plan
+3. list files that will change
 
-### MongoDB Database (`lib/mongodb/connection.ts`)
+Only then modify files.
 
-MongoDB connection is managed via a global singleton `MongoClient`.
+# MINIMAL CHANGE RULE
 
-```typescript
-import {getMongoCollection} from '@/lib/mongodb';
+When editing files:
 
-const torrents = getMongoCollection('bddb_torrents');
-const rows = await torrents.find({is_deleted: false}).toArray();
-```
+* modify the minimum number of lines
+* do not rewrite entire files
+* avoid unrelated refactoring
+* avoid formatting-only changes
 
-**Always import from `@/lib/mongodb`** — do not use removed `@/lib/db`.
+# MULTI FILE RULE
 
-### Tables
+If multiple files must change:
 
-| Table                               | Description                       |
-|-------------------------------------|-----------------------------------|
-| `torrents`                          | Torrent metadata (flat QB fields) |
-| embedded `files` in `bddb_torrents` | Files belonging to a torrent      |
-| `bddb_volumes`                      | Disc/BOX volume metadata          |
-| `bddb_medias`                       | Media entries within a volume     |
+1. list them first
+2. explain why
+3. then apply edits
 
-### Repository Pattern
+# DEBUGGING
 
-Use functions from `lib/mongodb/bddbRepository.ts` — prefer them over ad-hoc queries in API routes:
+When debugging:
 
-```typescript
-import {getAllTorrents, saveVolumeCompat} from '@/lib/mongodb';
+1. identify the most likely cause
+2. propose the smallest fix
+3. avoid large rewrites
+4. if the fix fails, document what was tried before attempting the next approach
 
-const torrents = await getAllTorrents();
-await saveVolumeCompat(torrentId, fileIds, data);
-```
+# MISSING INFORMATION
 
-## Type System
+If information is missing:
 
-### Single Source of Truth
+* clearly say what is missing
+* ask the user
+* do not assume or invent values
 
-- **All types are defined in `lib/mongodb/bddbRepository.ts`**
-- Frontend, backend, and storage use the **same types**
-- **Never create duplicate types** in other files
-- Always import from `@/lib/mongodb`
+# SAFETY
 
-### Core Types
+* Avoid destructive commands unless explicitly requested.
+* Never delete files without user confirmation.
+* Never run commands that affect the environment (install, uninstall, upgrade) without asking first.
 
-| Type                | Description                                     |
-|---------------------|-------------------------------------------------|
-| `BddbTorrent`       | Torrent record (QB fields + metadata + files[]) |
-| `TorrentWithVolume` | Frontend torrent view with volume summary       |
-| `BddbTorrentFile`   | Embedded file record inside torrent             |
-| `BddbVolume`        | Disc/BOX volume metadata                        |
-| `VolumeForm`        | Form data for volume editing                    |
-| `MediaType`         | `'bd' \| 'dvd' \| 'cd' \| 'scan'`               |
-| `BddbMedia`         | Media entry within a volume                     |
-| `MediaForm`         | Form data for media editing                     |
-| `NodeData`          | Per-tree-node assignment state                  |
-| `FileItem`          | Simplified file for editor tree display         |
+# RESPONSE STYLE
 
-## API Conventions
+* Keep responses concise and structured.
+* Avoid unnecessary explanations.
+* Use bullet points or numbered lists when presenting multiple items.
+* Summarize what was done at the end of each task.
 
-### Runtime & Response Format
+# CONFIDENCE & UNCERTAINTY
 
-- **All API routes use Node.js runtime** (not Edge)
-- Standard response format:
+* If you are unsure about something, say so explicitly.
+* Do not present guesses as facts.
+* When multiple approaches exist, briefly list the trade-offs before proceeding.
 
-```typescript
-interface FetchResponse<T> {
-  success: boolean;
-  data?: T;        // JSON stringified
-  error?: string;
-}
-```
+# CODE QUALITY
 
-### Example API Route
+When writing or modifying code:
 
-```typescript
-export const runtime = 'nodejs';
+* follow the existing code style of the project
+* do not introduce new dependencies without asking
+* add comments only when the logic is non-obvious
+* prefer explicit over implicit
 
-export async function GET() {
-  try {
-    const torrents = await getAllTorrents();
-    return NextResponse.json({
-      success: true,
-      data: JSON.stringify(torrents),
-    });
-  } catch (error) {
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }, { status: 500 });
-  }
-}
-```
+# IDE / MCP TOOL PRIORITY (JetBrains + MCP)
 
-## Component Guidelines
+This environment provides JetBrains IDE semantic tools through MCP.
 
-### Client Components
+Tool priority order:
 
-- Use `'use client'` only for **client boundaries** (page/layout entry or module that must run in browser)
-- Do **not** add `'use client'` to every child component by default if it is only imported inside an existing client
-  boundary
-- Use React 19 hooks: `useState`, `useEffect`, `useCallback`, `useRef`
-- Use MUI (Material UI) components
-- **No direct DOM manipulation**
+1. JetBrains IDE tools (highest priority)
+2. ripgrep text search
+3. filesystem operations
 
-### File Consolidation — Fewer Files is Better
+Use IDE semantic tools whenever possible.
 
-- **Do not split files just for the sake of separation.** Only create a new file when the code is genuinely reused
-  elsewhere or is large enough to justify it (guideline: >400 lines after consolidation).
-- Hooks that are **only used by one component** belong in the same file as that component — do not extract them to a
-  separate `useXxx.ts` unless they are shared.
-- Small helper components (< ~80 lines) that are **only rendered by one parent** belong in the same file as the parent —
-  do not extract them.
-- Internal `interface`/`type` definitions that are only used within one file stay in that file — do not create a
-  separate `types.ts`.
-- Pure utility functions (e.g. tree building, formatting) that are tightly coupled to one feature belong in the same
-  file unless they are reused.
-- Only extract to a separate file when: (a) the code is shared by multiple files, or (b) the single file would exceed ~
-  600 lines.
-- Keep `app/page.tsx` and `app/layout.tsx` as thin composition/orchestration layers.
+Preferred IDE tools include:
 
-### Styling — MUI First
+* search_symbol
+* find_usages
+* rename_symbol
+* get_file_structure
+* project navigation tools
 
-- **MUI components and their built-in props are the highest priority** for layout and styling
-- Target **zero custom CSS** and **zero raw `<div>`** — use MUI layout primitives instead:
-    - `<Box sx={{display:'flex'}}>` / `<Stack>` for alignment and gaps
-    - `<Grid>` for grid layout
-    - `<Typography>` for text
-    - `sx` prop only as last resort for values MUI doesn't expose via props
-- Never write a `<div>` when a MUI component (`Card`, `Stack`, `Box`, `Paper`, etc.) can serve the same
-  purpose
-- Prefer MUI component props over `sx` hacks targeting internal class names (e.g. use `color="warning"` not `sx={{'& .MuiOutlinedInput-notchedOutline': ...}}`)
-- Use `variant="outlined"` / `disableGutters` / `color` props instead of manual border or color overrides
+Use IDE tools for:
 
-## Naming Conventions
+* navigating code
+* locating functions/classes
+* understanding project structure
+* refactoring
+* renaming symbols
 
-- **Components**: PascalCase (e.g., `DiscEditor.tsx`)
-- **Utilities**: camelCase (e.g., `api.ts`, `useDiscEditor.ts`)
-- **API Routes**: `route.ts` in folder
-- **Storage Fields**: snake_case (e.g., `is_deleted`, `synced_at`)
-- **TypeScript**: camelCase for variables/functions, PascalCase for types/interfaces
-- **Path Alias**: `@/` refers to project root
+Do NOT perform large manual text edits when a semantic IDE operation exists.
 
-## Development Workflow
+# TEXT SEARCH RULE
 
-### Build & Run
+Use ripgrep only for raw text search.
 
-```bash
-npm run dev      # Development server (http://localhost:3000)
-npm run build    # Production build
-npm run start    # Production server
-npm run lint     # ESLint
-```
+Valid use cases:
 
-### Environment Variables
+* symbol name unknown
+* searching comments or strings
+* scanning the repository broadly
 
-Configure in `.env.local`:
+Avoid ripgrep when IDE symbol search can solve the task.
 
-```env
-QB_HOST=localhost:18000    # qBittorrent WebUI address
-QB_USER=admin              # qBittorrent username
-QB_PASS=password           # qBittorrent password
-```
+# FILE OPERATION RULE
 
-## Key Files Reference
+Use filesystem tools only for file operations:
 
-- `lib/mongodb/bddbRepository.ts` — BDDB type definitions + CRUD operations
-- `lib/mongodb/connection.ts` — MongoDB connection helpers
-- `lib/mongodb/util.ts` — Entry point (import everything from here via `@/lib/mongodb`)
-- `lib/api.ts` — Frontend API utilities (fetchApi, postApi)
-- `lib/utils.ts` — Shared utilities (PAGE_SIZE, formatSize, buildTree, FlatTree, NodePath)
-- `lib/qb.ts` — qBittorrent client (getQbClient, syncTorrentsFromQb)
+* create_file
+* delete_file
+* read_file
+* write_file
+
+Do not manually modify files when IDE refactor tools are available.
+
+# PROJECT EXPLORATION RULE
+
+When exploring a project:
+
+Prefer:
+
+* search_symbol
+* get_file_structure
+
+Avoid opening many large files unnecessarily.
+
+# REFACTORING RULE
+
+When modifying existing code:
+
+Prefer semantic IDE operations such as:
+
+* rename_symbol
+* IDE-assisted edits
+
+Avoid blind search-and-replace edits across files.
