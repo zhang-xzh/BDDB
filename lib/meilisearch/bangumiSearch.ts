@@ -28,8 +28,6 @@ export interface BangumiSearchDoc {
     score?: number
     /** 排名 */
     rank?: number
-    /** 封面图片 URL */
-    cover_url?: string
     /** 条目页面 URL */
     url: string
     /** 标签 */
@@ -272,7 +270,6 @@ export async function searchBangumi(
             date: doc.date,
             score: doc.score,
             rank: doc.rank,
-            cover_url: doc.cover_url,
             url: doc.url,
             tags: doc.tags,
             nsfw: doc.nsfw,
