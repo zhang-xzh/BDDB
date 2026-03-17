@@ -6,7 +6,7 @@ import {CheckCircleOutlined, CloseCircleOutlined} from "@ant-design/icons";
 import type {TorrentWithVolume} from "@/lib/mongodb";
 import {fetchApi} from "@/lib/api";
 import {DiscEditorContent, useDiscEditor} from "@/components/DiscEditor";
-import {PAGE_SIZE} from "@/lib/utils";
+import {PAGE_SIZE, SPACING} from "@/lib/utils";
 import ListPagination from "@/components/ListPagination";
 import {useEditorPanel} from "@/components/useEditorPanel";
 import CollapsePageList, {ExpandBlocker} from "@/components/CollapsePageList";
@@ -84,8 +84,8 @@ const TorrentFiltersBar: React.FC<{
       }) => {
     const {token} = theme.useToken()
     return (
-        <Card>
-            <Space wrap>
+        <Card size="small" styles={{body: {padding: SPACING.md}}}>
+            <Space wrap size={SPACING.sm}>
                 <Input.Search
                     value={searchText} onChange={e => onSearchTextChange(e.target.value)}
                     placeholder="搜索种子" style={{width: 250}} allowClear
@@ -122,7 +122,7 @@ const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume; isExpanded: boolea
                         ? <Tag icon={<CheckCircleOutlined/>} color="success" style={{margin: 0}}>{torrent.volumeCount}</Tag>
                         : <Tag icon={<CloseCircleOutlined/>} color="default" style={{margin: 0}}/>}
                 </Flex>
-                <div style={{
+                <Flex style={{
                     flex: 1,
                     minWidth: 0,
                     overflow: 'auto',
@@ -132,29 +132,7 @@ const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume; isExpanded: boolea
                     <Typography.Text style={{color: token.colorText, display: 'inline-block'}}>
                         {torrent.name}
                     </Typography.Text>
-                </div>
-                <Flex style={{width: 200, flexShrink: 0, overflow: 'hidden'}}>
-                    {torrent.category
-                        ? <Tag color="blue" style={{margin: 0, maxWidth: '100%'}}>{torrent.category}</Tag>
-                        : <Typography.Text
-                            type="secondary"
-                            style={{color: token.colorTextSecondary}}
-                        >
-                            —
-                        </Typography.Text>}
                 </Flex>
-                <Typography.Text
-                    type="secondary"
-                    style={{
-                        width: 100,
-                        flexShrink: 0,
-                        textAlign: 'right',
-                        fontSize: 12,
-                        color: token.colorTextSecondary
-                    }}
-                >
-                    {torrent.state || '—'}
-                </Typography.Text>
             </>
         </ExpandBlocker>
     )
@@ -210,7 +188,7 @@ const TorrentsPage: React.FC = () => {
 
     if (filteredTorrents.length === 0 && !loading) {
         return (
-            <Flex vertical gap={16}>
+            <Flex vertical gap={SPACING.md}>
                 <TorrentFiltersBar
                     searchText={searchText}
                     invertSearch={invertSearch}
@@ -226,7 +204,7 @@ const TorrentsPage: React.FC = () => {
                     onHasVolumesChange={setFilterHasVolumes}
                     onStateChange={setFilterState}
                 />
-                <Card>
+                <Card size="small" styles={{body: {padding: SPACING.lg}}}>
                     <Empty description={hasActiveFilters ? "无匹配结果" : "暂无种子数据"}/>
                 </Card>
             </Flex>
@@ -234,7 +212,7 @@ const TorrentsPage: React.FC = () => {
     }
 
     return (
-        <Flex vertical gap={16}>
+        <Flex vertical gap={SPACING.md}>
             <TorrentFiltersBar
                 searchText={searchText}
                 invertSearch={invertSearch}
@@ -265,8 +243,9 @@ const TorrentsPage: React.FC = () => {
             <ListPagination
                 currentPage={currentPage}
                 total={filteredTorrents.length}
-                onPageChange={(page) => {
-                    closeForPageChange();
+                onPageChange={async (page) => {
+                    const ok = await closeForPageChange();
+                    if (!ok) return;
                     setCurrentPage(page);
                 }}
             />

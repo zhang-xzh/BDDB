@@ -6,6 +6,7 @@ import SiderContent from '@/components/SiderContent'
 import {MoonOutlined, SunOutlined} from '@ant-design/icons'
 import {usePathname, useRouter} from 'next/navigation'
 import zhCN from 'antd/locale/zh_CN'
+import {SPACING} from '@/lib/utils'
 import './globals.css'
 import Sider from "antd/es/layout/Sider";
 
@@ -32,7 +33,7 @@ function AppLayout({children, isDark, onToggle}: {
     return (
         <App>
             <Layout style={{minHeight: '100vh'}}>
-                <Header style={{display: 'flex', alignItems: 'center', padding: '0 24px', position: 'sticky', top: 0, zIndex: 100}}>
+                <Header style={{display: 'flex', alignItems: 'center', padding: `0 ${SPACING.xl}px`, position: 'sticky', top: 0, zIndex: 100}}>
                     <Title level={4} style={{margin: 0, color: token.colorWhite}}>BDDB</Title>
                     <Divider orientation="vertical" style={{borderColor: token.colorSplit}}/>
                     <Menu
@@ -51,22 +52,22 @@ function AppLayout({children, isDark, onToggle}: {
                 </Header>
                 <Layout>
                     <Sider width="25%" style={{
-                        margin: '24px 12px 24px 24px',
-                        padding: 24,
+                        margin: `${SPACING.xl}px ${SPACING.md}px ${SPACING.xl}px ${SPACING.xl}px`,
+                        padding: SPACING.xl,
                         background: token.colorBgContainer,
                         borderRadius: token.borderRadiusLG,
                         position: 'sticky',
-                        top: 88,
+                        top: 84,
                         alignSelf: 'flex-start',
-                        maxHeight: 'calc(100vh - 64px - 48px)',
+                        maxHeight: 'calc(100vh - 64px - 40px)',
                         overflow: 'auto',
                     }}>
                         <SiderContent/>
                     </Sider>
                     <Content
                         style={{
-                            margin: '24px 24px 24px 12px',
-                            padding: 24,
+                            margin: `${SPACING.xl}px ${SPACING.xl}px ${SPACING.xl}px ${SPACING.md}px`,
+                            padding: SPACING.xl,
                             background: token.colorBgContainer,
                             borderRadius: token.borderRadiusLG,
                         }}

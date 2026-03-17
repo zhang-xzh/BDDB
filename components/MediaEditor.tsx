@@ -3,9 +3,9 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState,} from 'react'
 import type {FileItem, Media, MediaForm, MediaType, NodeData} from '@/lib/mongodb'
 import {fetchApi, postApi} from '@/lib/api'
-import {buildTree, FlatTree} from '@/lib/utils'
-import {Button, Card, Empty, Input, message, Select, Space, Spin, Switch, Tree, Typography,} from 'antd'
-import {DeleteOutlined, EditOutlined} from '@ant-design/icons'
+import {buildTree, FlatTree, SPACING} from '@/lib/utils'
+import {Button, Card, Empty, Flex, Input, message, Select, Space, Spin, Switch, Tree, Typography,} from 'antd'
+import {DeleteOutlined, EditOutlined, SaveOutlined} from '@ant-design/icons'
 import type {DataNode} from 'antd/es/tree'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -40,6 +40,12 @@ export interface MediaEditorContentProps {
     updateMediaForm: (no: number, form: MediaForm) => void
     resetMediaAssignments: () => void
     deleteMedia: (no: number) => void
+    handleSubmit?: () => boolean | Promise<boolean>
+    hasChanges?: () => boolean
+    isChanged?: boolean
+    submitted?: boolean
+    resetSubmitted?: () => void
+    cancelChanges?: () => boolean
 }
 
 interface UseMediaEditorReturn {
@@ -55,8 +61,12 @@ interface UseMediaEditorReturn {
     loadMoreMedias: () => void
     mediaForms: Record<number, MediaForm>
     open: (volumeId: string, volumeNo?: number, catalogNo?: string) => Promise<void>
-    handleSubmit: () => Promise<void>
+    handleSubmit: () => Promise<boolean>
     hasChanges: () => boolean
+    isChanged: boolean
+    submitted: boolean
+    resetSubmitted: () => void
+    cancelChanges: () => boolean
     onMediaNoChange: (key: string, mediaNo: number | null) => void
     onSharedMediaChange: (key: string, medias: number[]) => void
     onToggleShared: (key: string, shared: boolean) => void
@@ -89,6 +99,7 @@ const getMediaTypeLabel = (type: MediaType | undefined) =>
 export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
     const [saving, setSaving] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [submitted, setSubmitted] = useState(false)
     const [volumeInfo, setVolumeInfo] = useState<MediaInfo | null>(null)
     const [visibleMedias, setVisibleMedias] = useState(20)
     const loadMoreMedias = useCallback(() => setVisibleMedias(v => v + 10), [])
@@ -123,6 +134,17 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
         }
         return JSON.stringify(mediaFormsRef.current) !== JSON.stringify(initialMediaFormsRef.current)
     }, [])
+
+    const isChanged = useMemo((): boolean => {
+        for (const [key, data] of nodeData.entries()) {
+            if (
+                (data.media_no ?? undefined) !== (initialNodeDataRef.current.get(key)?.media_no ?? undefined) ||
+                JSON.stringify(data.shared_medias) !== JSON.stringify(initialNodeDataRef.current.get(key)?.shared_medias)
+            )
+                return true
+        }
+        return JSON.stringify(mediaForms) !== JSON.stringify(initialMediaFormsRef.current)
+    }, [nodeData, mediaForms])
 
     const setInitialSnapshots = useCallback((nodeSnap: Map<string, NodeData>, mediaSnap: Record<number, MediaForm>) => {
         initialNodeDataRef.current = new Map(nodeSnap)
@@ -425,8 +447,37 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
         }
     }, [resetAll, setInitialSnapshots])
 
-    const handleSubmit = useCallback(async () => {
-        if (volumeInfo == null) return
+    const resetSubmitted = useCallback(() => setSubmitted(false), [])
+
+    const cancelChanges = useCallback((): boolean => {
+        const nd = new Map(initialNodeDataRef.current)
+        const mf = {...initialMediaFormsRef.current}
+        const mtk = new Map<number, Set<string>>()
+        nd.forEach((data, key) => {
+            if (data.media_no !== undefined) {
+                if (!mtk.has(data.media_no)) mtk.set(data.media_no, new Set())
+                mtk.get(data.media_no)!.add(key)
+            }
+            data.shared_medias?.forEach(mno => {
+                if (!mtk.has(mno)) mtk.set(mno, new Set())
+                mtk.get(mno)!.add(key)
+            })
+        })
+        setNodeData(nd)
+        setMediaForms(mf)
+        setMediaToKeys(mtk)
+        setSubmitted(false)
+        return Object.keys(mf).length > 0
+    }, [])
+
+    const handleSubmit = useCallback(async (): Promise<boolean> => {
+        if (volumeInfo == null) return false
+        setSubmitted(true)
+        const hasError = selectedMedias.some(m => !mediaForms[m]?.content_title?.trim())
+        if (hasError) {
+            message.error('请填写每个媒介的内容标题')
+            return false
+        }
         setSaving(true)
         try {
             const mediaMap: Record<number, string[]> = {}
@@ -459,13 +510,16 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
 
             if (!result?.success) {
                 message.error(result?.error || '保存失败')
-                return
+                return false
             }
             message.success('保存成功')
+            setSubmitted(false)
             onSave?.()
+            return true
         } catch (err) {
             console.error('保存失败:', err)
             message.error('保存失败')
+            return false
         } finally {
             setSaving(false)
         }
@@ -474,7 +528,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
     return {
         loading, saving, volumeInfo, files, treeData, nodeData, defaultExpandedKeys,
         selectedMedias, visibleMedias, loadMoreMedias, mediaForms,
-        open, handleSubmit, hasChanges,
+        open, handleSubmit, hasChanges, isChanged, submitted, resetSubmitted, cancelChanges,
         onMediaNoChange, onSharedMediaChange, onToggleShared,
         getNodeMediaNo, getNodeShared, getNodeSharedMedias, getComputedNodeValue,
         updateMediaForm, resetMediaAssignments, deleteMedia,
@@ -488,6 +542,11 @@ interface MediaFormListProps {
     mediaForms: Record<number, MediaForm>
     onMediaFormChange: (no: number, form: MediaForm) => void
     onDeleteMedia: (no: number) => void
+    onCancelEdit?: () => void
+    onSaveEdit?: () => void
+    saving?: boolean
+    isChanged?: boolean
+    submitted?: boolean
 }
 
 function MediaRow({
@@ -495,13 +554,16 @@ function MediaRow({
                       mediaForms,
                       onMediaFormChange,
                       onDeleteMedia,
+                      submitted,
                   }: {
     no: number
     mediaForms: Record<number, MediaForm>
     onMediaFormChange: (no: number, form: MediaForm) => void
     onDeleteMedia: (no: number) => void
+    submitted?: boolean
 }) {
     const form = mediaForms[no] || {media_type: 'bd', content_title: '', description: ''}
+    const titleError = submitted && !form.content_title?.trim()
     return (
         <Space>
             <Typography.Text strong style={{minWidth: 60, display: 'inline-block'}}>
@@ -518,6 +580,7 @@ function MediaRow({
                 onChange={e => onMediaFormChange(no, {...form, content_title: e.target.value})}
                 placeholder="内容"
                 style={{width: 300}}
+                status={titleError ? 'error' : undefined}
             />
             <Input
                 value={form.description}
@@ -541,8 +604,26 @@ function MediaFormList({
                            mediaForms,
                            onMediaFormChange,
                            onDeleteMedia,
+                           onCancelEdit,
+                           onSaveEdit,
+                           saving = false,
+                           isChanged = true,
+                           submitted,
                        }: MediaFormListProps) {
     if (selectedMedias.length === 0) return null
+
+    const actions = (onCancelEdit || onSaveEdit) ? (
+        <Flex gap={8}>
+            {onCancelEdit && (
+                <Button onClick={onCancelEdit} disabled={saving}>取消</Button>
+            )}
+            {onSaveEdit && (
+                <Button type="primary" icon={<SaveOutlined/>} onClick={onSaveEdit} disabled={!isChanged || saving} loading={saving}>
+                    保存
+                </Button>
+            )}
+        </Flex>
+    ) : null
 
     return (
         <Card size="small" title="媒介信息" styles={{body: {padding: 12}}}>
@@ -554,8 +635,10 @@ function MediaFormList({
                         mediaForms={mediaForms}
                         onMediaFormChange={onMediaFormChange}
                         onDeleteMedia={onDeleteMedia}
+                        submitted={submitted}
                     />
                 ))}
+                {actions}
             </Space>
         </Card>
     )
@@ -711,6 +794,12 @@ export function MediaEditorContent({
                                        updateMediaForm,
                                        resetMediaAssignments,
                                        deleteMedia,
+                                       handleSubmit,
+                                       hasChanges,
+                                       isChanged: isChangedProp,
+                                       submitted,
+                                       resetSubmitted,
+                                       cancelChanges,
                                    }: MediaEditorContentProps) {
     const [isEditing, setIsEditing] = useState(false)
     const autoModeAppliedRef = useRef(false)
@@ -755,32 +844,25 @@ export function MediaEditorContent({
             onToggleShared,
         ]
     )
+    const isChanged = isChangedProp ?? (hasChanges ? hasChanges() : true)
 
     return (
         <Spin spinning={loading}>
-            <Space orientation="vertical" style={{width: '100%', paddingTop: 8}} size={12}>
+            <Space orientation="vertical" style={{width: '100%', paddingTop: SPACING.sm}} size={SPACING.md}>
                 {isEditing ? (
                     <>
-                        {selectedMedias.length > 0 && (
-                            <Space>
-                                <Button onClick={() => setIsEditing(false)}>
-                                    取消编辑
-                                </Button>
-                            </Space>
-                        )}
-
                         {files.length > 0 ? (
                             <Card
                                 size="small"
                                 title={
                                     <Space>
-                                        <span>文件列表</span>
-                                        <span style={{color: '#999', fontWeight: 'normal'}}>
+                                        <Typography.Text>文件列表</Typography.Text>
+                                        <Typography.Text type="secondary" style={{fontWeight: 'normal'}}>
                                             {files.length} 个文件
-                                        </span>
+                                        </Typography.Text>
                                     </Space>
                                 }
-                                styles={{body: {padding: 12}}}
+                                styles={{body: {padding: SPACING.md}}}
                             >
                                 <Tree<DataNode>
                                     treeData={treeData}
@@ -797,6 +879,16 @@ export function MediaEditorContent({
                             mediaForms={mediaForms}
                             onMediaFormChange={updateMediaForm}
                             onDeleteMedia={deleteMedia}
+                            onCancelEdit={selectedMedias.length > 0 ? () => {
+                                const hasSaved = cancelChanges?.()
+                                if (hasSaved) setIsEditing(false)
+                            } : undefined}
+                            onSaveEdit={selectedMedias.length > 0 && handleSubmit ? () => {
+                                void handleSubmit()
+                            } : undefined}
+                            saving={saving}
+                            isChanged={isChanged}
+                            submitted={submitted}
                         />
                     </>
                 ) : (

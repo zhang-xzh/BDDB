@@ -4,6 +4,7 @@ import React, {useCallback, useState} from 'react'
 import {Button, Card, Col, Divider, Flex, message, Modal, Row, Space, Typography} from 'antd'
 import {ReloadOutlined, SettingOutlined, SyncOutlined} from '@ant-design/icons'
 import {postApi} from '@/lib/api'
+import {SPACING} from '@/lib/utils'
 
 const ConfigPage: React.FC = () => {
     const [syncing, setSyncing] = useState(false)
@@ -58,20 +59,20 @@ const ConfigPage: React.FC = () => {
     }
 
     return (
-        <Flex vertical gap={24} style={{maxWidth: '1200px', margin: '0 auto'}}>
+        <Flex vertical gap={SPACING.lg}>
             <Flex align="center" gap={8}>
                 <SettingOutlined style={{fontSize: 24}}/>
                 <Typography.Title level={2} style={{margin: 0}}>配置</Typography.Title>
             </Flex>
 
-            <Row gutter={[16, 16]}>
+            <Row gutter={[SPACING.md, SPACING.md]}>
                 {/* 同步操作 */}
                 <Col xs={24} md={12}>
-                    <Card title="同步操作">
-                        <Space style={{width: '100%'}} size="large" direction="vertical">
+                    <Card title="同步操作" size="small" styles={{body: {padding: SPACING.md}}}>
+                        <Space style={{width: '100%'}} size={SPACING.md} direction="vertical">
                             <Flex vertical gap="small">
                                 <Typography.Title level={3} style={{marginTop: 0}}>同步 qBittorrent</Typography.Title>
-                                <Typography.Paragraph style={{color: '#666', fontSize: '14px'}}>
+                                <Typography.Paragraph type="secondary" style={{fontSize: '14px'}}>
                                     从 qBittorrent 获取最新的种子列表并更新到数据库。如果种子已存在则更新状态，否则添加新种子。
                                 </Typography.Paragraph>
                                 <Button
@@ -92,15 +93,14 @@ const ConfigPage: React.FC = () => {
 
                 {/* 数据管理 */}
                 <Col xs={24} md={12}>
-                    <Card title="数据管理">
-                        <Space style={{width: '100%'}} size="large" direction="vertical">
+                    <Card title="数据管理" size="small" styles={{body: {padding: SPACING.md}}}>
+                        <Space style={{width: '100%'}} size={SPACING.md} direction="vertical">
                             <Flex vertical gap="small">
                                 <Typography.Title level={3} style={{marginTop: 0}}>重建数据</Typography.Title>
-                                <Typography.Paragraph style={{color: '#666', fontSize: '14px'}}>
+                                <Typography.Paragraph type="secondary" style={{fontSize: '14px', marginBottom: 0}}>
                                     清空所有本地数据（种子、文件、卷）并重新从 qBittorrent 同步。
-                                    <br/>
-                                    <Typography.Text type="danger">⚠️ 此操作不可逆，请谨慎使用！</Typography.Text>
                                 </Typography.Paragraph>
+                                <Typography.Text type="danger">⚠️ 此操作不可逆，请谨慎使用！</Typography.Text>
                                 <Button
                                     danger
                                     onClick={confirmRebuild}

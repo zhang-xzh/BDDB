@@ -6,10 +6,10 @@ import {CheckCircleOutlined, CloseCircleOutlined} from "@ant-design/icons";
 import type {BddbWork, Volume} from "@/lib/mongodb";
 import {fetchApi} from "@/lib/api";
 import WorkEditorContent, {useWorkEditor} from '@/components/WorkEditor';
-import {PAGE_SIZE} from "@/lib/utils";
+import {PAGE_SIZE, SPACING} from "@/lib/utils";
 import ListPagination from "@/components/ListPagination";
 import {useEditorPanel} from "@/components/useEditorPanel";
-import CollapsePageList, {ExpandBlocker, ListHeader} from "@/components/CollapsePageList";
+import CollapsePageList, {ExpandBlocker} from "@/components/CollapsePageList";
 
 function formatCatalogNo(catalogNo: string): string {
     return catalogNo || '无编号'
@@ -89,8 +89,8 @@ const VolumeFiltersBar: React.FC<{
       }) => {
     const {token} = theme.useToken()
     return (
-        <Card>
-            <Space wrap>
+        <Card size="small" styles={{body: {padding: SPACING.md}}}>
+            <Space wrap size={SPACING.sm}>
                 <Input.Search
                     value={searchCatalogNo}
                     onChange={e => onSearchCatalogNoChange(e.target.value)}
@@ -147,7 +147,7 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithWork; isExpanded: boolean }> 
                 <Typography.Text style={{width: 120, flexShrink: 0, color: token.colorText, fontFamily: 'monospace'}}>
                     {formatCatalogNo(volume.catalog_no)}
                 </Typography.Text>
-                <div style={{
+                <Flex style={{
                     flex: 1,
                     minWidth: 0,
                     overflow: 'auto',
@@ -157,7 +157,7 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithWork; isExpanded: boolean }> 
                     <Typography.Text style={{color: token.colorText, display: 'inline-block'}}>
                         {volume.volume_name || '无标题'}
                     </Typography.Text>
-                </div>
+                </Flex>
             </>
         </ExpandBlocker>
     )
@@ -198,9 +198,7 @@ const WorkPage: React.FC = () => {
         openItem: v => editor.open(v._id, v.volume_no, v.catalog_no),
         editor: {
             hasChanges: editor.hasChanges,
-            handleSubmit: async () => {
-                await editor.handleSubmit();
-            },
+            handleSubmit: () => editor.handleSubmit(),
         },
     });
 
@@ -212,7 +210,7 @@ const WorkPage: React.FC = () => {
 
     if (filteredVolumes.length === 0 && !loading) {
         return (
-            <Flex vertical gap={16}>
+            <Flex vertical gap={SPACING.md}>
                 <VolumeFiltersBar
                     searchCatalogNo={searchCatalogNo}
                     searchTitle={searchTitle}
@@ -224,7 +222,7 @@ const WorkPage: React.FC = () => {
                     onInvertTitleChange={setInvertTitle}
                     onFilterHasWorkChange={setFilterHasWork}
                 />
-                <Card>
+                <Card size="small" styles={{body: {padding: SPACING.lg}}}>
                     <Empty description={hasActiveFilters ? "无匹配结果" : "暂无卷数据"}/>
                 </Card>
             </Flex>
@@ -232,7 +230,7 @@ const WorkPage: React.FC = () => {
     }
 
     return (
-        <Flex vertical gap={16}>
+        <Flex vertical gap={SPACING.md}>
             <VolumeFiltersBar
                 searchCatalogNo={searchCatalogNo}
                 searchTitle={searchTitle}
@@ -259,8 +257,9 @@ const WorkPage: React.FC = () => {
             <ListPagination
                 currentPage={currentPage}
                 total={filteredVolumes.length}
-                onPageChange={(page) => {
-                    closeForPageChange();
+                onPageChange={async (page) => {
+                    const ok = await closeForPageChange();
+                    if (!ok) return;
                     setCurrentPage(page);
                 }}
             />

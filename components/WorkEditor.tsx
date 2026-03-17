@@ -1,14 +1,14 @@
 'use client'
 
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {App, Button, Card, Descriptions, Divider, Empty, Flex, Select, Spin, Tag, Tree, Typography} from 'antd'
+import {App, Button, Card, Descriptions, Empty, Flex, Select, Spin, Tag, Tree, Typography} from 'antd'
 import {EditOutlined, LinkOutlined, SaveOutlined} from '@ant-design/icons'
 import type {DefaultOptionType} from 'antd/es/select'
 import type {DataNode} from 'antd/es/tree'
 import {fetchApi, postApi} from '@/lib/api'
 import {type BangumiSearchResult, type BangumiSubject, formatDate, getBangumiSubject, getTypeName, searchBangumi} from '@/lib/bangumi'
-import type {FileItem, NodeData} from '@/lib/mongodb'
-import {buildTree} from '@/lib/utils'
+import type {FileItem} from '@/lib/mongodb'
+import {buildTree, SPACING} from '@/lib/utils'
 
 type SearchResultItem = BangumiSearchResult['list'][number]
 type WorkCandidate = BangumiSubject | SearchResultItem
@@ -37,7 +37,7 @@ interface UseWorkEditorReturn extends WorkEditorContentProps {
     handleSubmit: () => Promise<boolean>
 }
 
-function sameWorkSelection(left: Array<{id: number}>, right: Array<{id: number}>): boolean {
+function sameWorkSelection(left: Array<{ id: number }>, right: Array<{ id: number }>): boolean {
     if (left.length !== right.length) return false
     const rightIds = new Set(right.map(item => item.id))
     return left.every(item => rightIds.has(item.id))
@@ -153,7 +153,7 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
     }
 }
 
-function WorkDetail({work}: {work: BangumiSubject}) {
+function WorkDetail({work}: { work: BangumiSubject }) {
     return (
         <Card size="small">
             <Flex vertical gap={12}>
@@ -196,16 +196,15 @@ function WorkDetail({work}: {work: BangumiSubject}) {
     )
 }
 
-function WorkReadOnlyView({works, onEdit}: {works: BangumiSubject[]; onEdit: () => void}) {
+function WorkReadOnlyView({works, onEdit}: { works: BangumiSubject[]; onEdit: () => void }) {
     return (
         <Flex vertical gap={12}>
             {works.map((work, index) => (
                 <React.Fragment key={work.id}>
                     <WorkDetail work={work}/>
-                    {index < works.length - 1 && <Divider style={{margin: 0}}/>}
                 </React.Fragment>
             ))}
-            <Button icon={<EditOutlined/>} onClick={onEdit}>
+            <Button icon={<EditOutlined/>} onClick={onEdit} style={{width: 120}}>
                 更换作品
             </Button>
         </Flex>
@@ -213,13 +212,13 @@ function WorkReadOnlyView({works, onEdit}: {works: BangumiSubject[]; onEdit: () 
 }
 
 function WorkEditView({
-    selectedWorks,
-    tempWorks,
-    onTempWorksChange,
-    onSave,
-    onCancel,
-    saving,
-}: {
+                          selectedWorks,
+                          tempWorks,
+                          onTempWorksChange,
+                          onSave,
+                          onCancel,
+                          saving,
+                      }: {
     selectedWorks: BangumiSubject[]
     tempWorks: WorkCandidate[]
     onTempWorksChange: (works: WorkCandidate[]) => void
@@ -295,7 +294,7 @@ function WorkEditView({
                     const nextWorks = values.map(value => {
                         const existing = tempWorks.find(work => work.id === value)
                         if (existing) return existing
-                        const option = optionList.find(item => Number(item?.value) === value) as (DefaultOptionType & {item?: WorkCandidate}) | undefined
+                        const option = optionList.find(item => Number(item?.value) === value) as (DefaultOptionType & { item?: WorkCandidate }) | undefined
                         return option?.item
                     }).filter((item): item is WorkCandidate => item != null)
                     onTempWorksChange(nextWorks)
@@ -340,11 +339,11 @@ function WorkEditView({
 }
 
 function WorkFormList({
-    selectedWorks,
-    onWorksChange,
-    saving = false,
-    onSubmit,
-}: {
+                          selectedWorks,
+                          onWorksChange,
+                          saving = false,
+                          onSubmit,
+                      }: {
     selectedWorks: BangumiSubject[]
     onWorksChange: (works: WorkCandidate[]) => void
     saving?: boolean
@@ -423,16 +422,16 @@ function WorkFormList({
 }
 
 export function WorkEditorContent({
-    loading,
-    saving,
-    volumeInfo,
-    files,
-    treeData,
-    defaultExpandedKeys,
-    selectedWorks,
-    onWorksChange,
-    onSubmit,
-}: WorkEditorContentProps) {
+                                      loading,
+                                      saving,
+                                      volumeInfo,
+                                      files,
+                                      treeData,
+                                      defaultExpandedKeys,
+                                      selectedWorks,
+                                      onWorksChange,
+                                      onSubmit,
+                                  }: WorkEditorContentProps) {
     const [expandedKeys, setExpandedKeys] = useState<React.Key[]>(defaultExpandedKeys)
 
     useEffect(() => {
@@ -440,9 +439,9 @@ export function WorkEditorContent({
     }, [defaultExpandedKeys])
 
     return (
-        <Card style={{margin: '0 16px 16px'}}>
+        <Card style={{margin: `0 ${SPACING.md}px ${SPACING.md}px`}} size="small" styles={{body: {padding: SPACING.md}}}>
             <Spin spinning={loading || saving}>
-                <Flex vertical gap={16}>
+                <Flex vertical gap={SPACING.md}>
                     <Flex justify="space-between" align="center" wrap gap={8}>
                         <Typography.Title level={5} style={{margin: 0}}>文件列表</Typography.Title>
                         <Typography.Text type="secondary">

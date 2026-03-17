@@ -1,11 +1,11 @@
 'use client'
 
 import React, {forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState,} from 'react'
-import type {FileItem, NodeData, VolumeForm, TorrentWithVolume, Volume} from '@/lib/mongodb'
+import type {FileItem, NodeData, TorrentWithVolume, Volume, VolumeForm} from '@/lib/mongodb'
 import {fetchApi, postApi} from '@/lib/api'
-import {buildTree, FlatTree} from '@/lib/utils'
-import {Button, Card, Cascader, Empty, Input, InputNumber, message, Modal, Select, Space, Spin, Switch, Tree, Typography,} from 'antd'
-import {DeleteOutlined, EditOutlined} from '@ant-design/icons'
+import {buildTree, FlatTree, SPACING} from '@/lib/utils'
+import {Button, Card, Cascader, Empty, Flex, Input, InputNumber, message, Modal, Select, Space, Spin, Switch, Tree, Typography,} from 'antd'
+import {DeleteOutlined, EditOutlined, SaveOutlined} from '@ant-design/icons'
 import type {DataNode} from 'antd/es/tree'
 
 export interface DiscEditorRef {
@@ -27,12 +27,16 @@ export interface UseDiscEditorReturn {
     visibleVolumes: number
     loadMoreVolumes: () => void
     worksCount: number
+    submitted: boolean
     setWorksCount: (n: number) => void
+    resetSubmitted: () => void
+    cancelChanges: () => void
     setVolumeToKeys: (v: Map<number, Set<string>>) => void
     open: (torrentHash: string, name?: string, syncFiles?: boolean) => Promise<void>
-    handleSubmit: () => Promise<void>
+    handleSubmit: () => Promise<boolean>
     handleCancel: () => void
     hasChanges: () => boolean
+    isChanged: boolean
     onVolumeChange: (key: string, volumeNo: number | null) => void
     onSharedVolumeChange: (key: string, volumes: number[]) => void
     onToggleShared: (key: string, shared: boolean) => void
@@ -55,6 +59,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
     const [visibleVolumes, setVisibleVolumes] = useState(20)
     const loadMoreVolumes = useCallback(() => setVisibleVolumes(v => v + 10), [])
     const [worksCount, setWorksCount] = useState(1)
+    const [submitted, setSubmitted] = useState(false)
     const [volumeForms, setVolumeForms] = useState<Record<number, VolumeForm>>({})
     const [files, setFiles] = useState<FileItem[]>([])
     const [treeData, setTreeData] = useState<any[]>([])
@@ -81,6 +86,13 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
         }
         return JSON.stringify(volumeFormsRef.current) !== JSON.stringify(initialVolumeFormsRef.current)
     }, [])
+
+    const isChanged = useMemo((): boolean => {
+        for (const [key, data] of nodeData.entries()) {
+            if ((data.volume_no ?? undefined) !== (initialNodeDataRef.current.get(key)?.volume_no ?? undefined)) return true
+        }
+        return JSON.stringify(volumeForms) !== JSON.stringify(initialVolumeFormsRef.current)
+    }, [nodeData, volumeForms])
 
     const setInitialSnapshots = useCallback((nodeSnap: Map<string, NodeData>, volSnap: Record<number, VolumeForm>) => {
         initialNodeDataRef.current = new Map(nodeSnap)
@@ -221,6 +233,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
 
     const resetAll = useCallback(() => {
         resetSnapshots()
+        setSubmitted(false)
         setVolumeForms({});
         setFiles([]);
         setTreeData([]);
@@ -371,12 +384,13 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
         }
     }, [resetAll, setInitialSnapshots])
 
-    const handleSubmit = useCallback(async () => {
-        if (torrentId == null) return
+    const handleSubmit = useCallback(async (): Promise<boolean> => {
+        if (torrentId == null) return false
+        setSubmitted(true)
         const hasError = selectedVolumes.some(v => !volumeForms[v]?.catalog_no?.trim() || !volumeForms[v]?.volume_name?.trim())
         if (hasError) {
             message.error('请填写所有卷的型番和标题');
-            return
+            return false
         }
         setSaving(true)
         try {
@@ -407,26 +421,54 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
             })
             if (!result?.success) {
                 message.error(result?.error || '保存失败');
-                return
+                return false
             }
             message.success('保存成功')
+            setSubmitted(false)
             setVisible(false)
             onSave?.()
+            return true
         } catch (err) {
             console.error('保存失败:', err);
             message.error('保存失败')
+            return false
         } finally {
             setSaving(false)
         }
     }, [torrentId, selectedVolumes, volumeForms, nodeData, onSave])
 
-    const handleCancel = useCallback(() => setVisible(false), [])
+    const cancelChanges = useCallback((): boolean => {
+        const nd = new Map(initialNodeDataRef.current)
+        const vf = {...initialVolumeFormsRef.current}
+        const vtk = new Map<number, Set<string>>()
+        nd.forEach((data, key) => {
+            if (data.volume_no !== undefined) {
+                if (!vtk.has(data.volume_no)) vtk.set(data.volume_no, new Set())
+                vtk.get(data.volume_no)!.add(key)
+            }
+            data.shared_volume_nos?.forEach(vno => {
+                if (!vtk.has(vno)) vtk.set(vno, new Set())
+                vtk.get(vno)!.add(key)
+            })
+        })
+        setNodeData(nd)
+        setVolumeForms(vf)
+        setVolumeToKeys(vtk)
+        setSubmitted(false)
+        return Object.keys(vf).length > 0
+    }, [])
+
+    const handleCancel = useCallback(() => {
+        setSubmitted(false)
+        setVisible(false)
+    }, [])
+    const resetSubmitted = useCallback(() => setSubmitted(false), [])
 
     return {
         visible, loading, saving, torrentName, torrentId, volumeForms, files,
         treeData, nodeData, defaultExpandedKeys, selectedVolumes, visibleVolumes,
-        loadMoreVolumes, worksCount, setWorksCount, setVolumeToKeys,
-        open, handleSubmit, handleCancel, hasChanges,
+        loadMoreVolumes, worksCount, submitted, setWorksCount, resetSubmitted, cancelChanges, setVolumeToKeys,
+        open, handleSubmit, handleCancel, hasChanges, isChanged,
         onVolumeChange, onSharedVolumeChange, onToggleShared,
         getNodeVolume, getNodeShared, getNodeSharedVolumes,
         updateVolumeForm, resetVolumeAssignments, deleteVolume,
@@ -442,6 +484,10 @@ interface VolumeFormListProps {
     onDeleteVolume: (vol: number) => void
     worksCount: number
     submitted?: boolean
+    onCancelEdit?: () => void
+    onSaveEdit?: () => void
+    saving?: boolean
+    isChanged?: boolean
 }
 
 function VolumeRow({vol, label, volumeForms, onVolumeFormChange, onDeleteVolume, submitted}: {
@@ -476,17 +522,34 @@ function VolumeFormList({
                             onVolumeFormChange,
                             onDeleteVolume,
                             worksCount,
-                            submitted
+                            submitted,
+                            onCancelEdit,
+                            onSaveEdit,
+                            saving = false,
+                            isChanged = true,
                         }: VolumeFormListProps) {
     if (selectedVolumes.length === 0) return null
 
     const rowProps = {volumeForms, onVolumeFormChange, onDeleteVolume, submitted}
+    const actions = (onCancelEdit || onSaveEdit) ? (
+        <Flex gap={8}>
+            {onCancelEdit && (
+                <Button onClick={onCancelEdit} disabled={saving}>取消</Button>
+            )}
+            {onSaveEdit && (
+                <Button type="primary" icon={<SaveOutlined/>} onClick={onSaveEdit} disabled={!isChanged || saving} loading={saving}>
+                    保存
+                </Button>
+            )}
+        </Flex>
+    ) : null
 
     if (worksCount === 1) {
         return (
             <Card size="small" title="卷信息" styles={{body: {padding: 12}}}>
                 <Space direction="vertical" style={{width: '100%'}} size={12}>
                     {selectedVolumes.map(vol => <VolumeRow key={vol} vol={vol} label={`第${vol}卷`} {...rowProps} />)}
+                    {actions}
                 </Space>
             </Card>
         )
@@ -501,22 +564,23 @@ function VolumeFormList({
 
     return (
         <Card size="small" title="卷信息" styles={{body: {padding: 12}}}>
-            <Space direction="vertical" style={{width: '100%'}} size={16}>
+            <Space direction="vertical" style={{width: '100%'}} size={SPACING.md}>
                 {Object.entries(groups).sort(([a], [b]) => Number(a) - Number(b)).map(([wiStr, vols]) => {
                     const wi = Number(wiStr)
                     return (
-                        <div key={wi}>
+                        <Flex key={wi} vertical>
                             <Typography.Text strong
                                              style={{display: 'block', marginBottom: 8}}>作品 {wi}</Typography.Text>
-                            <Space direction="vertical" style={{width: '100%', paddingLeft: 16}} size={8}>
+                            <Space direction="vertical" style={{width: '100%', paddingLeft: SPACING.md}} size={SPACING.sm}>
                                 {vols.sort((a, b) => a - b).map(vn => {
                                     const enc = wi * 1000 + vn
                                     return <VolumeRow key={enc} vol={enc} label={`第${vn}卷`} {...rowProps} />
                                 })}
                             </Space>
-                        </div>
+                        </Flex>
                     )
                 })}
+                {actions}
             </Space>
         </Card>
     )
@@ -666,7 +730,10 @@ interface DiscEditorContentProps {
     visibleVolumes: number;
     loadMoreVolumes: () => void
     worksCount: number;
+    submitted: boolean
     setWorksCount: (n: number) => void
+    resetSubmitted: () => void
+    cancelChanges?: () => boolean
     volumeForms: Record<number, VolumeForm>
     updateVolumeForm: (vol: number, form: VolumeForm) => void
     onVolumeChange: (key: string, vn: number | null) => void
@@ -677,7 +744,9 @@ interface DiscEditorContentProps {
     getNodeSharedVolumes: (key: string) => number[]
     resetVolumeAssignments: () => void
     deleteVolume: (vol: number) => void
-    handleSubmit: () => void | Promise<void>
+    handleSubmit: () => boolean | Promise<boolean>
+    hasChanges: () => boolean
+    isChanged?: boolean
 }
 
 export function DiscEditorContent({
@@ -691,7 +760,10 @@ export function DiscEditorContent({
                                       visibleVolumes,
                                       loadMoreVolumes,
                                       worksCount,
+                                      submitted,
                                       setWorksCount,
+                                      resetSubmitted,
+                                      cancelChanges,
                                       volumeForms,
                                       updateVolumeForm,
                                       onVolumeChange,
@@ -703,8 +775,9 @@ export function DiscEditorContent({
                                       resetVolumeAssignments,
                                       deleteVolume,
                                       handleSubmit: externalSubmit,
+                                      hasChanges,
+                                      isChanged: isChangedProp,
                                   }: DiscEditorContentProps) {
-    const [submitted, setSubmitted] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
     const autoModeAppliedRef = useRef(false)
 
@@ -719,15 +792,7 @@ export function DiscEditorContent({
         autoModeAppliedRef.current = true
     }, [loading, selectedVolumes.length])
 
-    const handleSubmit = () => {
-        setSubmitted(true)
-        const hasError = selectedVolumes.some(v => !volumeForms[v]?.catalog_no?.trim() || !volumeForms[v]?.volume_name?.trim())
-        if (hasError) {
-            message.error('请填写所有卷的型番和标题');
-            return
-        }
-        externalSubmit()
-    }
+    const handleSubmit = () => externalSubmit()
 
     const titleRender = useMemo(() => (node: DataNode) => (
         <TreeNodeContent
@@ -737,27 +802,18 @@ export function DiscEditorContent({
             onVolumeChange={onVolumeChange} onSharedVolumeChange={onSharedVolumeChange} onToggleShared={onToggleShared}
         />
     ), [worksCount, visibleVolumes, loadMoreVolumes, getNodeVolume, getNodeShared, getNodeSharedVolumes, onVolumeChange, onSharedVolumeChange, onToggleShared])
+    const isChanged = isChangedProp ?? hasChanges()
 
     return (
         <Spin spinning={loading}>
-            <Space orientation="vertical" style={{width: '100%', paddingTop: 8}} size={12}>
+            <Space orientation="vertical" style={{width: '100%', paddingTop: SPACING.sm}} size={SPACING.md}>
                 {isEditing ? (
                     <>
-                        {selectedVolumes.length > 0 && (
-                            <Space>
-                                <Button onClick={() => {
-                                    setSubmitted(false)
-                                    setIsEditing(false)
-                                }}>
-                                    取消编辑
-                                </Button>
-                            </Space>
-                        )}
                         {files.length > 0 ? (
                             <Card size="small" title={
                                 <Space>
-                                    <span>文件列表</span>
-                                    <span style={{color: '#999', fontWeight: 'normal'}}>{files.length} 个文件</span>
+                                    <Typography.Text>文件列表</Typography.Text>
+                                    <Typography.Text type="secondary" style={{fontWeight: 'normal'}}>{files.length} 个文件</Typography.Text>
                                     <InputNumber
                                         min={1} value={worksCount}
                                         onChange={val => {
@@ -767,7 +823,7 @@ export function DiscEditorContent({
                                         addonBefore="作品数" size="small" mode="spinner" style={{width: 100}}
                                     />
                                 </Space>
-                            } styles={{body: {padding: 12}}}>
+                            } styles={{body: {padding: SPACING.md}}}>
                                 <Tree<DataNode>
                                     treeData={treeData}
                                     defaultExpandedKeys={defaultExpandedKeys}
@@ -781,6 +837,13 @@ export function DiscEditorContent({
                             selectedVolumes={selectedVolumes} volumeForms={volumeForms}
                             onVolumeFormChange={updateVolumeForm} onDeleteVolume={deleteVolume}
                             worksCount={worksCount} submitted={submitted}
+                            onCancelEdit={selectedVolumes.length > 0 ? () => {
+                                const hasSaved = cancelChanges?.()
+                                if (hasSaved) setIsEditing(false)
+                            } : undefined}
+                            onSaveEdit={selectedVolumes.length > 0 ? handleSubmit : undefined}
+                            saving={saving}
+                            isChanged={isChanged}
                         />
                     </>
                 ) : (
@@ -813,13 +876,17 @@ const DiscEditor = forwardRef<DiscEditorRef, { onSave?: () => void }>(
                     defaultExpandedKeys={editor.defaultExpandedKeys}
                     selectedVolumes={editor.selectedVolumes} visibleVolumes={editor.visibleVolumes}
                     loadMoreVolumes={editor.loadMoreVolumes} worksCount={editor.worksCount}
+                    submitted={editor.submitted}
                     setWorksCount={editor.setWorksCount} volumeForms={editor.volumeForms}
+                    resetSubmitted={editor.resetSubmitted}
                     updateVolumeForm={editor.updateVolumeForm} onVolumeChange={editor.onVolumeChange}
                     onSharedVolumeChange={editor.onSharedVolumeChange} onToggleShared={editor.onToggleShared}
                     getNodeVolume={editor.getNodeVolume} getNodeShared={editor.getNodeShared}
                     getNodeSharedVolumes={editor.getNodeSharedVolumes}
                     resetVolumeAssignments={editor.resetVolumeAssignments} deleteVolume={editor.deleteVolume}
                     handleSubmit={editor.handleSubmit}
+                    hasChanges={editor.hasChanges}
+                    isChanged={editor.isChanged}
                 />
             </Modal>
         )

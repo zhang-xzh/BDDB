@@ -4,8 +4,9 @@ import React, {useCallback, useEffect, useRef, useState} from 'react'
 import {Button, Card, Collapse, Empty, Flex, Image, Input, Spin, Tag, theme, Typography} from 'antd'
 import {DownOutlined, UpOutlined} from '@ant-design/icons'
 import type {ProductSearchDoc} from '@/lib/meilisearch/productSearch'
+import {SPACING} from '@/lib/utils'
 
-const {Text, Title} = Typography
+const {Text} = Typography
 
 interface SearchResponse {
     products: ProductSearchDoc[]
@@ -33,7 +34,7 @@ const SiderContent: React.FC = () => {
     const [searchResult, setSearchResult] = useState<SearchResponse | null>(null)
     const [hasMore, setHasMore] = useState(false)
     const [activeKey, setActiveKey] = useState<string | string[]>([])
-    const scrollContainerRef = useRef<HTMLDivElement>(null)
+    const scrollContainerRef = useRef<HTMLElement>(null)
 
     // 切换展开/收起
     const toggleExpand = (key: string) => {
@@ -172,20 +173,19 @@ const SiderContent: React.FC = () => {
                             style={{objectFit: 'cover', borderRadius: 4, flexShrink: 0}}
                         />
                     ) : (
-                        <div
+                        <Flex
+                            align="center"
+                            justify="center"
                             style={{
                                 width: 60,
                                 height: 60,
                                 borderRadius: 4,
                                 flexShrink: 0,
                                 background: token.colorBgTextHover,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
                             }}
                         >
                             <Text type="secondary" style={{fontSize: 10}}>无图</Text>
-                        </div>
+                        </Flex>
                     )}
                     <Flex vertical gap={4} style={{flex: 1, minWidth: 0}}>
                         <Text strong style={{fontSize: 14, wordBreak: 'break-word'}}>
@@ -219,6 +219,7 @@ const SiderContent: React.FC = () => {
                     {product.note_raw ? (
                         <div
                             style={{
+                                margin: 0,
                                 fontSize: 13,
                                 lineHeight: 1.6,
                                 color: token.colorText,
@@ -237,8 +238,12 @@ const SiderContent: React.FC = () => {
     })
 
     return (
-        <Flex vertical gap={16}>
-            <Card style={{position: 'sticky', top: 0, zIndex: 1, background: token.colorBgContainer}}>
+        <Flex vertical gap={SPACING.md}>
+            <Card
+                size="small"
+                styles={{body: {padding: SPACING.md}}}
+                style={{position: 'sticky', top: 0, zIndex: 1, background: token.colorBgContainer}}
+            >
                 <Input.Search
                     placeholder="搜索产品..."
                     value={searchText}
@@ -253,12 +258,13 @@ const SiderContent: React.FC = () => {
                 bodyStyle={{padding: 0}}
                 style={{maxHeight: 'calc(100vh - 200px)', overflow: 'hidden'}}
             >
-                <div
+                <Flex
+                    vertical
                     ref={scrollContainerRef}
                     style={{
                         maxHeight: 'calc(100vh - 200px)',
                         overflow: 'auto',
-                        padding: 24,
+                        padding: SPACING.lg,
                     }}
                 >
                     {searchResult ? (
@@ -280,7 +286,7 @@ const SiderContent: React.FC = () => {
                                     }}
                                 />
                                 {loadingMore && (
-                                    <Flex justify="center" style={{padding: '16px 0'}}>
+                                    <Flex justify="center" style={{padding: `${SPACING.md}px 0`}}>
                                         <Spin size="small"/>
                                     </Flex>
                                 )}
@@ -291,7 +297,7 @@ const SiderContent: React.FC = () => {
                     ) : (
                         <Text type="secondary">输入关键词搜索产品</Text>
                     )}
-                </div>
+                </Flex>
             </Card>
         </Flex>
     )

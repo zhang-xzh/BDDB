@@ -1,5 +1,6 @@
 import React, {type CSSProperties, type ReactNode, useMemo} from 'react'
 import {Collapse, Flex, theme, Typography} from 'antd'
+import {SPACING} from '@/lib/utils'
 
 /**
  * 行标签包装器：展开时阻止点击冒泡（防止误触收起），收起时允许点击展开。
@@ -15,7 +16,7 @@ export const ExpandBlocker: React.FC<{ isExpanded: boolean; children: ReactNode 
             gap={8}
             style={{width: '100%', cursor: 'pointer'}}
         >
-            <div style={{width: 24, flexShrink: 0}} />
+            <Flex style={{width: 24, flexShrink: 0}} />
             {children}
         </Flex>
     )
@@ -31,8 +32,8 @@ export interface ListHeaderColumn {
 export const ListHeader: React.FC<{ columns: ListHeaderColumn[] }> = ({columns}) => {
     const {token} = theme.useToken()
     return (
-        <Flex align="center" gap={8} style={{padding: '12px 16px', background: token.colorFillAlter}}>
-            <div style={{width: 24, flexShrink: 0}}/>
+        <Flex align="center" gap={SPACING.sm} style={{padding: `${SPACING.sm}px ${SPACING.md}px`, background: token.colorFillAlter}}>
+            <Flex style={{width: 24, flexShrink: 0}}/>
             {columns.map(col => (
                 <Typography.Text key={col.label} strong style={{color: token.colorTextHeading, ...col.style}}>
                     {col.label}

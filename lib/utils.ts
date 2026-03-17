@@ -1,6 +1,12 @@
 import type {FileItem, NodeData} from '@/lib/mongodb'
 
 export const PAGE_SIZE = 100
+export const SPACING = {
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 20,
+} as const
 
 export function formatSize(bytes: number): string {
     if (bytes === 0) return '0 B'
