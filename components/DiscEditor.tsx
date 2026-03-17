@@ -1,13 +1,13 @@
 'use client'
 
-import { FileTreeCard } from '@/components/EditorShared'
+import { DiscTreeNodeContent, FileTreeCard } from '@/components/FileTreeCard'
 import { fetchApi, postApi } from '@/lib/api'
 import type { FileItem, NodeData, TorrentWithVolume, Volume, VolumeForm } from '@/lib/mongodb'
 import { buildTree, FlatTree, SPACING } from '@/lib/utils'
-import { BranchesOutlined, DeleteOutlined, EditOutlined, SaveOutlined } from '@ant-design/icons'
-import { Button, Card, Cascader, Empty, Flex, Input, InputNumber, message, Modal, Select, Space, Spin, Switch, Typography } from 'antd'
+import { DeleteOutlined, EditOutlined, SaveOutlined } from '@ant-design/icons'
+import { Button, Card, Empty, Flex, Input, InputNumber, message, Modal, Space, Spin, Typography } from 'antd'
 import type { DataNode } from 'antd/es/tree'
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, } from 'react'
 
 export interface DiscEditorRef {
     open: (torrentHash: string, name?: string, syncFiles?: boolean) => Promise<void>
@@ -649,111 +649,6 @@ function VolumeReadOnlyView({
     )
 }
 
-// ─── TreeNodeContent ──────────────────────────────────────────────────────────
-
-const toCascaderVal = (vn: number | undefined): [number, number] | undefined =>
-    vn === undefined ? undefined : [Math.floor(vn / 1000), vn % 1000]
-const fromCascaderVal = (val: (string | number)[]): number =>
-    (val[0] as number) * 1000 + (val[1] as number)
-
-interface TreeNodeContentProps {
-    title: string;
-    nodeKey: string;
-    worksCount: number;
-    visibleVolumes: number
-    loadMoreVolumes: () => void
-    getNodeVolume: (key: string) => number | undefined
-    getNodeShared: (key: string) => boolean
-    getNodeSharedVolumes: (key: string) => number[]
-    getComputedNodeValue: (key: string) => { volume_no: number | undefined; isConsistent: boolean }
-    onVolumeChange: (key: string, vn: number | null) => void
-    onSharedVolumeChange: (key: string, vols: number[]) => void
-    onToggleShared: (key: string, shared: boolean) => void
-}
-
-function TreeNodeContent({
-    title, nodeKey, worksCount, visibleVolumes, loadMoreVolumes,
-    getNodeVolume, getNodeShared, getNodeSharedVolumes, getComputedNodeValue,
-    onVolumeChange, onSharedVolumeChange, onToggleShared,
-}: TreeNodeContentProps) {
-    const isShared = getNodeShared(nodeKey)
-    const volumeNo = getNodeVolume(nodeKey)
-    const sharedVolumes = getNodeSharedVolumes(nodeKey)
-    const computed = getComputedNodeValue(nodeKey)
-    const isIndeterminate = !computed.isConsistent && !isShared
-
-    const selectOptions = Array.from({ length: visibleVolumes }, (_, i) => ({ value: i + 1, label: `第 ${i + 1} 卷` }))
-    const cascaderOptions = Array.from({ length: worksCount }, (_, wi) => ({
-        label: `作品 ${wi + 1}`, value: wi + 1,
-        children: Array.from({ length: visibleVolumes }, (_, vi) => ({ label: `第 ${vi + 1} 卷`, value: vi + 1 })),
-    }))
-
-    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget
-        if (scrollHeight - scrollTop - clientHeight < 20) loadMoreVolumes()
-    }
-
-    const inconsistentIcon = isIndeterminate
-        ? <BranchesOutlined style={{ color: '#faad14', pointerEvents: 'none' }} />
-        : undefined
-
-    const renderSelector = () => {
-        if (worksCount === 1) {
-            return (
-                <Select
-                    mode={isShared ? 'multiple' : undefined}
-                    value={isShared ? sharedVolumes : (isIndeterminate ? undefined : volumeNo)}
-                    onChange={val => isShared
-                        ? onSharedVolumeChange(nodeKey, val as number[])
-                        : onVolumeChange(nodeKey, (val as number | undefined) ?? null)}
-                    style={{ minWidth: isShared ? 150 : 100, flexShrink: 0 }}
-                    size="small"
-                    placeholder={isIndeterminate && !isShared ? '不一致' : '卷号'}
-                    suffixIcon={!isShared ? inconsistentIcon : undefined}
-                    allowClear
-                    options={selectOptions} onPopupScroll={handleScroll}
-                />
-            )
-        }
-        if (!isShared) {
-            return (
-                <Cascader
-                    value={isIndeterminate ? undefined : toCascaderVal(volumeNo)}
-                    onChange={val => !val || !(val as any[]).length
-                        ? onVolumeChange(nodeKey, null)
-                        : onVolumeChange(nodeKey, fromCascaderVal(val as (string | number)[]))}
-                    options={cascaderOptions}
-                    placeholder={isIndeterminate ? '不一致' : '作品/卷'}
-                    suffixIcon={inconsistentIcon}
-                    size="small"
-                    style={{ width: 160, flexShrink: 0 }} allowClear
-                />
-            )
-        }
-        return (
-            <Cascader
-                multiple
-                value={sharedVolumes.map(vn => toCascaderVal(vn)!)}
-                onChange={vals => onSharedVolumeChange(nodeKey, (vals as (string | number)[][]).map(fromCascaderVal))}
-                options={cascaderOptions} placeholder="作品/卷（多选）" size="small"
-                style={{ minWidth: 200, flexShrink: 0 }}
-            />
-        )
-    }
-
-    return (
-        <Space style={{ width: '100%', justifyContent: 'space-between' }} size={4}>
-            <Typography.Text ellipsis={{ tooltip: title }} style={{ flex: 1 }}>{title}</Typography.Text>
-            <Space size={4}>
-                <Switch size="small" checked={isShared}
-                    onChange={checked => onToggleShared(nodeKey, checked)}
-                    checkedChildren="共享" unCheckedChildren="共享" />
-                {renderSelector()}
-            </Space>
-        </Space>
-    )
-}
-
 // ─── DiscEditorContent ────────────────────────────────────────────────────────
 
 interface DiscEditorContentProps {
@@ -834,7 +729,7 @@ export function DiscEditorContent({
     const handleSubmit = () => externalSubmit()
 
     const titleRender = useMemo(() => (node: DataNode) => (
-        <TreeNodeContent
+        <DiscTreeNodeContent
             title={node.title as string} nodeKey={node.key as string}
             worksCount={worksCount} visibleVolumes={visibleVolumes} loadMoreVolumes={loadMoreVolumes}
             getNodeVolume={getNodeVolume} getNodeShared={getNodeShared} getNodeSharedVolumes={getNodeSharedVolumes}

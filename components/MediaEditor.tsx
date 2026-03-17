@@ -1,6 +1,6 @@
 "use client";
 
-import { FileTreeCard } from "@/components/EditorShared";
+import { FileTreeCard, MediaTreeNodeContent } from "@/components/FileTreeCard";
 import { fetchApi, postApi } from "@/lib/api";
 import type {
     FileItem,
@@ -11,7 +11,6 @@ import type {
 } from "@/lib/mongodb";
 import { buildTree, FlatTree, SPACING } from "@/lib/utils";
 import {
-    BranchesOutlined,
     DeleteOutlined,
     EditOutlined,
     SaveOutlined,
@@ -26,11 +25,10 @@ import {
     Select,
     Space,
     Spin,
-    Switch,
-    Typography,
+    Typography
 } from "antd";
 import type { DataNode } from "antd/es/tree";
-import React, {
+import {
     useCallback,
     useEffect,
     useMemo,
@@ -897,106 +895,6 @@ function MediaReadOnlyView({
     );
 }
 
-// ─── TreeNodeContent ──────────────────────────────────────────────────────────
-
-interface TreeNodeContentProps {
-    title: string;
-    nodeKey: string;
-    visibleMedias: number;
-    loadMoreMedias: () => void;
-    getNodeMediaNo: (key: string) => number | undefined;
-    getNodeShared: (key: string) => boolean;
-    getNodeSharedMedias: (key: string) => number[];
-    getComputedNodeValue: (key: string) => {
-        media_no: number | undefined;
-        isConsistent: boolean;
-    };
-    onMediaNoChange: (key: string, mediaNo: number | null) => void;
-    onSharedMediaChange: (key: string, medias: number[]) => void;
-    onToggleShared: (key: string, shared: boolean) => void;
-}
-
-function TreeNodeContent({
-    title,
-    nodeKey,
-    visibleMedias,
-    loadMoreMedias,
-    getNodeMediaNo,
-    getNodeShared,
-    getNodeSharedMedias,
-    getComputedNodeValue,
-    onMediaNoChange,
-    onSharedMediaChange,
-    onToggleShared,
-}: TreeNodeContentProps) {
-    const isShared = getNodeShared(nodeKey);
-    const mediaNo = getNodeMediaNo(nodeKey);
-    const sharedMedias = getNodeSharedMedias(nodeKey);
-    const computed = getComputedNodeValue(nodeKey);
-
-    const mediaNoOptions = Array.from({ length: visibleMedias }, (_, i) => ({
-        value: i + 1,
-        label: `${i + 1}`,
-    }));
-
-    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-        if (scrollHeight - scrollTop - clientHeight < 20) loadMoreMedias();
-    };
-
-    const displayMediaNo = mediaNo ?? computed.media_no;
-    const isIndeterminate = !computed.isConsistent;
-
-    return (
-        <Space style={{ width: "100%", justifyContent: "space-between" }} size={4}>
-            <Typography.Text ellipsis={{ tooltip: title }} style={{ flex: 1 }}>
-                {title}
-            </Typography.Text>
-            <Space size={4}>
-                <Switch
-                    size="small"
-                    checked={isShared}
-                    onChange={(checked) => onToggleShared(nodeKey, checked)}
-                    checkedChildren="共享"
-                    unCheckedChildren="共享"
-                />
-                {isShared ? (
-                    <Select
-                        mode="multiple"
-                        value={sharedMedias}
-                        onChange={(vals) => onSharedMediaChange(nodeKey, vals as number[])}
-                        style={{ minWidth: 150, flexShrink: 0 }}
-                        size="small"
-                        placeholder="选择序号（多选）"
-                        options={mediaNoOptions}
-                        onPopupScroll={handleScroll}
-                    />
-                ) : (
-                    <Select
-                        value={isIndeterminate ? undefined : displayMediaNo}
-                        onChange={(val) =>
-                            onMediaNoChange(nodeKey, (val as number | undefined) ?? null)
-                        }
-                        style={{ width: 85, flexShrink: 0 }}
-                        size="small"
-                        placeholder={isIndeterminate ? "不一致" : "序号"}
-                        suffixIcon={
-                            isIndeterminate ? (
-                                <BranchesOutlined
-                                    style={{ color: "#faad14", pointerEvents: "none" }}
-                                />
-                            ) : undefined
-                        }
-                        options={mediaNoOptions}
-                        onPopupScroll={handleScroll}
-                        allowClear
-                    />
-                )}
-            </Space>
-        </Space>
-    );
-}
-
 // ─── MediaEditorContent ───────────────────────────────────────────────────────
 
 export function MediaEditorContent({
@@ -1043,7 +941,7 @@ export function MediaEditorContent({
 
     const titleRender = useMemo(
         () => (node: DataNode) => (
-            <TreeNodeContent
+            <MediaTreeNodeContent
                 title={node.title as string}
                 nodeKey={node.key as string}
                 visibleMedias={visibleMedias}
