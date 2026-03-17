@@ -89,47 +89,45 @@ const VolumeFiltersBar: React.FC<{
       }) => {
     const {token} = theme.useToken()
     return (
-        <Card size="small" styles={{body: {padding: SPACING.md}}}>
-            <Space wrap size={SPACING.sm}>
-                <Input.Search
-                    value={searchCatalogNo}
-                    onChange={e => onSearchCatalogNoChange(e.target.value)}
-                    placeholder="搜索编号"
-                    style={{width: 200}}
-                    allowClear
-                />
-                <Input.Search
-                    value={searchTitle}
-                    onChange={e => onSearchTitleChange(e.target.value)}
-                    placeholder="搜索标题"
-                    style={{width: 300}}
-                    allowClear
-                    suffix={
-                        <Switch
-                            checked={invertTitle}
-                            onChange={onInvertTitleChange}
-                            size="small"
-                            checkedChildren="反向"
-                            unCheckedChildren="反向"
-                        />
-                    }
-                />
-                <Select
-                    allowClear
-                    placeholder="是否已关联作品"
-                    style={{width: 160}}
-                    value={filterHasWork}
-                    onChange={onFilterHasWorkChange}
-                    options={[
-                        {label: '已关联', value: true},
-                        {label: '未关联', value: false}
-                    ]}
-                />
-                <Typography.Text type="secondary" style={{color: token.colorTextSecondary}}>
-                    共 {total} 条
-                </Typography.Text>
-            </Space>
-        </Card>
+        <Space wrap size={SPACING.sm}>
+            <Input.Search
+                value={searchCatalogNo}
+                onChange={e => onSearchCatalogNoChange(e.target.value)}
+                placeholder="搜索编号"
+                style={{width: 200}}
+                allowClear
+            />
+            <Input.Search
+                value={searchTitle}
+                onChange={e => onSearchTitleChange(e.target.value)}
+                placeholder="搜索标题"
+                style={{width: 300}}
+                allowClear
+                suffix={
+                    <Switch
+                        checked={invertTitle}
+                        onChange={onInvertTitleChange}
+                        size="small"
+                        checkedChildren="反向"
+                        unCheckedChildren="反向"
+                    />
+                }
+            />
+            <Select
+                allowClear
+                placeholder="是否已关联作品"
+                style={{width: 160}}
+                value={filterHasWork}
+                onChange={onFilterHasWorkChange}
+                options={[
+                    {label: '已关联', value: true},
+                    {label: '未关联', value: false}
+                ]}
+            />
+            <Typography.Text type="secondary" style={{color: token.colorTextSecondary}}>
+                共 {total} 条
+            </Typography.Text>
+        </Space>
     )
 }
 

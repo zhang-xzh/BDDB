@@ -84,31 +84,29 @@ const TorrentFiltersBar: React.FC<{
       }) => {
     const {token} = theme.useToken()
     return (
-        <Card size="small" styles={{body: {padding: SPACING.md}}}>
-            <Space wrap size={SPACING.sm}>
-                <Input.Search
-                    value={searchText} onChange={e => onSearchTextChange(e.target.value)}
-                    placeholder="搜索种子" style={{width: 250}} allowClear
-                    suffix={
-                        <Switch checked={invertSearch} onChange={onInvertSearchChange}
-                                size="small" checkedChildren="反向" unCheckedChildren="反向"/>
-                    }
-                />
-                <Select allowClear placeholder="类别" style={{width: 200}} value={filterCategory}
-                        onChange={onCategoryChange} options={categories.map(c => ({label: c, value: c}))}/>
-                <Select allowClear placeholder="状态" style={{width: 150}} value={filterState}
-                        onChange={onStateChange} options={states.map(s => ({label: s, value: s}))}/>
-                <Select allowClear placeholder="是否处理" style={{width: 120}} value={filterHasVolumes}
-                        onChange={onHasVolumesChange}
-                        options={[{label: '已处理', value: true}, {label: '未处理', value: false}]}/>
-                <Typography.Text
-                    type="secondary"
-                    style={{color: token.colorTextSecondary}}
-                >
-                    共 {total} 条
-                </Typography.Text>
-            </Space>
-        </Card>
+        <Space wrap size={SPACING.sm}>
+            <Input.Search
+                value={searchText} onChange={e => onSearchTextChange(e.target.value)}
+                placeholder="搜索种子" style={{width: 250}} allowClear
+                suffix={
+                    <Switch checked={invertSearch} onChange={onInvertSearchChange}
+                            size="small" checkedChildren="反向" unCheckedChildren="反向"/>
+                }
+            />
+            <Select allowClear placeholder="类别" style={{width: 200}} value={filterCategory}
+                    onChange={onCategoryChange} options={categories.map(c => ({label: c, value: c}))}/>
+            <Select allowClear placeholder="状态" style={{width: 150}} value={filterState}
+                    onChange={onStateChange} options={states.map(s => ({label: s, value: s}))}/>
+            <Select allowClear placeholder="是否处理" style={{width: 120}} value={filterHasVolumes}
+                    onChange={onHasVolumesChange}
+                    options={[{label: '已处理', value: true}, {label: '未处理', value: false}]}/>
+            <Typography.Text
+                type="secondary"
+                style={{color: token.colorTextSecondary}}
+            >
+                共 {total} 条
+            </Typography.Text>
+        </Space>
     )
 }
 

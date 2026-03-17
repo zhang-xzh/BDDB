@@ -1,7 +1,7 @@
 'use client'
 
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {App, Button, Card, Descriptions, Empty, Flex, Select, Spin, Tag, Tree, Typography} from 'antd'
+import {App, Button, Card, Descriptions, Empty, Flex, Select, Space, Spin, Tag, Typography} from 'antd'
 import {EditOutlined, LinkOutlined, SaveOutlined} from '@ant-design/icons'
 import type {DefaultOptionType} from 'antd/es/select'
 import type {DataNode} from 'antd/es/tree'
@@ -9,6 +9,7 @@ import {fetchApi, postApi} from '@/lib/api'
 import {type BangumiSearchResult, type BangumiSubject, formatDate, getBangumiSubject, getTypeName, searchBangumi} from '@/lib/bangumi'
 import type {FileItem} from '@/lib/mongodb'
 import {buildTree, SPACING} from '@/lib/utils'
+import {FileTreeCard} from '@/components/EditorShared'
 
 type SearchResultItem = BangumiSearchResult['list'][number]
 type WorkCandidate = BangumiSubject | SearchResultItem
@@ -432,44 +433,25 @@ export function WorkEditorContent({
                                       onWorksChange,
                                       onSubmit,
                                   }: WorkEditorContentProps) {
-    const [expandedKeys, setExpandedKeys] = useState<React.Key[]>(defaultExpandedKeys)
-
-    useEffect(() => {
-        setExpandedKeys(defaultExpandedKeys)
-    }, [defaultExpandedKeys])
-
     return (
-        <Card style={{margin: `0 ${SPACING.md}px ${SPACING.md}px`}} size="small" styles={{body: {padding: SPACING.md}}}>
-            <Spin spinning={loading || saving}>
-                <Flex vertical gap={SPACING.md}>
-                    <Flex justify="space-between" align="center" wrap gap={8}>
-                        <Typography.Title level={5} style={{margin: 0}}>文件列表</Typography.Title>
-                        <Typography.Text type="secondary">
-                            {volumeInfo?.catalogNo || '未命名卷'} · {files.length} 个文件
-                        </Typography.Text>
-                    </Flex>
-
-                    {files.length > 0 ? (
-                        <Tree
-                            blockNode
-                            selectable={false}
-                            treeData={treeData}
-                            expandedKeys={expandedKeys}
-                            onExpand={(keys) => setExpandedKeys(keys)}
-                        />
-                    ) : (
-                        <Empty description="暂无文件数据" image={Empty.PRESENTED_IMAGE_SIMPLE}/>
-                    )}
-
-                    <WorkFormList
-                        selectedWorks={selectedWorks}
-                        onWorksChange={onWorksChange}
-                        saving={saving}
-                        onSubmit={onSubmit}
-                    />
-                </Flex>
-            </Spin>
-        </Card>
+        <Spin spinning={loading || saving}>
+            <Space direction="vertical" style={{width: '100%', paddingTop: SPACING.sm}} size={SPACING.md}>
+                <FileTreeCard
+                    files={files}
+                    treeData={treeData}
+                    defaultExpandedKeys={defaultExpandedKeys}
+                    blockNode
+                    selectable={false}
+                    titleSuffix={volumeInfo?.catalogNo || undefined}
+                />
+                <WorkFormList
+                    selectedWorks={selectedWorks}
+                    onWorksChange={onWorksChange}
+                    saving={saving}
+                    onSubmit={onSubmit}
+                />
+            </Space>
+        </Spin>
     )
 }
 

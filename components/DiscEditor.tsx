@@ -4,7 +4,8 @@ import React, {forwardRef, useCallback, useEffect, useImperativeHandle, useMemo,
 import type {FileItem, NodeData, TorrentWithVolume, Volume, VolumeForm} from '@/lib/mongodb'
 import {fetchApi, postApi} from '@/lib/api'
 import {buildTree, FlatTree, SPACING} from '@/lib/utils'
-import {Button, Card, Cascader, Empty, Flex, Input, InputNumber, message, Modal, Select, Space, Spin, Switch, Tree, Typography,} from 'antd'
+import {Button, Card, Cascader, Empty, Flex, Input, InputNumber, message, Modal, Select, Space, Spin, Switch, Typography,} from 'antd'
+import {FileTreeCard} from '@/components/EditorShared'
 import {DeleteOutlined, EditOutlined, SaveOutlined} from '@ant-design/icons'
 import type {DataNode} from 'antd/es/tree'
 
@@ -809,30 +810,22 @@ export function DiscEditorContent({
             <Space orientation="vertical" style={{width: '100%', paddingTop: SPACING.sm}} size={SPACING.md}>
                 {isEditing ? (
                     <>
-                        {files.length > 0 ? (
-                            <Card size="small" title={
-                                <Space>
-                                    <Typography.Text>文件列表</Typography.Text>
-                                    <Typography.Text type="secondary" style={{fontWeight: 'normal'}}>{files.length} 个文件</Typography.Text>
-                                    <InputNumber
-                                        min={1} value={worksCount}
-                                        onChange={val => {
-                                            setWorksCount(val ?? 1);
-                                            resetVolumeAssignments()
-                                        }}
-                                        addonBefore="作品数" size="small" mode="spinner" style={{width: 100}}
-                                    />
-                                </Space>
-                            } styles={{body: {padding: SPACING.md}}}>
-                                <Tree<DataNode>
-                                    treeData={treeData}
-                                    defaultExpandedKeys={defaultExpandedKeys}
-                                    titleRender={titleRender}
+                        <FileTreeCard
+                            files={files}
+                            treeData={treeData}
+                            defaultExpandedKeys={defaultExpandedKeys}
+                            titleRender={titleRender}
+                            titleExtra={
+                                <InputNumber
+                                    min={1} value={worksCount}
+                                    onChange={val => {
+                                        setWorksCount(val ?? 1);
+                                        resetVolumeAssignments()
+                                    }}
+                                    addonBefore="作品数" size="small" mode="spinner" style={{width: 100}}
                                 />
-                            </Card>
-                        ) : (
-                            <Empty description="暂无文件数据"/>
-                        )}
+                            }
+                        />
                         <VolumeFormList
                             selectedVolumes={selectedVolumes} volumeForms={volumeForms}
                             onVolumeFormChange={updateVolumeForm} onDeleteVolume={deleteVolume}

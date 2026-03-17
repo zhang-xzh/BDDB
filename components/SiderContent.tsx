@@ -1,7 +1,7 @@
 'use client'
 
 import React, {useCallback, useEffect, useRef, useState} from 'react'
-import {Button, Card, Collapse, Empty, Flex, Image, Input, Spin, Tag, theme, Typography} from 'antd'
+import {Button, Collapse, Empty, Flex, Image, Input, Spin, Tag, theme, Typography} from 'antd'
 import {DownOutlined, UpOutlined} from '@ant-design/icons'
 import type {ProductSearchDoc} from '@/lib/meilisearch/productSearch'
 import {SPACING} from '@/lib/utils'
@@ -227,7 +227,7 @@ const SiderContent: React.FC = () => {
                                 padding: 12,
                                 borderRadius: 6,
                             }}
-                            dangerouslySetInnerHTML={{ __html: product.note_raw }}
+                            dangerouslySetInnerHTML={{__html: product.note_raw}}
                         />
                     ) : (
                         <Text type="secondary">暂无详细说明</Text>
@@ -239,66 +239,55 @@ const SiderContent: React.FC = () => {
 
     return (
         <Flex vertical gap={SPACING.md}>
-            <Card
-                size="small"
-                styles={{body: {padding: SPACING.md}}}
+            <Input.Search
                 style={{position: 'sticky', top: 0, zIndex: 1, background: token.colorBgContainer}}
+                placeholder="搜索产品..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onSearch={handleSearch}
+                loading={loading}
+                enterButton
+            />
+            <Flex
+                vertical
+                ref={scrollContainerRef}
+                style={{
+                    maxHeight: 'calc(100vh - 200px)',
+                    overflow: 'auto',
+                }}
             >
-                <Input.Search
-                    placeholder="搜索产品..."
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    onSearch={handleSearch}
-                    loading={loading}
-                    enterButton
-                />
-            </Card>
-            <Card
-                bodyStyle={{padding: 0}}
-                style={{maxHeight: 'calc(100vh - 200px)', overflow: 'hidden'}}
-            >
-                <Flex
-                    vertical
-                    ref={scrollContainerRef}
-                    style={{
-                        maxHeight: 'calc(100vh - 200px)',
-                        overflow: 'auto',
-                        padding: SPACING.lg,
-                    }}
-                >
-                    {searchResult ? (
-                        (searchResult.products || []).length > 0 ? (
-                            <Flex vertical gap={8}>
-                                <Text type="secondary" style={{fontSize: 12}}>
-                                    共找到 {searchResult.total} 个结果
-                                    {hasMore && '（滚动加载更多）'}
-                                </Text>
-                                <Collapse
-                                    items={collapseItems}
-                                    activeKey={activeKey}
-                                    onChange={() => {
-                                    }}
-                                    collapsible="icon"
-                                    expandIcon={() => null}
-                                    style={{
-                                        background: token.colorBgContainer,
-                                    }}
-                                />
-                                {loadingMore && (
-                                    <Flex justify="center" style={{padding: `${SPACING.md}px 0`}}>
-                                        <Spin size="small"/>
-                                    </Flex>
-                                )}
-                            </Flex>
-                        ) : (
-                            <Empty description="未找到相关产品" image={Empty.PRESENTED_IMAGE_SIMPLE}/>
-                        )
+                {searchResult ? (
+                    (searchResult.products || []).length > 0 ? (
+                        <Flex vertical gap={8}>
+                            <Text type="secondary" style={{fontSize: 12}}>
+                                共找到 {searchResult.total} 个结果
+                                {hasMore && '（滚动加载更多）'}
+                            </Text>
+                            <Collapse
+                                items={collapseItems}
+                                activeKey={activeKey}
+                                onChange={() => {
+                                }}
+                                collapsible="icon"
+                                expandIcon={() => null}
+                                style={{
+                                    background: token.colorBgContainer,
+                                }}
+                            />
+                            {loadingMore && (
+                                <Flex justify="center" style={{padding: `${SPACING.md}px 0`}}>
+                                    <Spin size="small"/>
+                                </Flex>
+                            )}
+                        </Flex>
                     ) : (
-                        <Text type="secondary">输入关键词搜索产品</Text>
-                    )}
-                </Flex>
-            </Card>
+                        <Empty description="未找到相关产品" image={Empty.PRESENTED_IMAGE_SIMPLE}/>
+                    )
+                ) : (
+                    <Text type="secondary">输入关键词搜索产品</Text>
+                )}
+            </Flex>
         </Flex>
     )
 }
