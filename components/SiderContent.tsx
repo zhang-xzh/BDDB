@@ -1,12 +1,12 @@
 'use client'
 
-import React, {useCallback, useEffect, useRef, useState} from 'react'
-import {Button, Collapse, Empty, Flex, Image, Input, Spin, Tag, theme, Typography} from 'antd'
-import {DownOutlined, UpOutlined} from '@ant-design/icons'
-import type {ProductSearchDoc} from '@/lib/meilisearch/productSearch'
-import {SPACING} from '@/lib/utils'
+import type { ProductSearchDoc } from '@/lib/meilisearch/productSearch'
+import { SPACING } from '@/lib/utils'
+import { DownOutlined, UpOutlined } from '@ant-design/icons'
+import { Button, Collapse, Empty, Flex, Image, Input, Spin, Tag, theme, Typography } from 'antd'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 
-const {Text} = Typography
+const { Text } = Typography
 
 interface SearchResponse {
     products: ProductSearchDoc[]
@@ -27,7 +27,7 @@ interface ApiResponse {
 const PAGE_SIZE = 20
 
 const SiderContent: React.FC = () => {
-    const {token} = theme.useToken()
+    const { token } = theme.useToken()
     const [searchText, setSearchText] = useState('')
     const [loading, setLoading] = useState(false)
     const [loadingMore, setLoadingMore] = useState(false)
@@ -64,7 +64,7 @@ const SiderContent: React.FC = () => {
 
             if (!apiData.success) {
                 console.error('搜索失败:', apiData.error)
-                setSearchResult({products: [], total: 0, page: 1, totalPages: 0})
+                setSearchResult({ products: [], total: 0, page: 1, totalPages: 0 })
                 setHasMore(false)
                 return
             }
@@ -79,7 +79,7 @@ const SiderContent: React.FC = () => {
             setHasMore((apiData.page || 1) < (apiData.totalPages || 0))
         } catch (error) {
             console.error('搜索失败:', error)
-            setSearchResult({products: [], total: 0, page: 1, totalPages: 0})
+            setSearchResult({ products: [], total: 0, page: 1, totalPages: 0 })
             setHasMore(false)
         } finally {
             setLoading(false)
@@ -125,7 +125,7 @@ const SiderContent: React.FC = () => {
         if (!container) return
 
         const handleScroll = () => {
-            const {scrollTop, scrollHeight, clientHeight} = container
+            const { scrollTop, scrollHeight, clientHeight } = container
             // 滚动超过 70% 时提前触发加载，确保流畅体验
             const scrollPercent = (scrollTop + clientHeight) / scrollHeight
             if (scrollPercent > 0.7) {
@@ -170,7 +170,7 @@ const SiderContent: React.FC = () => {
                             alt={product.title}
                             width={60}
                             height={60}
-                            style={{objectFit: 'cover', borderRadius: 4, flexShrink: 0}}
+                            style={{ objectFit: 'cover', borderRadius: 4, flexShrink: 0 }}
                         />
                     ) : (
                         <Flex
@@ -184,11 +184,11 @@ const SiderContent: React.FC = () => {
                                 background: token.colorBgTextHover,
                             }}
                         >
-                            <Text type="secondary" style={{fontSize: 10}}>无图</Text>
+                            <Text type="secondary" style={{ fontSize: 10 }}>无图</Text>
                         </Flex>
                     )}
-                    <Flex vertical gap={4} style={{flex: 1, minWidth: 0}}>
-                        <Text strong style={{fontSize: 14, wordBreak: 'break-word'}}>
+                    <Flex vertical gap={4} style={{ flex: 1, minWidth: 0 }}>
+                        <Text strong style={{ fontSize: 14, wordBreak: 'break-word' }}>
                             {product.title}
                         </Text>
                         <Flex gap={8} wrap align="center" justify="space-between">
@@ -204,7 +204,7 @@ const SiderContent: React.FC = () => {
                             <Button
                                 type="text"
                                 size="small"
-                                icon={isExpanded(product.product_id || String(index)) ? <UpOutlined/> : <DownOutlined/>}
+                                icon={isExpanded(product.product_id || String(index)) ? <UpOutlined /> : <DownOutlined />}
                                 onClick={(e) => {
                                     e.stopPropagation()
                                     toggleExpand(product.product_id || String(index))
@@ -227,7 +227,7 @@ const SiderContent: React.FC = () => {
                                 padding: 12,
                                 borderRadius: 6,
                             }}
-                            dangerouslySetInnerHTML={{__html: product.note_raw}}
+                            dangerouslySetInnerHTML={{ __html: product.note_raw }}
                         />
                     ) : (
                         <Text type="secondary">暂无详细说明</Text>
@@ -240,7 +240,7 @@ const SiderContent: React.FC = () => {
     return (
         <Flex vertical gap={SPACING.md}>
             <Input.Search
-                style={{position: 'sticky', top: 0, zIndex: 1, background: token.colorBgContainer}}
+                style={{ position: 'sticky', top: 0, zIndex: 1, background: token.colorBgContainer }}
                 placeholder="搜索产品..."
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
@@ -260,7 +260,7 @@ const SiderContent: React.FC = () => {
                 {searchResult ? (
                     (searchResult.products || []).length > 0 ? (
                         <Flex vertical gap={8}>
-                            <Text type="secondary" style={{fontSize: 12}}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
                                 共找到 {searchResult.total} 个结果
                                 {hasMore && '（滚动加载更多）'}
                             </Text>
@@ -269,6 +269,7 @@ const SiderContent: React.FC = () => {
                                 activeKey={activeKey}
                                 onChange={() => {
                                 }}
+                                size="small"
                                 collapsible="icon"
                                 expandIcon={() => null}
                                 style={{
@@ -276,13 +277,13 @@ const SiderContent: React.FC = () => {
                                 }}
                             />
                             {loadingMore && (
-                                <Flex justify="center" style={{padding: `${SPACING.md}px 0`}}>
-                                    <Spin size="small"/>
+                                <Flex justify="center" style={{ padding: `${SPACING.md}px 0` }}>
+                                    <Spin size="small" />
                                 </Flex>
                             )}
                         </Flex>
                     ) : (
-                        <Empty description="未找到相关产品" image={Empty.PRESENTED_IMAGE_SIMPLE}/>
+                        <Empty description="未找到相关产品" image={Empty.PRESENTED_IMAGE_SIMPLE} />
                     )
                 ) : (
                     <Text type="secondary">输入关键词搜索产品</Text>
