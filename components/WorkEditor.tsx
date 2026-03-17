@@ -3,7 +3,7 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {App, Button, Card, Descriptions, Empty, Flex, Select, Space, Spin, Tag, Typography} from 'antd'
 import {EditOutlined, LinkOutlined, SaveOutlined} from '@ant-design/icons'
-import type {DefaultOptionType} from 'antd/es/select'
+import type {DefaultOptionType, RefSelectProps} from 'antd/es/select'
 import type {DataNode} from 'antd/es/tree'
 import {fetchApi, postApi} from '@/lib/api'
 import {type BangumiSearchResult, type BangumiSubject, formatDate, getBangumiSubject, getTypeName, searchBangumi} from '@/lib/bangumi'
@@ -230,6 +230,7 @@ function WorkEditView({
     const [searchResults, setSearchResults] = useState<SearchResultItem[]>([])
     const [searching, setSearching] = useState(false)
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const selectRef = useRef<RefSelectProps>(null)
 
     useEffect(() => () => {
         if (timerRef.current) clearTimeout(timerRef.current)
@@ -280,6 +281,7 @@ function WorkEditView({
     return (
         <Flex vertical gap={12}>
             <Select
+                ref={selectRef}
                 mode="multiple"
                 showSearch
                 allowClear
@@ -290,6 +292,7 @@ function WorkEditView({
                 options={options}
                 notFoundContent={searching ? <Spin size="small"/> : null}
                 onSearch={handleSearch}
+                onSelect={() => selectRef.current?.blur()}
                 onChange={(values, selectedOptions) => {
                     const optionList = Array.isArray(selectedOptions) ? selectedOptions : [selectedOptions]
                     const nextWorks = values.map(value => {

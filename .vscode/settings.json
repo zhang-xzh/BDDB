@@ -5,6 +5,10 @@
         "npm install": true,
         "git ls-tree": true,
         "git add": true,
-        "git commit": true
+        "git commit": true,
+        "/^cd 'c:\\\\Users\\\\zhang\\\\CODE\\\\BDDB'; node -e \"const s = require\\('antd/es/select'\\); console\\.log\\(Object\\.keys\\(s\\)\\.filter\\(k => k\\.toLowerCase\\(\\)\\.includes\\('ref'\\) \\|\\| k\\.toLowerCase\\(\\)\\.includes\\('base'\\)\\)\\)\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }
