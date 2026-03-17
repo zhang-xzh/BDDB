@@ -49,7 +49,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # 复制必要的 node_modules (standalone 模式不会自动复制所有依赖)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@ctrl/qbittorrent ./node_modules/@ctrl/qbittorrent
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@seald-io/nedb ./node_modules/@seald-io/nedb
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/mongodb ./node_modules/mongodb
 
 # 切换到非 root 用户
