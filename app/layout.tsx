@@ -33,8 +33,8 @@ function AppLayout({ children, isDark, onToggle }: {
     return (
         <App>
             <Layout style={{ minHeight: '100vh' }}>
-                <Header style={{ display: 'flex', alignItems: 'center', padding: `0 ${SPACING.xl}px`, position: 'sticky', top: 0, zIndex: 100 }}>
-                    <Title level={4} style={{ margin: 0, color: token.colorWhite }}>BDDB</Title>
+                <Header style={{ display: 'flex', alignItems: 'center', padding: `0 ${SPACING.lg}px`, position: 'sticky', top: 0, zIndex: 100, height: 44, lineHeight: '44px' }}>
+                    <Title level={5} style={{ margin: 0, color: token.colorWhite, whiteSpace: 'nowrap' }}>BDDB</Title>
                     <Divider orientation="vertical" style={{ borderColor: token.colorSplit }} />
                     <Menu
                         selectedKeys={selectedKey ? [selectedKey] : []}
@@ -46,6 +46,7 @@ function AppLayout({ children, isDark, onToggle }: {
                     />
                     <Button
                         type="text"
+                        size="small"
                         icon={isDark ? <SunOutlined /> : <MoonOutlined />}
                         onClick={onToggle}
                     />
@@ -57,9 +58,9 @@ function AppLayout({ children, isDark, onToggle }: {
                         background: token.colorBgContainer,
                         borderRadius: token.borderRadiusLG,
                         position: 'sticky',
-                        top: 84,
+                        top: 64,
                         alignSelf: 'flex-start',
-                        maxHeight: 'calc(100vh - 64px - 40px)',
+                        maxHeight: 'calc(100vh - 44px - 40px)',
                         overflow: 'auto',
                     }}>
                         <SiderContent />
