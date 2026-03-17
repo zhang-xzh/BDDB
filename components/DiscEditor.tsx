@@ -31,7 +31,7 @@ export interface UseDiscEditorReturn {
     submitted: boolean
     setWorksCount: (n: number) => void
     resetSubmitted: () => void
-    cancelChanges: () => void
+    cancelChanges: () => boolean
     setVolumeToKeys: (v: Map<number, Set<string>>) => void
     open: (torrentHash: string, name?: string, syncFiles?: boolean) => Promise<void>
     handleSubmit: () => Promise<boolean>
