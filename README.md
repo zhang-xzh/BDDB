@@ -5,6 +5,7 @@ BDDB 是一个基于 Next.js 开发的蓝光媒体数据管理系统，用于管
 ## 功能特性
 
 ### 核心功能
+
 - **种子管理** - 与 qBittorrent 集成，同步和管理种子数据
 - **卷册管理** - 管理种子关联的卷册信息
 - **媒体管理** - 管理卷册中的媒体文件（BD/DVD 等）
@@ -12,14 +13,15 @@ BDDB 是一个基于 Next.js 开发的蓝光媒体数据管理系统，用于管
 - **数据同步** - 支持手动和自动数据同步
 
 ### 页面模块
-| 页面 | 功能描述 | 状态 |
-|------|----------|------|
-| `/torrents` | 种子列表管理，支持搜索、筛选、分页 | ✅ 已完成 |
-| `/volume` | 卷册管理，关联种子和媒体 | ✅ 已完成 |
-| `/work` | 作品管理 | 🚧 开发中 |
-| `/series` | 系列管理 | 🚧 开发中 |
-| `/storage` | 数据管理 | 🚧 开发中 |
-| `/config` | 系统配置和数据操作 | ✅ 已完成 |
+
+| 页面          | 功能描述              | 状态     |
+|-------------|-------------------|--------|
+| `/torrents` | 种子列表管理，支持搜索、筛选、分页 | ✅ 已完成  |
+| `/volume`   | 卷册管理，关联种子和媒体      | ✅ 已完成  |
+| `/work`     | 作品管理              | 🚧 开发中 |
+| `/series`   | 系列管理              | 🚧 开发中 |
+| `/storage`  | 数据管理              | 🚧 开发中 |
+| `/config`   | 系统配置和数据操作         | ✅ 已完成  |
 
 ## 技术栈
 
@@ -73,6 +75,7 @@ BDDB/
 ## 快速开始
 
 ### 环境要求
+
 - Node.js 22+
 - MongoDB
 - MeiliSearch
@@ -97,7 +100,7 @@ MONGO_DB_TEST=bddb_test
 MONGO_DB_PROD=bddb_prod
 
 # MeiliSearch
-MEILI_HOST=http://localhost:7700
+MEILI_HOST=http://localhost:17700
 MEILI_API_KEY=your_api_key
 
 # qBittorrent
@@ -141,37 +144,41 @@ docker run -p 3000:3000 \
 
 ## 脚本命令
 
-| 命令 | 描述 |
-|------|------|
-| `npm run dev` | 启动开发服务器 |
-| `npm run build` | 构建生产版本 |
-| `npm run start` | 启动生产服务器 |
-| `npm run lint` | 运行 ESLint |
-| `npm run meili:sync` | 全量同步 MeiliSearch 数据 |
-| `npm run meili:rebuild` | 重建 MeiliSearch 索引 |
-| `npm run meili:stats` | 查看 MeiliSearch 统计 |
-| `npm run meili:clear` | 清空 MeiliSearch 索引 |
+| 命令                      | 描述                  |
+|-------------------------|---------------------|
+| `npm run dev`           | 启动开发服务器             |
+| `npm run build`         | 构建生产版本              |
+| `npm run start`         | 启动生产服务器             |
+| `npm run lint`          | 运行 ESLint           |
+| `npm run meili:sync`    | 全量同步 MeiliSearch 数据 |
+| `npm run meili:rebuild` | 重建 MeiliSearch 索引   |
+| `npm run meili:stats`   | 查看 MeiliSearch 统计   |
+| `npm run meili:clear`   | 清空 MeiliSearch 索引   |
 
 ## API 接口
 
 ### 种子管理
+
 - `GET /api/qb/torrents/info?hash=&state=&search=` - 获取种子列表
 - `POST /api/qb/torrents/sync` - 同步 qBittorrent 种子
 - `POST /api/qb/torrents/rebuild` - 重建种子数据
 - `DELETE /api/qb/torrents/delete` - 删除种子
 
 ### 卷册管理
+
 - `GET /api/volumes?torrent_id=` - 获取卷册列表
 - `POST /api/volumes` - 保存卷册信息
 - `GET /api/volumes/[id]/files` - 获取卷册文件
 - `GET /api/volumes/[id]/medias` - 获取卷册媒体
 
 ### 产品搜索
+
 - `GET /api/products/search?search=&page=&limit=` - 搜索产品
 
 ## 数据模型
 
 ### Torrent（种子）
+
 ```typescript
 {
   hash: string;           // 种子哈希
@@ -186,6 +193,7 @@ docker run -p 3000:3000 \
 ```
 
 ### Volume（卷册）
+
 ```typescript
 {
   _id: string;
@@ -197,6 +205,7 @@ docker run -p 3000:3000 \
 ```
 
 ### Media（媒体）
+
 ```typescript
 {
   _id: string;

@@ -1,6 +1,6 @@
 import {MeiliSearch} from 'meilisearch'
 
-const MEILI_HOST = process.env.MEILI_HOST || 'http://localhost:7700'
+const MEILI_HOST = process.env.MEILI_HOST || 'http://localhost:17700'
 
 let client: MeiliSearch | null = null
 
