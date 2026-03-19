@@ -1,7 +1,30 @@
-/* 全局重置 - 使用 Ant Design 默认样式 */
+/* 全局重置 - 参考 VS Code 字体渲染策略 */
 
+/* CSS 变量 - 布局尺寸 */
+:root {
+    --header-height: 44px;
+    --content-margin-top: 10px;
+    --content-margin-bottom: 4px;
+    --content-max-height: calc(100vh - var(--header-height) - var(--content-margin-top) - var(--content-margin-bottom));
+}
+
+/* 等宽字体 - Maple Mono */
 * {
     font-family: 'Maple Mono NF CN', 'Maple Mono', monospace !important;
+}
+
+/* 字体渲染优化 - 参考 VS Code */
+body {
+    /* 灰度抗锯齿，避免亚像素渲染的彩边 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* 几何精度渲染，保持字形准确 */
+    text-rendering: geometricPrecision;
+}
+
+/* 确保行高有呼吸感 */
+p, span, div, li, td, th {
+    line-height: 1.5;
 }
 
 /* 自定义滚动条样式 */

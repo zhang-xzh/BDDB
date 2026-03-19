@@ -62,7 +62,7 @@ const ConfigPage: React.FC = () => {
         <Flex vertical gap={SPACING.lg}>
             <Flex align="center" gap={8}>
                 <SettingOutlined style={{fontSize: 24}}/>
-                <Typography.Title level={2} style={{margin: 0}}>配置</Typography.Title>
+                <Typography.Title level={4} style={{margin: 0}}>配置</Typography.Title>
             </Flex>
 
             <Row gutter={[SPACING.md, SPACING.md]}>
@@ -71,8 +71,8 @@ const ConfigPage: React.FC = () => {
                     <Card title="同步操作" size="small" styles={{body: {padding: SPACING.md}}}>
                         <Space style={{width: '100%'}} size={SPACING.md} direction="vertical">
                             <Flex vertical gap="small">
-                                <Typography.Title level={3} style={{marginTop: 0}}>同步 qBittorrent</Typography.Title>
-                                <Typography.Paragraph type="secondary" style={{fontSize: '14px'}}>
+                                <Typography.Text strong style={{fontSize: 13}}>同步 qBittorrent</Typography.Text>
+                                <Typography.Paragraph type="secondary" style={{fontSize: 12}}>
                                     从 qBittorrent 获取最新的种子列表并更新到数据库。如果种子已存在则更新状态，否则添加新种子。
                                 </Typography.Paragraph>
                                 <Button
@@ -80,7 +80,7 @@ const ConfigPage: React.FC = () => {
                                     onClick={syncTorrents}
                                     loading={syncing}
                                     icon={<SyncOutlined spin={syncing}/>}
-                                    size="large"
+                                    size="middle"
                                     block
                                 >
                                     {syncing ? '同步中...' : '开始同步'}
@@ -96,8 +96,8 @@ const ConfigPage: React.FC = () => {
                     <Card title="数据管理" size="small" styles={{body: {padding: SPACING.md}}}>
                         <Space style={{width: '100%'}} size={SPACING.md} direction="vertical">
                             <Flex vertical gap="small">
-                                <Typography.Title level={3} style={{marginTop: 0}}>重建数据</Typography.Title>
-                                <Typography.Paragraph type="secondary" style={{fontSize: '14px', marginBottom: 0}}>
+                                <Typography.Text strong style={{fontSize: 13}}>重建数据</Typography.Text>
+                                <Typography.Paragraph type="secondary" style={{fontSize: 12, marginBottom: 0}}>
                                     清空所有本地数据（种子、文件、卷）并重新从 qBittorrent 同步。
                                 </Typography.Paragraph>
                                 <Typography.Text type="danger">⚠️ 此操作不可逆，请谨慎使用！</Typography.Text>
@@ -106,7 +106,7 @@ const ConfigPage: React.FC = () => {
                                     onClick={confirmRebuild}
                                     loading={rebuilding}
                                     icon={<ReloadOutlined/>}
-                                    size="large"
+                                    size="middle"
                                     block
                                 >
                                     重建数据

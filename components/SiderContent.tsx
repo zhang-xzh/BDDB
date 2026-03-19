@@ -184,20 +184,20 @@ const SiderContent: React.FC = () => {
                                 background: token.colorBgTextHover,
                             }}
                         >
-                            <Text type="secondary" style={{fontSize: 10}}>无图</Text>
+                            <Text type="secondary" style={{fontSize: 11}}>无图</Text>
                         </Flex>
                     )}
                     <Flex vertical gap={4} style={{flex: 1, minWidth: 0}}>
-                        <Text strong style={{fontSize: 14, wordBreak: 'break-word'}}>
+                        <Text strong style={{fontSize: 13, wordBreak: 'break-word'}}>
                             {product.title}
                         </Text>
                         <Flex gap={8} wrap align="center" justify="space-between">
                             <Flex gap={8} wrap>
                                 {product.model_number && (
-                                    <Tag color="blue">{product.model_number}</Tag>
+                                    <Tag>{product.model_number}</Tag>
                                 )}
                                 {releaseDate && (
-                                    <Tag color="green">{releaseDate}</Tag>
+                                    <Tag>{releaseDate}</Tag>
                                 )}
                             </Flex>
                             {/* 展开/收起按钮 */}
@@ -220,8 +220,8 @@ const SiderContent: React.FC = () => {
                         <div
                             style={{
                                 margin: 0,
-                                fontSize: 13,
-                                lineHeight: 1.6,
+                                fontSize: 12,
+                                lineHeight: 1.5,
                                 color: token.colorText,
                                 background: token.colorBgTextHover,
                                 padding: 12,
@@ -253,7 +253,7 @@ const SiderContent: React.FC = () => {
                 {searchResult ? (
                     (searchResult.products || []).length > 0 ? (
                         <Flex vertical gap={8}>
-                            <Text type="secondary" style={{fontSize: 12}}>
+                            <Text type="secondary" style={{fontSize: 11}}>
                                 共找到 {searchResult.total} 个结果
                                 {hasMore && '（滚动加载更多）'}
                             </Text>

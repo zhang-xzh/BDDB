@@ -86,18 +86,18 @@ const TorrentFiltersBar: React.FC<{
     return (
         <Space wrap size={SPACING.sm}>
             <Input.Search
+                size="small"
                 value={searchText} onChange={e => onSearchTextChange(e.target.value)}
-                placeholder="搜索种子" style={{width: 250}} allowClear
+                placeholder="搜索种子" style={{width: 200}} allowClear
                 suffix={
-                    <Switch checked={invertSearch} onChange={onInvertSearchChange}
-                            size="small" checkedChildren="反向" unCheckedChildren="反向"/>
+                    <Switch checked={invertSearch} onChange={onInvertSearchChange} size="small"/>
                 }
             />
-            <Select allowClear placeholder="类别" style={{width: 200}} value={filterCategory}
+            <Select allowClear placeholder="类别" style={{width: 150}} value={filterCategory}
                     onChange={onCategoryChange} options={categories.map(c => ({label: c, value: c}))}/>
             <Select allowClear placeholder="状态" style={{width: 150}} value={filterState}
                     onChange={onStateChange} options={states.map(s => ({label: s, value: s}))}/>
-            <Select allowClear placeholder="是否处理" style={{width: 120}} value={filterHasVolumes}
+            <Select allowClear placeholder="是否处理" style={{width: 150}} value={filterHasVolumes}
                     onChange={onHasVolumesChange}
                     options={[{label: '已处理', value: true}, {label: '未处理', value: false}]}/>
             <Typography.Text
@@ -117,8 +117,8 @@ const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume; isExpanded: boolea
             <>
                 <Flex style={{width: 56, flexShrink: 0}}>
                     {torrent.hasVolumes
-                        ? <Tag icon={<CheckCircleOutlined/>} color="success" style={{margin: 0}}>{torrent.volumeCount}</Tag>
-                        : <Tag icon={<CloseCircleOutlined/>} color="default" style={{margin: 0}}/>}
+                        ? <Tag icon={<CheckCircleOutlined/>} style={{margin: 0}}>{torrent.volumeCount}</Tag>
+                        : <Tag icon={<CloseCircleOutlined/>} style={{margin: 0, opacity: 0.35}}/>}
                 </Flex>
                 <Flex style={{
                     flex: 1,

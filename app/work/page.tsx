@@ -91,13 +91,15 @@ const VolumeFiltersBar: React.FC<{
     return (
         <Space wrap size={SPACING.sm}>
             <Input.Search
+                size="small"
                 value={searchCatalogNo}
                 onChange={e => onSearchCatalogNoChange(e.target.value)}
                 placeholder="搜索编号"
-                style={{width: 200}}
+                style={{width: 150}}
                 allowClear
             />
             <Input.Search
+                size="small"
                 value={searchTitle}
                 onChange={e => onSearchTitleChange(e.target.value)}
                 placeholder="搜索标题"
@@ -108,20 +110,18 @@ const VolumeFiltersBar: React.FC<{
                         checked={invertTitle}
                         onChange={onInvertTitleChange}
                         size="small"
-                        checkedChildren="反向"
-                        unCheckedChildren="反向"
                     />
                 }
             />
             <Select
                 allowClear
-                placeholder="是否已关联作品"
+                placeholder="是否处理"
                 style={{width: 160}}
                 value={filterHasWork}
                 onChange={onFilterHasWorkChange}
                 options={[
-                    {label: '已关联', value: true},
-                    {label: '未关联', value: false}
+                    {label: '已处理', value: true},
+                    {label: '未处理', value: false}
                 ]}
             />
             <Typography.Text type="secondary" style={{color: token.colorTextSecondary}}>
@@ -139,8 +139,8 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithWork; isExpanded: boolean }> 
             <>
                 <Flex style={{width: 56, flexShrink: 0}}>
                     {workCount > 0
-                        ? <Tag icon={<CheckCircleOutlined/>} color="success" style={{margin: 0}}>{workCount}</Tag>
-                        : <Tag icon={<CloseCircleOutlined/>} color="default" style={{margin: 0}}/>}
+                        ? <Tag icon={<CheckCircleOutlined/>} style={{margin: 0}}>{workCount}</Tag>
+                        : <Tag icon={<CloseCircleOutlined/>} style={{margin: 0, opacity: 0.35}}/>}
                 </Flex>
                 <Typography.Text style={{width: 120, flexShrink: 0, color: token.colorText, fontFamily: 'monospace'}}>
                     {formatCatalogNo(volume.catalog_no)}
