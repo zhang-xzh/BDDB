@@ -17,8 +17,9 @@
     "bangumi:stats": "tsx scripts/syncBangumiMeili.ts stats",
     "bangumi:clear": "tsx scripts/syncBangumiMeili.ts clear",
     "electron:dev": "node electron-dev.js",
-    "electron:build": "set NEXT_PUBLIC_ELECTRON=true && npm run build && electron-builder",
-    "electron:pack": "electron-builder --dir"
+    "electron:build": "node electron/build.js",
+    "electron:pack": "electron-builder --dir",
+    "electron:dir": "npm run build && electron-builder --dir"
   },
   "build": {
     "appId": "com.bddb.app",
@@ -27,16 +28,25 @@
       "output": "dist"
     },
     "files": [
-      "out/**/*",
-      "electron/**/*"
+      "electron/**/*",
+      "!electron/build.js",
+      "!electron-dev.js"
     ],
     "extraResources": [
       {
-        "from": "public/fonts",
-        "to": "fonts",
-        "filter": [
-          "**/*"
-        ]
+        "from": ".next/standalone",
+        "to": "server",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "public",
+        "to": "server/public",
+        "filter": ["**/*"]
+      },
+      {
+        "from": ".next/static",
+        "to": "server/.next/static",
+        "filter": ["**/*"]
       }
     ],
     "win": {
