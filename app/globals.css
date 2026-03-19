@@ -3,8 +3,8 @@
 /* CSS 变量 - 布局尺寸 */
 :root {
     --header-height: 44px;
-    --content-margin-top: 10px;
-    --content-margin-bottom: 4px;
+    --content-margin-top: 16px;
+    --content-margin-bottom: 10px;
     --content-max-height: calc(100vh - var(--header-height) - var(--content-margin-top) - var(--content-margin-bottom));
 }
 
@@ -20,6 +20,14 @@ body {
     -moz-osx-font-smoothing: grayscale;
     /* 几何精度渲染，保持字形准确 */
     text-rendering: geometricPrecision;
+}
+
+/* Electron 特定优化 */
+.electron body {
+    /* 禁用亚像素定位，强制整数像素 */
+    transform: translateZ(0);
+    /* 字体微调 */
+    font-feature-settings: 'liga' 0, 'calt' 0;
 }
 
 /* 确保行高有呼吸感 */

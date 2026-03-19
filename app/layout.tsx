@@ -70,7 +70,7 @@ function AppLayout({children, isDark, onToggle}: {
                 </Header>
                 <Layout>
                     <Sider width="25%" style={{
-                        margin: `${SPACING.md}px 4px 4px ${SPACING.sm}px`,
+                        margin: `${SPACING.lg}px ${SPACING.sm}px ${SPACING.md}px ${SPACING.lg}px`,
                         padding: SPACING.md,
                         background: token.colorBgContainer,
                         borderRadius: token.borderRadiusLG,
@@ -82,7 +82,7 @@ function AppLayout({children, isDark, onToggle}: {
                     </Sider>
                     <Content
                         style={{
-                            margin: `${SPACING.md}px ${SPACING.sm}px 4px 4px`,
+                            margin: `${SPACING.lg}px ${SPACING.lg}px ${SPACING.md}px ${SPACING.sm}px`,
                             padding: SPACING.md,
                             background: token.colorBgContainer,
                             borderRadius: token.borderRadiusLG,
@@ -113,6 +113,10 @@ const desktopTheme = (isDark: boolean): ThemeConfig => ({
         colorBgContainer: isDark ? '#242424' : '#ffffff',
         colorBorder: isDark ? '#333333' : '#d9d9d9',
         colorBorderSecondary: isDark ? '#2a2a2a' : '#e8e8e8',
+        // 文字对比度优化
+        colorText: isDark ? '#e0e0e0' : '#262626',
+        colorTextSecondary: isDark ? '#a6a6a6' : '#595959',
+        colorTextTertiary: isDark ? '#737373' : '#8c8c8c',
         paddingXS: 6,
         paddingSM: 8,
         padding: 12,
