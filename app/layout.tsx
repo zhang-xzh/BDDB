@@ -42,11 +42,11 @@ function AppLayout({children, isDark, onToggle}: {
                     zIndex: 100,
                     height: 44,
                     lineHeight: '44px',
-                    background: isDark ? '#242424' : '#ffffff',
-                    borderBottom: `1px solid ${isDark ? '#333333' : '#d9d9d9'}`,
+                    background: isDark ? '#242424' : '#5a7a8f',  // 灰蓝色标题栏
+                    borderBottom: `1px solid ${isDark ? '#333333' : '#4a6a7f'}`,
                 }}>
-                    <Title level={5} style={{margin: 0, color: isDark ? '#ffffff' : '#000000', whiteSpace: 'nowrap'}}>BDDB</Title>
-                    <Divider orientation="vertical" style={{borderColor: isDark ? '#444444' : '#d9d9d9'}}/>
+                    <Title level={5} style={{margin: 0, color: '#ffffff', whiteSpace: 'nowrap'}}>BDDB</Title>
+                    <Divider orientation="vertical" style={{borderColor: isDark ? '#444444' : '#7a9ab0'}}/>
                     <Menu
                         selectedKeys={selectedKey ? [selectedKey] : []}
                         onSelect={({key}) => router.push(String(key))}
@@ -56,22 +56,21 @@ function AppLayout({children, isDark, onToggle}: {
                             minWidth: 0,
                             borderInlineEnd: 'none',
                             background: 'transparent',
-                            color: isDark ? '#ffffff' : '#000000',
                         }}
-                        theme={isDark ? 'dark' : 'light'}
+                        theme="dark"
                         items={menuItems}
                     />
                     <Button
                         type="text"
                         size="small"
-                        icon={isDark ? <SunOutlined style={{color: '#ffffff'}}/> : <MoonOutlined style={{color: '#000000'}}/>}
+                        icon={isDark ? <SunOutlined style={{color: '#ffffff'}}/> : <MoonOutlined style={{color: '#ffffff'}}/>}
                         onClick={onToggle}
                     />
                 </Header>
                 <Layout>
                     <Sider width="25%" style={{
                         margin: `${SPACING.lg}px ${SPACING.sm}px ${SPACING.md}px ${SPACING.lg}px`,
-                        padding: SPACING.md,
+                        padding: SPACING.lg,
                         background: token.colorBgContainer,
                         borderRadius: token.borderRadiusLG,
                         position: 'sticky',
@@ -83,7 +82,7 @@ function AppLayout({children, isDark, onToggle}: {
                     <Content
                         style={{
                             margin: `${SPACING.lg}px ${SPACING.lg}px ${SPACING.md}px ${SPACING.sm}px`,
-                            padding: SPACING.md,
+                            padding: SPACING.lg,
                             background: token.colorBgContainer,
                             borderRadius: token.borderRadiusLG,
                             position: 'sticky',
@@ -105,18 +104,18 @@ const desktopTheme = (isDark: boolean): ThemeConfig => ({
         fontSize: 12,
         fontSizeSM: 11,
         fontSizeLG: 13,
-        // 主色调 - 低饱和灰青色，替代 antd 默认亮蓝
-        colorPrimary: isDark ? '#6a8291' : '#567380',
-        colorPrimaryHover: isDark ? '#7a92a1' : '#668390',
-        colorPrimaryActive: isDark ? '#5a7281' : '#466370',
-        colorBgLayout: isDark ? '#1a1a1a' : '#f0f2f5',
-        colorBgContainer: isDark ? '#242424' : '#ffffff',
-        colorBorder: isDark ? '#333333' : '#d9d9d9',
-        colorBorderSecondary: isDark ? '#2a2a2a' : '#e8e8e8',
-        // 文字对比度优化
-        colorText: isDark ? '#e0e0e0' : '#262626',
-        colorTextSecondary: isDark ? '#a6a6a6' : '#595959',
-        colorTextTertiary: isDark ? '#737373' : '#8c8c8c',
+        colorBgLayout: isDark ? '#1a1a1a' : '#d9d9d9',           // 页面背景：浅灰
+        colorBgContainer: isDark ? '#242424' : '#e8e8e8',         // 卡片背景：淡灰
+        colorBorder: isDark ? '#333333' : '#b8b8b8',              // 边框：中灰
+        colorBorderSecondary: isDark ? '#2a2a2a' : '#c8c8c8',     // 次边框
+        // 主色调
+        colorPrimary: isDark ? '#6a8291' : '#5a7a8f',
+        colorPrimaryHover: isDark ? '#7a92a1' : '#6a8a9f',
+        colorPrimaryActive: isDark ? '#5a7281' : '#4a6a7f',
+        // 文字颜色
+        colorText: isDark ? '#e0e0e0' : '#333333',
+        colorTextSecondary: isDark ? '#a6a6a6' : '#555555',
+        colorTextTertiary: isDark ? '#737373' : '#777777',
         paddingXS: 6,
         paddingSM: 8,
         padding: 12,
@@ -136,9 +135,9 @@ const desktopTheme = (isDark: boolean): ThemeConfig => ({
     },
     components: {
         Layout: {
-            bodyBg: isDark ? '#1a1a1a' : '#f0f2f5',
-            headerBg: isDark ? '#141414' : '#001529',
-            siderBg: isDark ? '#242424' : '#ffffff',
+            bodyBg: isDark ? '#1a1a1a' : '#d9d9d9',
+            headerBg: isDark ? '#141414' : '#5a7a8f',  // 灰蓝色标题栏
+            siderBg: isDark ? '#242424' : '#e8e8e8',
         },
         Menu: {
             itemHeight: 32,
@@ -147,7 +146,7 @@ const desktopTheme = (isDark: boolean): ThemeConfig => ({
         Table: {
             cellPaddingBlock: 8,
             cellPaddingInline: 12,
-            headerBg: isDark ? '#1f1f1f' : '#fafafa',
+            headerBg: isDark ? '#1f1f1f' : '#7a9ab0',  // 灰蓝色表头
         },
         Card: {
             paddingLG: 16,
@@ -159,6 +158,23 @@ const desktopTheme = (isDark: boolean): ThemeConfig => ({
         Button: {
             paddingInline: 12,
             paddingBlock: 4,
+        },
+        Switch: {
+            // 开关内部文字大小和内边距
+            fontSize: 11,
+            fontSizeSM: 10,
+            innerMinMargin: 2,
+            innerMaxMargin: 4,
+        },
+        Select: {
+            // 选择器选项背景
+            optionSelectedBg: isDark ? '#333333' : '#d9d9d9',
+            optionActiveBg: isDark ? '#3a3a3a' : '#e8e8e8',
+        },
+        Tree: {
+            // 树图标居中
+            titleHeight: 28,
+            nodeSelectedBg: isDark ? '#333333' : '#e8e8e8',
         },
     },
 })

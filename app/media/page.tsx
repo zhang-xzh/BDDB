@@ -109,6 +109,8 @@ const VolumeFiltersBar: React.FC<{
                         checked={invertTitle}
                         onChange={onInvertTitleChange}
                         size="small"
+                        checkedChildren="反向"
+                        unCheckedChildren="反向"
                     />
                 }
             />

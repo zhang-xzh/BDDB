@@ -90,7 +90,13 @@ const TorrentFiltersBar: React.FC<{
                 value={searchText} onChange={e => onSearchTextChange(e.target.value)}
                 placeholder="搜索种子" style={{width: 200}} allowClear
                 suffix={
-                    <Switch checked={invertSearch} onChange={onInvertSearchChange} size="small"/>
+                    <Switch
+                        checked={invertSearch}
+                        onChange={onInvertSearchChange}
+                        size="small"
+                        checkedChildren="反向"
+                        unCheckedChildren="反向"
+                    />
                 }
             />
             <Select allowClear placeholder="类别" style={{width: 150}} value={filterCategory}

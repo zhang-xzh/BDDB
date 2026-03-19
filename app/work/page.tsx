@@ -103,13 +103,15 @@ const VolumeFiltersBar: React.FC<{
                 value={searchTitle}
                 onChange={e => onSearchTitleChange(e.target.value)}
                 placeholder="搜索标题"
-                style={{width: 300}}
+                style={{width: 200}}
                 allowClear
                 suffix={
                     <Switch
                         checked={invertTitle}
                         onChange={onInvertTitleChange}
                         size="small"
+                        checkedChildren="反向"
+                        unCheckedChildren="反向"
                     />
                 }
             />
