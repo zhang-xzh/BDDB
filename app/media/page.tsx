@@ -88,7 +88,12 @@ const VolumeFiltersBar: React.FC<{
       }) => {
     const {token} = theme.useToken()
     return (
-        <Space wrap size={SPACING.sm}>
+        <Space wrap size={SPACING.sm} style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+            background: token.colorBgContainer,
+        }}>
             <Input.Search
                 size="small"
                 value={searchCatalogNo}

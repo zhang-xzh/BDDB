@@ -248,6 +248,7 @@ const SiderContent: React.FC = () => {
                 onSearch={handleSearch}
                 loading={loading}
                 enterButton
+                size="small"
             />
             <Flex vertical ref={scrollContainerRef}>
                 {searchResult ? (
