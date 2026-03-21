@@ -14,7 +14,6 @@ docker run -d `
     --name bddb `
     --restart unless-stopped `
     -p 13000:3000 `
-    -v C:/Users/zhang/.bddb:/app/data `
     -e QB_HOST=host.docker.internal:18000 `
     -e MONGO_HOST=host.docker.internal `
     -e MEILI_HOST=http://host.docker.internal:17700 `
