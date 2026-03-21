@@ -8,7 +8,9 @@ export async function GET(request: NextRequest) {
         const torrentId = request.nextUrl.searchParams.get('torrent_id');
 
         if (torrentId) {
-            const volumes = await getVolumesByTorrent(torrentId);
+            let volumes = await getVolumesByTorrent(torrentId);
+            // 默认按 catalog_no 排序
+            volumes = volumes.sort((a, b) => (a.catalog_no || '').localeCompare(b.catalog_no || ''));
             const result = volumes.map(v => ({
                 ...v,
                 _id: v._id.toString(),
@@ -20,6 +22,8 @@ export async function GET(request: NextRequest) {
         }
 
         const [allVolumes, mediaCounts, workCounts] = await Promise.all([getAllVolumes(), getMediaCountsByVolume(), getWorkCountsByVolume()]);
+        // 默认按 catalog_no 排序
+        allVolumes.sort((a, b) => (a.catalog_no || '').localeCompare(b.catalog_no || ''));
         const result = allVolumes.map(v => {
             const id = v._id.toString()
             return {

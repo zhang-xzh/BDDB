@@ -14,7 +14,7 @@ const ConfigPage: React.FC = () => {
     const syncTorrents = useCallback(async () => {
         setSyncing(true)
         try {
-            const data = await postApi('/api/qb/torrents/sync')
+            const data = await postApi('/api/torrents/sync')
             if (data?.success) {
                 message.success('开始同步 qBittorrent')
             } else {
@@ -32,7 +32,7 @@ const ConfigPage: React.FC = () => {
     const rebuildData = useCallback(async () => {
         setRebuilding(true)
         try {
-            const data = await postApi('/api/qb/torrents/rebuild')
+            const data = await postApi('/api/torrents/rebuild')
             if (data?.success) {
                 message.success((data.data as any)?.message || '数据已重建')
             } else {

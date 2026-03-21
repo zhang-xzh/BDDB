@@ -36,17 +36,23 @@
       {
         "from": ".next/standalone",
         "to": "server",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "public",
         "to": "server/public",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": ".next/static",
         "to": "server/.next/static",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
@@ -65,7 +71,6 @@
   "dependencies": {
     "@ant-design/icons": "^6.0.0",
     "@ctrl/qbittorrent": "^9.11.2",
-    "@seald-io/nedb": "^4.1.2",
     "@types/mongodb": "^4.0.6",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

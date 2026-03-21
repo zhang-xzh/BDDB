@@ -277,7 +277,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
         resetAll()
         try {
             const [torrentResult, dbFilesResult] = await Promise.all([
-                fetchApi<TorrentWithVolume[]>(`/api/qb/torrents/info?hash=${torrentHash}`),
+                fetchApi<TorrentWithVolume[]>(`/api/torrents/info?hash=${torrentHash}`),
                 fetchApi<FileItem[]>(`/api/torrents/files?hash=${torrentHash}`),
             ])
             if (!torrentResult?.success || !torrentResult.data) {
@@ -296,7 +296,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
 
             let loadedFiles: FileItem[] = dbFilesResult?.success && dbFilesResult.data ? dbFilesResult.data : []
             if (loadedFiles.length === 0 || syncFiles) {
-                const r = await fetchApi<FileItem[]>(`/api/qb/torrents/files?hash=${torrentHash}`)
+                const r = await fetchApi<FileItem[]>(`/api/torrents/sync-files?hash=${torrentHash}`)
                 if (r?.success && r.data) loadedFiles = r.data
             }
             if (loadedFiles.length === 0) {

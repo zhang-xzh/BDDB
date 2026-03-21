@@ -154,7 +154,7 @@ const TorrentsPage: React.FC = () => {
     const fetchTorrents = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetchApi<TorrentWithVolume[]>("/api/qb/torrents/info");
+            const res = await fetchApi<TorrentWithVolume[]>("/api/torrents/info");
             if (res.success && res.data) setTorrents(res.data);
         } catch (error) {
             console.error("获取种子列表失败:", error);
