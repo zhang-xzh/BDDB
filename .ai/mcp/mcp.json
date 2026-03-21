@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "intellij-index": {
+      "url": "http://localhost:29173/index-mcp/streamable-http"
+    },
+    "intellij-util": {
+      "type": "stdio",
+      "env": {
+        "IJ_MCP_SERVER_PORT": "64342"
+      },
+      "command": "C:\\Users\\zhang\\AppData\\Local\\Programs\\WebStorm\\jbr\\bin\\java",
+      "args": [
+        "-classpath",
+        "C:\\Users\\zhang\\AppData\\Local\\Programs\\WebStorm\\plugins\\mcpserver\\lib\\mcpserver-frontend.jar;C:\\Users\\zhang\\AppData\\Local\\Programs\\WebStorm\\lib\\util-8.jar;C:\\Users\\zhang\\AppData\\Local\\Programs\\WebStorm\\lib\\module-intellij.libraries.ktor.client.cio.jar;C:\\Users\\zhang\\AppData\\Local\\Programs\\WebStorm\\lib\\module-intellij.libraries.ktor.client.jar;C:\\Users\\zhang\\AppData\\Local\\Programs\\WebStorm\\lib\\module-intellij.libraries.ktor.network.tls.jar;C:\\Users\\zhang\\AppData\\Local\\Programs\\WebStorm\\lib\\module-intellij.libraries.ktor.io.jar;C:\\Users\\zhang\\AppData\\Local\\Programs\\WebStorm\\lib\\module-intellij.libraries.ktor.utils.jar;C:\\Users\\zhang\\AppData\\Local\\Programs\\WebStorm\\lib\\module-intellij.libraries.kotlinx.io.jar;C:\\Users\\zhang\\AppData\\Local\\Programs\\WebStorm\\lib\\module-intellij.libraries.kotlinx.serialization.core.jar;C:\\Users\\zhang\\AppData\\Local\\Programs\\WebStorm\\lib\\module-intellij.libraries.kotlinx.serialization.json.jar",
+        "com.intellij.mcpserver.stdio.McpStdioRunnerKt"
+      ]
+    }
+  }
+}
