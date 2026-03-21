@@ -90,4 +90,3 @@ logs/
 *.temp
 *.cache
 /tsconfig.tsbuildinfo
-/.ai/mcp/mcp.json
