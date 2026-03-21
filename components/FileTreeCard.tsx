@@ -1,11 +1,11 @@
 'use client'
 
-import type { FileItem } from '@/lib/mongodb'
-import { SPACING } from '@/lib/utils'
-import { BranchesOutlined } from '@ant-design/icons'
-import { Card, Cascader, Empty, Select, Space, Switch, Tree, Typography } from 'antd'
-import type { DataNode } from 'antd/es/tree'
-import React, { useEffect, useState } from 'react'
+import type {FileItem} from '@/lib/mongodb'
+import {SPACING} from '@/lib/utils'
+import {BranchesOutlined} from '@ant-design/icons'
+import {Card, Cascader, Empty, Select, Space, Switch, Tree, Typography} from 'antd'
+import type {DataNode} from 'antd/es/tree'
+import React, {useEffect, useState} from 'react'
 
 // ─── FileTreeCard ─────────────────────────────────────────────────────────────
 
@@ -21,15 +21,15 @@ export interface FileTreeCardProps {
 }
 
 export function FileTreeCard({
-    files,
-    treeData,
-    defaultExpandedKeys,
-    titleRender,
-    titleExtra,
-    titleSuffix,
-    blockNode,
-    selectable,
-}: FileTreeCardProps) {
+                                 files,
+                                 treeData,
+                                 defaultExpandedKeys,
+                                 titleRender,
+                                 titleExtra,
+                                 titleSuffix,
+                                 blockNode,
+                                 selectable,
+                             }: FileTreeCardProps) {
     const [expandedKeys, setExpandedKeys] = useState<React.Key[]>(defaultExpandedKeys ?? [])
 
     useEffect(() => {
@@ -37,19 +37,19 @@ export function FileTreeCard({
     }, [defaultExpandedKeys])
 
     if (files.length === 0) {
-        return <Empty description="暂无文件数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        return <Empty description="暂无文件数据" image={Empty.PRESENTED_IMAGE_SIMPLE}/>
     }
 
     return (
         <Card size="small" title={
             <Space>
                 <Typography.Text>文件列表</Typography.Text>
-                <Typography.Text type="secondary" style={{ fontWeight: 'normal' }}>
+                <Typography.Text type="secondary" style={{fontWeight: 'normal'}}>
                     {files.length} 个文件{titleSuffix ? ` · ${titleSuffix}` : ''}
                 </Typography.Text>
                 {titleExtra}
             </Space>
-        } styles={{ body: { padding: SPACING.md } }}>
+        } styles={{body: {padding: SPACING.md}}}>
             <Tree
                 treeData={treeData}
                 expandedKeys={expandedKeys}
@@ -85,29 +85,28 @@ export interface DiscTreeNodeContentProps {
 }
 
 export function DiscTreeNodeContent({
-    title, nodeKey, worksCount, visibleVolumes, loadMoreVolumes,
-    getNodeVolume, getNodeShared, getNodeSharedVolumes, getComputedNodeValue,
-    onVolumeChange, onSharedVolumeChange, onToggleShared,
-}: DiscTreeNodeContentProps) {
+                                        title, nodeKey, worksCount, visibleVolumes, loadMoreVolumes, getNodeShared, getNodeSharedVolumes, getComputedNodeValue,
+                                        onVolumeChange, onSharedVolumeChange, onToggleShared,
+                                    }: DiscTreeNodeContentProps) {
     const isShared = getNodeShared(nodeKey)
     const sharedVolumes = getNodeSharedVolumes(nodeKey)
     const computed = getComputedNodeValue(nodeKey)
     const isIndeterminate = !computed.isConsistent && !isShared
     const volumeNo = computed.volume_no
 
-    const selectOptions = Array.from({ length: visibleVolumes }, (_, i) => ({ value: i + 1, label: `第 ${i + 1} 卷` }))
-    const cascaderOptions = Array.from({ length: worksCount }, (_, wi) => ({
+    const selectOptions = Array.from({length: visibleVolumes}, (_, i) => ({value: i + 1, label: `第 ${i + 1} 卷`}))
+    const cascaderOptions = Array.from({length: worksCount}, (_, wi) => ({
         label: `作品 ${wi + 1}`, value: wi + 1,
-        children: Array.from({ length: visibleVolumes }, (_, vi) => ({ label: `第 ${vi + 1} 卷`, value: vi + 1 })),
+        children: Array.from({length: visibleVolumes}, (_, vi) => ({label: `第 ${vi + 1} 卷`, value: vi + 1})),
     }))
 
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget
+        const {scrollTop, scrollHeight, clientHeight} = e.currentTarget
         if (scrollHeight - scrollTop - clientHeight < 20) loadMoreVolumes()
     }
 
     const inconsistentIcon = isIndeterminate
-        ? <BranchesOutlined style={{ color: '#faad14', pointerEvents: 'none' }} />
+        ? <BranchesOutlined style={{color: '#faad14', pointerEvents: 'none'}}/>
         : undefined
 
     const renderSelector = () => {
@@ -119,7 +118,7 @@ export function DiscTreeNodeContent({
                     onChange={val => isShared
                         ? onSharedVolumeChange(nodeKey, val as number[])
                         : onVolumeChange(nodeKey, (val as number | undefined) ?? null)}
-                    style={{ minWidth: isShared ? 150 : 100, flexShrink: 0 }}
+                    style={{minWidth: isShared ? 150 : 100, flexShrink: 0}}
                     size="small"
                     placeholder={isIndeterminate && !isShared ? '不一致' : '卷号'}
                     suffixIcon={!isShared ? inconsistentIcon : undefined}
@@ -139,7 +138,7 @@ export function DiscTreeNodeContent({
                     placeholder={isIndeterminate ? '不一致' : '作品/卷'}
                     suffixIcon={inconsistentIcon}
                     size="small"
-                    style={{ width: 160, flexShrink: 0 }} allowClear
+                    style={{width: 160, flexShrink: 0}} allowClear
                 />
             )
         }
@@ -149,18 +148,18 @@ export function DiscTreeNodeContent({
                 value={sharedVolumes.map(vn => toCascaderVal(vn)!)}
                 onChange={vals => onSharedVolumeChange(nodeKey, (vals as (string | number)[][]).map(fromCascaderVal))}
                 options={cascaderOptions} placeholder="作品/卷（多选）" size="small"
-                style={{ minWidth: 200, flexShrink: 0 }}
+                style={{minWidth: 200, flexShrink: 0}}
             />
         )
     }
 
     return (
-        <Space style={{ width: '100%', justifyContent: 'space-between' }} size={4}>
-            <Typography.Text ellipsis={{ tooltip: title }} style={{ flex: 1 }}>{title}</Typography.Text>
+        <Space style={{width: '100%', justifyContent: 'space-between'}} size={4}>
+            <Typography.Text ellipsis={{tooltip: title}} style={{flex: 1}}>{title}</Typography.Text>
             <Space size={4}>
                 <Switch size="small" checked={isShared}
-                    onChange={checked => onToggleShared(nodeKey, checked)}
-                    checkedChildren="共享" unCheckedChildren="共享" />
+                        onChange={checked => onToggleShared(nodeKey, checked)}
+                        checkedChildren="共享" unCheckedChildren="共享"/>
                 {renderSelector()}
             </Space>
         </Space>
@@ -184,29 +183,28 @@ export interface MediaTreeNodeContentProps {
 }
 
 export function MediaTreeNodeContent({
-    title,
-    nodeKey,
-    visibleMedias,
-    loadMoreMedias,
-    getNodeMediaNo,
-    getNodeShared,
-    getNodeSharedMedias,
-    getComputedNodeValue,
-    onMediaNoChange,
-    onSharedMediaChange,
-    onToggleShared,
-}: MediaTreeNodeContentProps) {
+                                         title,
+                                         nodeKey,
+                                         visibleMedias,
+                                         loadMoreMedias,
+                                         getNodeShared,
+                                         getNodeSharedMedias,
+                                         getComputedNodeValue,
+                                         onMediaNoChange,
+                                         onSharedMediaChange,
+                                         onToggleShared,
+                                     }: MediaTreeNodeContentProps) {
     const isShared = getNodeShared(nodeKey)
     const sharedMedias = getNodeSharedMedias(nodeKey)
     const computed = getComputedNodeValue(nodeKey)
 
-    const mediaNoOptions = Array.from({ length: visibleMedias }, (_, i) => ({
+    const mediaNoOptions = Array.from({length: visibleMedias}, (_, i) => ({
         value: i + 1,
         label: `${i + 1}`,
     }))
 
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget
+        const {scrollTop, scrollHeight, clientHeight} = e.currentTarget
         if (scrollHeight - scrollTop - clientHeight < 20) loadMoreMedias()
     }
 
@@ -214,8 +212,8 @@ export function MediaTreeNodeContent({
     const isIndeterminate = !computed.isConsistent
 
     return (
-        <Space style={{ width: '100%', justifyContent: 'space-between' }} size={4}>
-            <Typography.Text ellipsis={{ tooltip: title }} style={{ flex: 1 }}>
+        <Space style={{width: '100%', justifyContent: 'space-between'}} size={4}>
+            <Typography.Text ellipsis={{tooltip: title}} style={{flex: 1}}>
                 {title}
             </Typography.Text>
             <Space size={4}>
@@ -231,7 +229,7 @@ export function MediaTreeNodeContent({
                         mode="multiple"
                         value={sharedMedias}
                         onChange={vals => onSharedMediaChange(nodeKey, vals as number[])}
-                        style={{ minWidth: 150, flexShrink: 0 }}
+                        style={{minWidth: 150, flexShrink: 0}}
                         size="small"
                         placeholder="选择序号（多选）"
                         options={mediaNoOptions}
@@ -241,11 +239,11 @@ export function MediaTreeNodeContent({
                     <Select
                         value={isIndeterminate ? undefined : displayMediaNo}
                         onChange={val => onMediaNoChange(nodeKey, (val as number | undefined) ?? null)}
-                        style={{ width: 85, flexShrink: 0 }}
+                        style={{width: 85, flexShrink: 0}}
                         size="small"
                         placeholder={isIndeterminate ? '不一致' : '序号'}
                         suffixIcon={isIndeterminate
-                            ? <BranchesOutlined style={{ color: '#faad14', pointerEvents: 'none' }} />
+                            ? <BranchesOutlined style={{color: '#faad14', pointerEvents: 'none'}}/>
                             : undefined
                         }
                         options={mediaNoOptions}

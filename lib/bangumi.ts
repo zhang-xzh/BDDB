@@ -149,6 +149,7 @@ export function getTypeName(type: number): string {
     return SUBJECT_TYPE_NAMES[type] || '未知'
 }
 
+// noinspection JSUnusedGlobalSymbols
 /**
  * 获取星期名称
  */
@@ -189,6 +190,7 @@ export function getSubjectUrl(subjectId: number): string {
     return `https://bgm.tv/subject/${subjectId}`
 }
 
+// noinspection JSUnusedGlobalSymbols
 /**
  * 获取人物详情页 URL
  */
@@ -196,6 +198,7 @@ export function getPersonUrl(personId: number): string {
     return `https://bgm.tv/person/${personId}`
 }
 
+// noinspection JSUnusedGlobalSymbols
 /**
  * 获取角色详情页 URL
  */
@@ -203,6 +206,7 @@ export function getCharacterUrl(characterId: number): string {
     return `https://bgm.tv/character/${characterId}`
 }
 
+// noinspection JSUnusedGlobalSymbols
 /**
  * 获取剧集详情页 URL
  */

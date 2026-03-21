@@ -1,7 +1,7 @@
 'use client'
 
 import React, {useCallback, useState} from 'react'
-import {Button, Card, Col, Divider, Flex, message, Modal, Row, Space, Typography} from 'antd'
+import {Button, Card, Col, Flex, message, Modal, Row, Space, Typography} from 'antd'
 import {ReloadOutlined, SettingOutlined, SyncOutlined} from '@ant-design/icons'
 import {postApi} from '@/lib/api'
 import {SPACING} from '@/lib/utils'

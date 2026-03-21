@@ -7,14 +7,7 @@
 //   stats       - 显示索引统计
 //   clear       - 清空所有文档
 
-import {
-    ensureMeiliConnected,
-    setupProductsIndex,
-    syncAllProducts,
-    rebuildIndex,
-    getIndexStats,
-    clearAllProducts,
-} from '../lib/meilisearch'
+import {clearAllProducts, ensureMeiliConnected, getIndexStats, rebuildIndex, setupProductsIndex, syncAllProducts,} from '@/lib/meilisearch'
 
 async function main() {
     const command = process.argv[2] || 'full'

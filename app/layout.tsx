@@ -10,8 +10,8 @@ import {usePathname, useRouter} from 'next/navigation'
 import React, {useEffect, useState} from 'react'
 import './globals.css'
 
-const {Header, Content, Footer} = Layout
-const {Title, Text} = Typography
+const {Header, Content} = Layout
+const {Title} = Typography
 
 const menuItems = [
     {key: '/torrents', label: '种子管理'},
