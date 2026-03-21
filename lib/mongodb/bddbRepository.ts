@@ -317,38 +317,6 @@ export async function getAllVolumes(torrentId?: string | ObjectId): Promise<Bddb
 }
 
 /**
- * 获取所有卷并关联查询 works 数据（使用 MongoDB $lookup 聚合管道）
- */
-export async function getAllVolumesWithWorks(torrentId?: string | ObjectId): Promise<Array<BddbVolume & { works: BddbWork[] }>> {
-    try {
-        const collection = getVolumesCollection()
-        const matchStage: Record<string, unknown> = {is_deleted: false}
-
-        if (torrentId) {
-            matchStage.torrent_id = typeof torrentId === 'string' ? new ObjectId(torrentId) : torrentId
-        }
-
-        const pipeline = [
-            {$match: matchStage},
-            {
-                $lookup: {
-                    from: 'bddb_works',
-                    localField: 'work_ids',
-                    foreignField: '_id',
-                    as: 'works',
-                },
-            },
-            {$sort: {volume_no: 1}},
-        ]
-
-        return await collection.aggregate(pipeline).toArray() as Array<BddbVolume & { works: BddbWork[] }>
-    } catch (error) {
-        console.error('[mongodb] getAllVolumesWithWorks error:', error)
-        return []
-    }
-}
-
-/**
  * 保存卷
  */
 export async function saveVolume(volume: BddbVolume): Promise<void> {
@@ -564,29 +532,6 @@ export async function saveWorkFromBangumi(bangumiData: Partial<BddbWork>): Promi
         }
     } catch (error) {
         console.error('[mongodb] saveWorkFromBangumi error:', error)
-        throw error
-    }
-}
-
-/**
- * 将 work 关联到 Volume
- */
-export async function addWorkToVolume(volumeId: string | ObjectId, workId: string | ObjectId): Promise<void> {
-    try {
-        const collection = getVolumesCollection()
-        const vid = typeof volumeId === 'string' ? new ObjectId(volumeId) : volumeId
-        const wid = typeof workId === 'string' ? new ObjectId(workId) : workId
-        const now = Math.floor(Date.now() / 1000)
-
-        await collection.updateOne(
-            {_id: vid},
-            {
-                $addToSet: {work_ids: wid},
-                $set: {updated_at: now}
-            }
-        )
-    } catch (error) {
-        console.error('[mongodb] addWorkToVolume error:', error)
         throw error
     }
 }

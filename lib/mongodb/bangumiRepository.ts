@@ -74,6 +74,7 @@ export interface BangumiPersonDoc {
 }
 
 // Bangumi 角色类型定义 (MongoDB 文档)
+// noinspection JSUnusedGlobalSymbols
 export interface BangumiCharacterDoc {
     _id: number
     name: string
@@ -152,6 +153,7 @@ export interface BangumiSubjectCharacterDoc {
 }
 
 // 人物与角色关联 (配音)
+// noinspection JSUnusedGlobalSymbols
 export interface BangumiPersonCharacterDoc {
     _id: string
     person_id: number

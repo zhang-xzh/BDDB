@@ -1,13 +1,13 @@
 'use client'
 
-import { DiscTreeNodeContent, FileTreeCard } from '@/components/FileTreeCard'
-import { fetchApi, postApi } from '@/lib/api'
-import type { FileItem, NodeData, TorrentWithVolume, Volume, VolumeForm } from '@/lib/mongodb'
-import { buildTree, FlatTree, SPACING } from '@/lib/utils'
-import { DeleteOutlined, EditOutlined, SaveOutlined } from '@ant-design/icons'
-import { Button, Card, Empty, Flex, Input, InputNumber, message, Modal, Space, Spin, Typography } from 'antd'
-import type { DataNode } from 'antd/es/tree'
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, } from 'react'
+import {DiscTreeNodeContent, FileTreeCard} from '@/components/FileTreeCard'
+import {fetchApi, postApi} from '@/lib/api'
+import type {FileItem, NodeData, TorrentWithVolume, Volume, VolumeForm} from '@/lib/mongodb'
+import {buildTree, FlatTree, SPACING} from '@/lib/utils'
+import {DeleteOutlined, EditOutlined, SaveOutlined} from '@ant-design/icons'
+import {Button, Card, Empty, Flex, Input, InputNumber, message, Modal, Space, Spin, Typography} from 'antd'
+import type {DataNode} from 'antd/es/tree'
+import {forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState,} from 'react'
 
 export interface DiscEditorRef {
     open: (torrentHash: string, name?: string, syncFiles?: boolean) => Promise<void>
@@ -59,15 +59,15 @@ const computeNodeVolumeValue = (
 ): { volume_no: number | undefined; isConsistent: boolean } => {
     const node = flatTree.map.get(key)
     if (!node || node.isLeaf) {
-        return { volume_no: dataMap.get(key)?.volume_no, isConsistent: true }
+        return {volume_no: dataMap.get(key)?.volume_no, isConsistent: true}
     }
     const childValues = node.children.map(ck => computeNodeVolumeValue(ck, flatTree, dataMap))
-    if (childValues.length === 0) return { volume_no: undefined, isConsistent: true }
+    if (childValues.length === 0) return {volume_no: undefined, isConsistent: true}
     const firstNo = childValues[0]?.volume_no
     const allSame = childValues.every(v => v.volume_no === firstNo)
     return allSame
-        ? { volume_no: firstNo, isConsistent: true }
-        : { volume_no: undefined, isConsistent: false }
+        ? {volume_no: firstNo, isConsistent: true}
+        : {volume_no: undefined, isConsistent: false}
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -86,7 +86,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
     const [files, setFiles] = useState<FileItem[]>([])
     const [treeData, setTreeData] = useState<any[]>([])
     const [nodeData, setNodeData] = useState<Map<string, NodeData>>(new Map())
-    const [flatTree, setFlatTree] = useState<FlatTree>({ map: new Map(), order: [], leaves: [] })
+    const [flatTree, setFlatTree] = useState<FlatTree>({map: new Map(), order: [], leaves: []})
     const [defaultExpandedKeys, setDefaultExpandedKeys] = useState<string[]>([])
     const [volumeToKeys, setVolumeToKeys] = useState<Map<number, Set<string>>>(new Map())
 
@@ -118,7 +118,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
 
     const setInitialSnapshots = useCallback((nodeSnap: Map<string, NodeData>, volSnap: Record<number, VolumeForm>) => {
         initialNodeDataRef.current = new Map(nodeSnap)
-        initialVolumeFormsRef.current = { ...volSnap }
+        initialVolumeFormsRef.current = {...volSnap}
     }, [])
 
     const resetSnapshots = useCallback(() => {
@@ -146,7 +146,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
             const cur = newMap.get(k) || {}
             if (shared) {
                 const vols = cur.volume_no !== undefined ? [cur.volume_no] : []
-                newMap.set(k, { ...cur, shared_volume_nos: vols, volume_no: undefined })
+                newMap.set(k, {...cur, shared_volume_nos: vols, volume_no: undefined})
                 if (cur.volume_no !== undefined) {
                     newVtK.get(cur.volume_no)?.delete(k)
                     if (newVtK.get(cur.volume_no)?.size === 0) newVtK.delete(cur.volume_no)
@@ -158,7 +158,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
             } else {
                 const vols = cur.shared_volume_nos ?? []
                 const first = vols[0]
-                newMap.set(k, { ...cur, volume_no: first, shared_volume_nos: undefined })
+                newMap.set(k, {...cur, volume_no: first, shared_volume_nos: undefined})
                 vols.forEach(v => {
                     newVtK.get(v)?.delete(k);
                     if (newVtK.get(v)?.size === 0) newVtK.delete(v)
@@ -180,7 +180,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
         nodes.forEach(k => {
             const cur = newMap.get(k) || {}
             const old = cur.shared_volume_nos ?? []
-            newMap.set(k, { ...cur, shared_volume_nos: volumes, volume_no: undefined })
+            newMap.set(k, {...cur, shared_volume_nos: volumes, volume_no: undefined})
             old.forEach(v => {
                 newVtK.get(v)?.delete(k);
                 if (newVtK.get(v)?.size === 0) newVtK.delete(v)
@@ -198,7 +198,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
         const vol = volumeNo ?? undefined
         const nodes = [key, ...getAllChildrenKeys(key)]
         const newMap = new Map(nodeData)
-        nodes.forEach(k => newMap.set(k, { ...(newMap.get(k) || {}), volume_no: vol }))
+        nodes.forEach(k => newMap.set(k, {...(newMap.get(k) || {}), volume_no: vol}))
         setNodeData(newMap)
         const newVtK = new Map(volumeToKeys)
         nodes.forEach(k => {
@@ -218,7 +218,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
     const resetVolumeAssignments = useCallback(() => {
         setNodeData(prev => {
             const m = new Map(prev);
-            m.forEach((d, k) => m.set(k, { files: d.files }));
+            m.forEach((d, k) => m.set(k, {files: d.files}));
             return m
         })
         setVolumeToKeys(new Map())
@@ -226,14 +226,14 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
 
     const deleteVolume = useCallback((vol: number) => {
         setVolumeForms(prev => {
-            const n = { ...prev };
+            const n = {...prev};
             delete n[vol];
             return n
         })
         setNodeData(prev => {
             const m = new Map(prev)
             m.forEach((d, k) => {
-                if (d.volume_no === vol) m.set(k, { ...d, volume_no: undefined })
+                if (d.volume_no === vol) m.set(k, {...d, volume_no: undefined})
                 else if (d.shared_volume_nos?.includes(vol)) {
                     const f = d.shared_volume_nos.filter(v => v !== vol)
                     m.set(k, {
@@ -253,7 +253,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
     }, [])
 
     const updateVolumeForm = useCallback((vol: number, form: VolumeForm) =>
-        setVolumeForms(prev => ({ ...prev, [vol]: { ...form } })), [])
+        setVolumeForms(prev => ({...prev, [vol]: {...form}})), [])
 
     const resetAll = useCallback(() => {
         resetSnapshots()
@@ -262,7 +262,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
         setFiles([]);
         setTreeData([]);
         setNodeData(new Map())
-        setFlatTree({ map: new Map(), order: [], leaves: [] })
+        setFlatTree({map: new Map(), order: [], leaves: []})
         setDefaultExpandedKeys([]);
         setVolumeToKeys(new Map())
         setTorrentId(null);
@@ -350,11 +350,11 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
                         if (!vols?.length) return
                         const ex = newND.get(key) || {}
                         if (vols.length === 1) {
-                            newND.set(key, { ...ex, volume_no: vols[0], shared_volume_nos: undefined })
+                            newND.set(key, {...ex, volume_no: vols[0], shared_volume_nos: undefined})
                             if (!newVtK.has(vols[0])) newVtK.set(vols[0], new Set());
                             newVtK.get(vols[0])!.add(key)
                         } else {
-                            newND.set(key, { ...ex, volume_no: undefined, shared_volume_nos: vols })
+                            newND.set(key, {...ex, volume_no: undefined, shared_volume_nos: vols})
                             vols.forEach(v => {
                                 if (!newVtK.has(v)) newVtK.set(v, new Set());
                                 newVtK.get(v)!.add(key)
@@ -381,12 +381,12 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
                         const ex = newND.get(key) || {}
                         if (inter.size === 1) {
                             const vn = inter.values().next().value as number
-                            newND.set(key, { ...ex, volume_no: vn, shared_volume_nos: undefined })
+                            newND.set(key, {...ex, volume_no: vn, shared_volume_nos: undefined})
                             if (!newVtK.has(vn)) newVtK.set(vn, new Set());
                             newVtK.get(vn)!.add(key)
                         } else {
                             const sv = Array.from(inter)
-                            newND.set(key, { ...ex, volume_no: undefined, shared_volume_nos: sv })
+                            newND.set(key, {...ex, volume_no: undefined, shared_volume_nos: sv})
                             sv.forEach(v => {
                                 if (!newVtK.has(v)) newVtK.set(v, new Set());
                                 newVtK.get(v)!.add(key)
@@ -463,7 +463,7 @@ export function useDiscEditor(onSave?: () => void): UseDiscEditorReturn {
 
     const cancelChanges = useCallback((): boolean => {
         const nd = new Map(initialNodeDataRef.current)
-        const vf = { ...initialVolumeFormsRef.current }
+        const vf = {...initialVolumeFormsRef.current}
         const vtk = new Map<number, Set<string>>()
         nd.forEach((data, key) => {
             if (data.volume_no !== undefined) {
@@ -514,54 +514,54 @@ interface VolumeFormListProps {
     isChanged?: boolean
 }
 
-function VolumeRow({ vol, label, volumeForms, onVolumeFormChange, onDeleteVolume, submitted }: {
+function VolumeRow({vol, label, volumeForms, onVolumeFormChange, onDeleteVolume, submitted}: {
     vol: number; label: string; volumeForms: Record<number, VolumeForm>
     onVolumeFormChange: (vol: number, form: VolumeForm) => void
     onDeleteVolume: (vol: number) => void; submitted?: boolean
 }) {
-    const form = volumeForms[vol] || { catalog_no: '', volume_name: '' }
+    const form = volumeForms[vol] || {catalog_no: '', volume_name: ''}
     return (
         <Space>
-            <Typography.Text strong style={{ minWidth: 60, display: 'inline-block' }}>{label}</Typography.Text>
+            <Typography.Text strong style={{minWidth: 60, display: 'inline-block'}}>{label}</Typography.Text>
             <Input
                 value={form.catalog_no}
-                onChange={e => onVolumeFormChange(vol, { ...form, catalog_no: e.target.value })}
-                placeholder="型番" style={{ width: 120 }}
+                onChange={e => onVolumeFormChange(vol, {...form, catalog_no: e.target.value})}
+                placeholder="型番" style={{width: 120}}
                 status={submitted && !form.catalog_no.trim() ? 'error' : undefined}
             />
             <Input
                 value={form.volume_name}
-                onChange={e => onVolumeFormChange(vol, { ...form, volume_name: e.target.value })}
-                placeholder="标题" style={{ width: 700 }}
+                onChange={e => onVolumeFormChange(vol, {...form, volume_name: e.target.value})}
+                placeholder="标题" style={{width: 700}}
                 status={submitted && !form.volume_name.trim() ? 'error' : undefined}
             />
-            <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => onDeleteVolume(vol)} />
+            <Button type="text" danger size="small" icon={<DeleteOutlined/>} onClick={() => onDeleteVolume(vol)}/>
         </Space>
     )
 }
 
 function VolumeFormList({
-    selectedVolumes,
-    volumeForms,
-    onVolumeFormChange,
-    onDeleteVolume,
-    worksCount,
-    submitted,
-    onCancelEdit,
-    onSaveEdit,
-    saving = false,
-    isChanged = true,
-}: VolumeFormListProps) {
+                            selectedVolumes,
+                            volumeForms,
+                            onVolumeFormChange,
+                            onDeleteVolume,
+                            worksCount,
+                            submitted,
+                            onCancelEdit,
+                            onSaveEdit,
+                            saving = false,
+                            isChanged = true,
+                        }: VolumeFormListProps) {
     if (selectedVolumes.length === 0) return null
 
-    const rowProps = { volumeForms, onVolumeFormChange, onDeleteVolume, submitted }
+    const rowProps = {volumeForms, onVolumeFormChange, onDeleteVolume, submitted}
     const actions = (onCancelEdit || onSaveEdit) ? (
         <Flex gap={8}>
             {onCancelEdit && (
                 <Button onClick={onCancelEdit} disabled={saving}>取消</Button>
             )}
             {onSaveEdit && (
-                <Button type="primary" icon={<SaveOutlined />} onClick={onSaveEdit} disabled={!isChanged || saving} loading={saving}>
+                <Button type="primary" icon={<SaveOutlined/>} onClick={onSaveEdit} disabled={!isChanged || saving} loading={saving}>
                     保存
                 </Button>
             )}
@@ -570,8 +570,8 @@ function VolumeFormList({
 
     if (worksCount === 1) {
         return (
-            <Card size="small" title="卷信息" styles={{ body: { padding: 12 } }}>
-                <Space direction="vertical" style={{ width: '100%' }} size={12}>
+            <Card size="small" title="卷信息" styles={{body: {padding: 12}}}>
+                <Space direction="vertical" style={{width: '100%'}} size={12}>
                     {selectedVolumes.map(vol => <VolumeRow key={vol} vol={vol} label={`第${vol}卷`} {...rowProps} />)}
                     {actions}
                 </Space>
@@ -587,15 +587,15 @@ function VolumeFormList({
     })
 
     return (
-        <Card size="small" title="卷信息" styles={{ body: { padding: 12 } }}>
-            <Space direction="vertical" style={{ width: '100%' }} size={SPACING.md}>
+        <Card size="small" title="卷信息" styles={{body: {padding: 12}}}>
+            <Space direction="vertical" style={{width: '100%'}} size={SPACING.md}>
                 {Object.entries(groups).sort(([a], [b]) => Number(a) - Number(b)).map(([wiStr, vols]) => {
                     const wi = Number(wiStr)
                     return (
                         <Flex key={wi} vertical>
                             <Typography.Text strong
-                                style={{ display: 'block', marginBottom: 8 }}>作品 {wi}</Typography.Text>
-                            <Space direction="vertical" style={{ width: '100%', paddingLeft: SPACING.md }} size={SPACING.sm}>
+                                             style={{display: 'block', marginBottom: 8}}>作品 {wi}</Typography.Text>
+                            <Space direction="vertical" style={{width: '100%', paddingLeft: SPACING.md}} size={SPACING.sm}>
                                 {vols.sort((a, b) => a - b).map(vn => {
                                     const enc = wi * 1000 + vn
                                     return <VolumeRow key={enc} vol={enc} label={`第${vn}卷`} {...rowProps} />
@@ -611,37 +611,37 @@ function VolumeFormList({
 }
 
 function VolumeReadOnlyView({
-    selectedVolumes,
-    volumeForms,
-    worksCount,
-    onEdit,
-}: {
+                                selectedVolumes,
+                                volumeForms,
+                                worksCount,
+                                onEdit,
+                            }: {
     selectedVolumes: number[]
     volumeForms: Record<number, VolumeForm>
     worksCount: number
     onEdit: () => void
 }) {
     if (selectedVolumes.length === 0) {
-        return <Empty description="暂无卷信息" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        return <Empty description="暂无卷信息" image={Empty.PRESENTED_IMAGE_SIMPLE}/>
     }
 
     return (
-        <Card size="small" title="卷信息" styles={{ body: { padding: 12 } }}>
-            <Space direction="vertical" style={{ width: '100%' }} size={12}>
+        <Card size="small" title="卷信息" styles={{body: {padding: 12}}}>
+            <Space direction="vertical" style={{width: '100%'}} size={12}>
                 {selectedVolumes.map(vol => {
-                    const form = volumeForms[vol] || { catalog_no: '', volume_name: '' }
+                    const form = volumeForms[vol] || {catalog_no: '', volume_name: ''}
                     const label = worksCount === 1
                         ? `第${vol}卷`
                         : `作品 ${Math.floor(vol / 1000)} · 第${vol % 1000}卷`
                     return (
-                        <Space key={vol} style={{ width: '100%' }} size={8}>
+                        <Space key={vol} style={{width: '100%'}} size={8}>
                             <Typography.Text strong>{label}</Typography.Text>
                             <Typography.Text>{form.catalog_no?.trim() ? form.catalog_no : '—'}</Typography.Text>
                             <Typography.Text type="secondary">{form.volume_name?.trim() ? form.volume_name : '—'}</Typography.Text>
                         </Space>
                     )
                 })}
-                <Button icon={<EditOutlined />} onClick={onEdit}>
+                <Button icon={<EditOutlined/>} onClick={onEdit}>
                     编辑卷信息
                 </Button>
             </Space>
@@ -683,35 +683,33 @@ interface DiscEditorContentProps {
 }
 
 export function DiscEditorContent({
-    loading,
-    saving,
-    files,
-    treeData,
-    nodeData,
-    defaultExpandedKeys,
-    selectedVolumes,
-    visibleVolumes,
-    loadMoreVolumes,
-    worksCount,
-    submitted,
-    setWorksCount,
-    resetSubmitted,
-    cancelChanges,
-    volumeForms,
-    updateVolumeForm,
-    onVolumeChange,
-    onSharedVolumeChange,
-    onToggleShared,
-    getNodeVolume,
-    getNodeShared,
-    getNodeSharedVolumes,
-    getComputedNodeValue,
-    resetVolumeAssignments,
-    deleteVolume,
-    handleSubmit: externalSubmit,
-    hasChanges,
-    isChanged: isChangedProp,
-}: DiscEditorContentProps) {
+                                      loading,
+                                      saving,
+                                      files,
+                                      treeData,
+                                      defaultExpandedKeys,
+                                      selectedVolumes,
+                                      visibleVolumes,
+                                      loadMoreVolumes,
+                                      worksCount,
+                                      submitted,
+                                      setWorksCount,
+                                      cancelChanges,
+                                      volumeForms,
+                                      updateVolumeForm,
+                                      onVolumeChange,
+                                      onSharedVolumeChange,
+                                      onToggleShared,
+                                      getNodeVolume,
+                                      getNodeShared,
+                                      getNodeSharedVolumes,
+                                      getComputedNodeValue,
+                                      resetVolumeAssignments,
+                                      deleteVolume,
+                                      handleSubmit: externalSubmit,
+                                      hasChanges,
+                                      isChanged: isChangedProp,
+                                  }: DiscEditorContentProps) {
     const [isEditing, setIsEditing] = useState(false)
     const autoModeAppliedRef = useRef(false)
 
@@ -741,7 +739,7 @@ export function DiscEditorContent({
 
     return (
         <Spin spinning={loading}>
-            <Space orientation="vertical" style={{ width: '100%', paddingTop: SPACING.sm }} size={SPACING.md}>
+            <Space orientation="vertical" style={{width: '100%', paddingTop: SPACING.sm}} size={SPACING.md}>
                 {isEditing ? (
                     <>
                         <FileTreeCard
@@ -756,7 +754,7 @@ export function DiscEditorContent({
                                         setWorksCount(val ?? 1);
                                         resetVolumeAssignments()
                                     }}
-                                    addonBefore="作品数" size="small" mode="spinner" style={{ width: 100 }}
+                                    addonBefore="作品数" size="small" mode="spinner" style={{width: 100}}
                                 />
                             }
                         />
@@ -789,9 +787,9 @@ export function DiscEditorContent({
 // ─── DiscEditor Modal (default export) ───────────────────────────────────────
 
 const DiscEditor = forwardRef<DiscEditorRef, { onSave?: () => void }>(
-    function DiscEditor({ onSave }, ref) {
+    function DiscEditor({onSave}, ref) {
         const editor = useDiscEditor(onSave)
-        useImperativeHandle(ref, () => ({ open: editor.open }), [editor.open])
+        useImperativeHandle(ref, () => ({open: editor.open}), [editor.open])
         return (
             <Modal
                 open={editor.visible} title={editor.torrentName || '编辑产品信息'}

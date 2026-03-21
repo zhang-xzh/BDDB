@@ -1,40 +1,13 @@
 "use client";
 
-import { FileTreeCard, MediaTreeNodeContent } from "@/components/FileTreeCard";
-import { fetchApi, postApi } from "@/lib/api";
-import type {
-    FileItem,
-    Media,
-    MediaForm,
-    MediaType,
-    NodeData,
-} from "@/lib/mongodb";
-import { buildTree, FlatTree, SPACING } from "@/lib/utils";
-import {
-    DeleteOutlined,
-    EditOutlined,
-    SaveOutlined,
-} from "@ant-design/icons";
-import {
-    Button,
-    Card,
-    Empty,
-    Flex,
-    Input,
-    message,
-    Select,
-    Space,
-    Spin,
-    Typography
-} from "antd";
-import type { DataNode } from "antd/es/tree";
-import {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from "react";
+import {FileTreeCard, MediaTreeNodeContent} from "@/components/FileTreeCard";
+import {fetchApi, postApi} from "@/lib/api";
+import type {FileItem, Media, MediaForm, MediaType, NodeData,} from "@/lib/mongodb";
+import {buildTree, FlatTree, SPACING} from "@/lib/utils";
+import {DeleteOutlined, EditOutlined, SaveOutlined,} from "@ant-design/icons";
+import {Button, Card, Empty, Flex, Input, message, Select, Space, Spin, Typography} from "antd";
+import type {DataNode} from "antd/es/tree";
+import {useCallback, useEffect, useMemo, useRef, useState,} from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -117,10 +90,10 @@ interface UseMediaEditorReturn {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const MEDIA_TYPES: { value: MediaType; label: string }[] = [
-    { value: "bd", label: "BD" },
-    { value: "dvd", label: "DVD" },
-    { value: "cd", label: "CD" },
-    { value: "scan", label: "扫图" },
+    {value: "bd", label: "BD"},
+    {value: "dvd", label: "DVD"},
+    {value: "cd", label: "CD"},
+    {value: "scan", label: "扫图"},
 ];
 
 const getMediaTypeLabel = (type: MediaType | undefined) =>
@@ -143,17 +116,17 @@ const computeNodeMediaValue = (
         computeNodeMediaValue(childKey, flatTree, dataMap),
     );
     if (childValues.length === 0) {
-        return { media_no: undefined, isConsistent: true };
+        return {media_no: undefined, isConsistent: true};
     }
 
     const firstNo = childValues[0]?.media_no;
     const allSame = childValues.every((v) => v.media_no === firstNo);
 
     if (allSame) {
-        return { media_no: firstNo, isConsistent: true };
+        return {media_no: firstNo, isConsistent: true};
     }
 
-    return { media_no: undefined, isConsistent: false };
+    return {media_no: undefined, isConsistent: false};
 };
 
 const clearInconsistentParentAssignments = (
@@ -254,7 +227,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
     const setInitialSnapshots = useCallback(
         (nodeSnap: Map<string, NodeData>, mediaSnap: Record<number, MediaForm>) => {
             initialNodeDataRef.current = new Map(nodeSnap);
-            initialMediaFormsRef.current = { ...mediaSnap };
+            initialMediaFormsRef.current = {...mediaSnap};
         },
         [],
     );
@@ -307,7 +280,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
                 const cur = newMap.get(k) || {};
                 if (shared) {
                     const medias = cur.media_no !== undefined ? [cur.media_no] : [];
-                    newMap.set(k, { ...cur, shared_medias: medias, media_no: undefined });
+                    newMap.set(k, {...cur, shared_medias: medias, media_no: undefined});
                     if (cur.media_no !== undefined) {
                         newMtK.get(cur.media_no)?.delete(k);
                         if (newMtK.get(cur.media_no)?.size === 0)
@@ -320,7 +293,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
                 } else {
                     const olds = cur.shared_medias ?? [];
                     const first = olds[0];
-                    newMap.set(k, { ...cur, media_no: first, shared_medias: undefined });
+                    newMap.set(k, {...cur, media_no: first, shared_medias: undefined});
                     olds.forEach((m) => {
                         newMtK.get(m)?.delete(k);
                         if (newMtK.get(m)?.size === 0) newMtK.delete(m);
@@ -350,7 +323,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
             nodes.forEach((k) => {
                 const cur = newMap.get(k) || {};
                 const olds = cur.shared_medias ?? [];
-                newMap.set(k, { ...cur, shared_medias: medias, media_no: undefined });
+                newMap.set(k, {...cur, shared_medias: medias, media_no: undefined});
                 olds.forEach((m) => {
                     newMtK.get(m)?.delete(k);
                     if (newMtK.get(m)?.size === 0) newMtK.delete(m);
@@ -376,7 +349,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
             const nodes = [key, ...getAllChildrenKeys(key)];
             const newMap = new Map(nodeData);
             nodes.forEach((k) =>
-                newMap.set(k, { ...(newMap.get(k) || {}), media_no: no }),
+                newMap.set(k, {...(newMap.get(k) || {}), media_no: no}),
             );
             const normalizedMap = clearInconsistentParentAssignments(
                 flatTree,
@@ -404,7 +377,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
     const resetMediaAssignments = useCallback(() => {
         setNodeData((prev) => {
             const m = new Map(prev);
-            m.forEach((d, k) => m.set(k, { files: d.files }));
+            m.forEach((d, k) => m.set(k, {files: d.files}));
             return m;
         });
         setMediaToKeys(new Map());
@@ -412,7 +385,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
 
     const deleteMedia = useCallback((mediaNo: number) => {
         setMediaForms((prev) => {
-            const n = { ...prev };
+            const n = {...prev};
             delete n[mediaNo];
             return n;
         });
@@ -420,7 +393,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
             const m = new Map(prev);
             m.forEach((d, k) => {
                 if (d.media_no === mediaNo) {
-                    m.set(k, { ...d, media_no: undefined });
+                    m.set(k, {...d, media_no: undefined});
                 } else if (d.shared_medias?.includes(mediaNo)) {
                     const filtered = d.shared_medias.filter((m) => m !== mediaNo);
                     m.set(k, {
@@ -441,7 +414,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
 
     const updateMediaForm = useCallback(
         (no: number, form: MediaForm) =>
-            setMediaForms((prev) => ({ ...prev, [no]: { ...form } })),
+            setMediaForms((prev) => ({...prev, [no]: {...form}})),
         [],
     );
 
@@ -451,14 +424,14 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
         setFiles([]);
         setTreeData([]);
         setNodeData(new Map());
-        setFlatTree({ map: new Map(), order: [], leaves: [] });
+        setFlatTree({map: new Map(), order: [], leaves: []});
         setDefaultExpandedKeys([]);
         setMediaToKeys(new Map());
     }, [resetSnapshots]);
 
     const open = useCallback(
         async (volumeId: string, volumeNo?: number, catalogNo?: string) => {
-            setVolumeInfo({ volumeId, volumeNo, catalogNo });
+            setVolumeInfo({volumeId, volumeNo, catalogNo});
             setLoading(true);
             resetAll();
 
@@ -612,7 +585,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
 
     const cancelChanges = useCallback((): boolean => {
         const nd = new Map(initialNodeDataRef.current);
-        const mf = { ...initialMediaFormsRef.current };
+        const mf = {...initialMediaFormsRef.current};
         const mtk = new Map<number, Set<string>>();
         nd.forEach((data, key) => {
             if (data.media_no !== undefined) {
@@ -738,12 +711,12 @@ interface MediaFormListProps {
 }
 
 function MediaRow({
-    no,
-    mediaForms,
-    onMediaFormChange,
-    onDeleteMedia,
-    submitted,
-}: {
+                      no,
+                      mediaForms,
+                      onMediaFormChange,
+                      onDeleteMedia,
+                      submitted,
+                  }: {
     no: number;
     mediaForms: Record<number, MediaForm>;
     onMediaFormChange: (no: number, form: MediaForm) => void;
@@ -758,37 +731,37 @@ function MediaRow({
     const titleError = submitted && !form.content_title?.trim();
     return (
         <Space>
-            <Typography.Text strong style={{ minWidth: 60, display: "inline-block" }}>
+            <Typography.Text strong style={{minWidth: 60, display: "inline-block"}}>
                 序号 {no}
             </Typography.Text>
             <Select
                 value={form.media_type}
-                onChange={(val) => onMediaFormChange(no, { ...form, media_type: val })}
+                onChange={(val) => onMediaFormChange(no, {...form, media_type: val})}
                 options={MEDIA_TYPES}
-                style={{ width: 100 }}
+                style={{width: 100}}
             />
             <Input
                 value={form.content_title}
                 onChange={(e) =>
-                    onMediaFormChange(no, { ...form, content_title: e.target.value })
+                    onMediaFormChange(no, {...form, content_title: e.target.value})
                 }
                 placeholder="内容"
-                style={{ width: 300 }}
+                style={{width: 300}}
                 status={titleError ? "error" : undefined}
             />
             <Input
                 value={form.description}
                 onChange={(e) =>
-                    onMediaFormChange(no, { ...form, description: e.target.value })
+                    onMediaFormChange(no, {...form, description: e.target.value})
                 }
                 placeholder="说明"
-                style={{ width: 400 }}
+                style={{width: 400}}
             />
             <Button
                 type="text"
                 danger
                 size="small"
-                icon={<DeleteOutlined />}
+                icon={<DeleteOutlined/>}
                 onClick={() => onDeleteMedia(no)}
             />
         </Space>
@@ -796,16 +769,16 @@ function MediaRow({
 }
 
 function MediaFormList({
-    selectedMedias,
-    mediaForms,
-    onMediaFormChange,
-    onDeleteMedia,
-    onCancelEdit,
-    onSaveEdit,
-    saving = false,
-    isChanged = true,
-    submitted,
-}: MediaFormListProps) {
+                           selectedMedias,
+                           mediaForms,
+                           onMediaFormChange,
+                           onDeleteMedia,
+                           onCancelEdit,
+                           onSaveEdit,
+                           saving = false,
+                           isChanged = true,
+                           submitted,
+                       }: MediaFormListProps) {
     if (selectedMedias.length === 0) return null;
 
     const actions =
@@ -819,7 +792,7 @@ function MediaFormList({
                 {onSaveEdit && (
                     <Button
                         type="primary"
-                        icon={<SaveOutlined />}
+                        icon={<SaveOutlined/>}
                         onClick={onSaveEdit}
                         disabled={!isChanged || saving}
                         loading={saving}
@@ -831,8 +804,8 @@ function MediaFormList({
         ) : null;
 
     return (
-        <Card size="small" title="媒介信息" styles={{ body: { padding: 12 } }}>
-            <Space direction="vertical" style={{ width: "100%" }} size={12}>
+        <Card size="small" title="媒介信息" styles={{body: {padding: 12}}}>
+            <Space direction="vertical" style={{width: "100%"}} size={12}>
                 {selectedMedias.map((no) => (
                     <MediaRow
                         key={no}
@@ -850,23 +823,23 @@ function MediaFormList({
 }
 
 function MediaReadOnlyView({
-    selectedMedias,
-    mediaForms,
-    onEdit,
-}: {
+                               selectedMedias,
+                               mediaForms,
+                               onEdit,
+                           }: {
     selectedMedias: number[];
     mediaForms: Record<number, MediaForm>;
     onEdit: () => void;
 }) {
     if (selectedMedias.length === 0) {
         return (
-            <Empty description="暂无媒介信息" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            <Empty description="暂无媒介信息" image={Empty.PRESENTED_IMAGE_SIMPLE}/>
         );
     }
 
     return (
-        <Card size="small" title="媒介信息" styles={{ body: { padding: 12 } }}>
-            <Space direction="vertical" style={{ width: "100%" }} size={12}>
+        <Card size="small" title="媒介信息" styles={{body: {padding: 12}}}>
+            <Space direction="vertical" style={{width: "100%"}} size={12}>
                 {selectedMedias.map((no) => {
                     const form = mediaForms[no] || {
                         media_type: "bd",
@@ -874,7 +847,7 @@ function MediaReadOnlyView({
                         description: "",
                     };
                     return (
-                        <Space key={no} style={{ width: "100%" }} size={8}>
+                        <Space key={no} style={{width: "100%"}} size={8}>
                             <Typography.Text strong>
                                 序号 {no} · {getMediaTypeLabel(form.media_type)}
                             </Typography.Text>
@@ -887,7 +860,7 @@ function MediaReadOnlyView({
                         </Space>
                     );
                 })}
-                <Button icon={<EditOutlined />} onClick={onEdit}>
+                <Button icon={<EditOutlined/>} onClick={onEdit}>
                     编辑媒介
                 </Button>
             </Space>
@@ -898,33 +871,30 @@ function MediaReadOnlyView({
 // ─── MediaEditorContent ───────────────────────────────────────────────────────
 
 export function MediaEditorContent({
-    loading,
-    saving,
-    files,
-    treeData,
-    nodeData,
-    defaultExpandedKeys,
-    selectedMedias,
-    visibleMedias,
-    loadMoreMedias,
-    mediaForms,
-    onMediaNoChange,
-    onSharedMediaChange,
-    onToggleShared,
-    getNodeMediaNo,
-    getNodeShared,
-    getNodeSharedMedias,
-    getComputedNodeValue,
-    updateMediaForm,
-    resetMediaAssignments,
-    deleteMedia,
-    handleSubmit,
-    hasChanges,
-    isChanged: isChangedProp,
-    submitted,
-    resetSubmitted,
-    cancelChanges,
-}: MediaEditorContentProps) {
+                                       loading,
+                                       saving,
+                                       files,
+                                       treeData,
+                                       defaultExpandedKeys,
+                                       selectedMedias,
+                                       visibleMedias,
+                                       loadMoreMedias,
+                                       mediaForms,
+                                       onMediaNoChange,
+                                       onSharedMediaChange,
+                                       onToggleShared,
+                                       getNodeMediaNo,
+                                       getNodeShared,
+                                       getNodeSharedMedias,
+                                       getComputedNodeValue,
+                                       updateMediaForm,
+                                       deleteMedia,
+                                       handleSubmit,
+                                       hasChanges,
+                                       isChanged: isChangedProp,
+                                       submitted,
+                                       cancelChanges,
+                                   }: MediaEditorContentProps) {
     const [isEditing, setIsEditing] = useState(false);
     const autoModeAppliedRef = useRef(false);
 
@@ -973,7 +943,7 @@ export function MediaEditorContent({
         <Spin spinning={loading}>
             <Space
                 orientation="vertical"
-                style={{ width: "100%", paddingTop: SPACING.sm }}
+                style={{width: "100%", paddingTop: SPACING.sm}}
                 size={SPACING.md}
             >
                 {isEditing ? (
@@ -1024,5 +994,5 @@ export function MediaEditorContent({
 
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
-export type { UseMediaEditorReturn };
+export type {UseMediaEditorReturn};
 export default MediaEditorContent;
