@@ -80,6 +80,7 @@ yarn-error.log*
 .data/
 *.nedb
 data
+.ai
 
 
 ### --- 日志、缓存与临时文件 ---
