@@ -1,4 +1,4 @@
-import {QBittorrent} from "@ctrl/qbittorrent";
+import {QBittorrent, TorrentFile as QbTorrentFile} from "@ctrl/qbittorrent";
 import type {BddbTorrent, BddbTorrentFile} from "@/lib/mongodb";
 import {getTorrentByHash, upsertTorrent} from "@/lib/mongodb";
 import {ObjectId} from "mongodb";
@@ -27,46 +27,70 @@ export async function syncTorrentsFromQb() {
         const newTorrents: any[] = [];
         const updatedRecords: BddbTorrent[] = [];
 
+        // 为所有种子获取文件信息（包括现有和新增）
+        const allHashes = torrents.map(t => t.hash);
+        const fileResults = await Promise.allSettled(
+            allHashes.map(hash =>
+                client.torrentFiles(hash).then(files => ({hash, files}))
+            )
+        );
+
+        const fileMap = new Map<string, any[]>();
+        for (const result of fileResults) {
+            if (result.status === "fulfilled") {
+                fileMap.set(result.value.hash, result.value.files);
+            }
+        }
+
         for (const t of torrents) {
             const existing = await getTorrentByHash(t.hash);
+            const qbFiles = fileMap.get(t.hash) ?? [];
+            
             if (existing) {
-                existing.name = t.name;
-                existing.size = t.size;
-                existing.progress = t.progress != null ? t.progress * 100 : existing.progress;
-                existing.state = t.state;
-                existing.num_seeds = t.num_seeds;
-                existing.num_leechs = t.num_leechs;
-                existing.completion_on = t.completion_on ?? undefined;
-                existing.save_path = t.save_path;
-                existing.uploaded = t.uploaded;
-                existing.downloaded = t.downloaded;
-                existing.category = t.category || '';
-                existing.synced_at = ts;
-                updatedRecords.push(existing);
+                // 将 qBittorrent 文件转换为 BddbTorrentFile 格式
+                const files: BddbTorrentFile[] = qbFiles.map((f: QbTorrentFile) => {
+                    // 尝试在现有文件中找到匹配的文件以保留 _id
+                    const existingFile = existing.files.find(ef => ef.name === f.name);
+                    return {
+                        _id: existingFile?._id ?? new ObjectId(),
+                        name: f.name,
+                        size: f.size,
+                        progress: f.progress,
+                        priority: f.priority,
+                        is_seed: f.is_seed,
+                        piece_range: f.piece_range ?? [0, 0],
+                        availability: f.availability,
+                        created_at: existingFile?.created_at ?? ts,
+                        updated_at: ts,
+                    } as BddbTorrentFile;
+                });
+
+                // 更新所有来自 qBittorrent 的字段，保留 MongoDB 特有字段
+                const updatedTorrent: BddbTorrent = {
+                    ...existing,
+                    ...t,
+                    _id: existing._id,
+                    is_deleted: existing.is_deleted,
+                    created_at: existing.created_at,
+                    updated_at: ts,
+                    synced_at: ts,
+                    files,
+                    progress: t.progress != null ? t.progress * 100 : existing.progress,
+                    completion_on: t.completion_on ?? undefined,
+                    category: t.category || '',
+                };
+                updatedRecords.push(updatedTorrent);
             } else {
-                newTorrents.push({hash: t.hash, qbTorrent: t, addedOn: t.added_on ?? ts});
+                newTorrents.push({hash: t.hash, qbTorrent: t, addedOn: t.added_on ?? ts, qbFiles});
             }
         }
 
         await Promise.all(updatedRecords.map(r => upsertTorrent(r)));
 
         if (newTorrents.length > 0) {
-            const fileResults = await Promise.allSettled(
-                newTorrents.map(t =>
-                    client.torrentFiles(t.hash).then(files => ({hash: t.hash, files}))
-                )
-            );
-
-            const fileMap = new Map<string, any[]>();
-            for (const result of fileResults) {
-                if (result.status === "fulfilled") {
-                    fileMap.set(result.value.hash, result.value.files);
-                }
-            }
-
             await Promise.all(
-                newTorrents.map(async ({hash, qbTorrent, addedOn}) => {
-                    const files: BddbTorrentFile[] = (fileMap.get(hash) ?? []).map(f => ({
+                newTorrents.map(async ({hash, qbTorrent, addedOn, qbFiles}) => {
+                    const files: BddbTorrentFile[] = qbFiles.map((f: QbTorrentFile) => ({
                         _id: new ObjectId(),
                         name: f.name,
                         size: f.size,
