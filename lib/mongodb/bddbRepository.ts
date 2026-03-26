@@ -8,6 +8,7 @@ import type {BangumiCharacter, BangumiCollection, BangumiImages, BangumiRating, 
 
 export interface BddbTorrentFile extends QbTorrentFile {
     _id: ObjectId
+    index: number
     created_at: number
     updated_at: number
 }
