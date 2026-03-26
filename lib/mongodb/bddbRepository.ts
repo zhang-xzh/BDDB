@@ -630,15 +630,8 @@ export async function saveTorrentFiles(torrentId: string | ObjectId, files: Arra
         const newFiles: BddbTorrentFile[] = files.map(f => {
             const existing = existingFileMap.get(f.name)
             return {
-                ...(existing || {}),
+                ...(existing || (f as any)),
                 _id: existing?._id ?? new ObjectId(),
-                name: f.name,
-                size: f.size ?? 0,
-                progress: f.progress ?? 0,
-                priority: f.priority ?? 0,
-                is_seed: f.is_seed ?? false,
-                piece_range: f.piece_range ?? [0, 0],
-                availability: f.availability ?? 0,
                 created_at: existing?.created_at ?? now,
                 updated_at: now,
             } as BddbTorrentFile
@@ -755,8 +748,8 @@ export async function getVolumeFilesAsFileItems(volumeId: string | ObjectId): Pr
             .map(f => ({
                 id: f._id.toString(),
                 name: f.name,
-                size: f.size ?? 0,
-                progress: f.progress ?? 0,
+                size: f.size,
+                progress: f.progress,
             }))
     } catch (error) {
         console.error('[mongodb] getVolumeFilesAsFileItems error:', error)

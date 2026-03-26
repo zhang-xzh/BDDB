@@ -19,14 +19,14 @@ export async function GET(request: NextRequest) {
         }
 
         let torrents = await getAllTorrents()
-        
+
         // 默认按 name 排序
         torrents.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 
         if (state) {
             torrents = torrents.filter(t => {
                 if (state === 'paused') return t.state?.includes('paused')
-                if (state === 'completed') return t.progress === 100
+                if (state === 'completed') return t.progress === 1
                 return t.state === state
             })
         }
