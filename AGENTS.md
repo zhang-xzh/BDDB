@@ -131,24 +131,24 @@ Always respond in Chinese unless the user asks for another language.
 
 以下操作具有语义级代码理解能力，优先使用：
 
-| 操作类型   | 使用工具                       | 说明                      |
-|--------|----------------------------|-------------------------|
-| 查找定义   | `ide_find_definition`      | 跳转到符号定义位置              |
-| 查找引用   | `ide_find_references`      | 查找符号的所有引用               |
-| 搜索类    | `ide_find_class`           | 按名称查找类/接口/枚举           |
-| 搜索文件   | `ide_find_file`            | 快速文件查找（支持模糊匹配）         |
-| 搜索代码文本 | `ide_search_text`          | 基于索引的文本搜索               |
-| 查看类型层次 | `ide_type_hierarchy`       | 查看类的继承层次结构              |
-| 查看调用层次 | `ide_call_hierarchy`       | 查看方法的调用链                |
-| 查找实现   | `ide_find_implementations` | 查找接口/抽象类的实现            |
-| 查找父方法  | `ide_find_super_methods`   | 查找重写的方法在父类中的定义         |
-| 检查代码问题 | `ide_diagnostics`          | 获取代码错误和警告               |
-| 同步文件   | `ide_sync_files`           | 同步外部修改的文件到 IDE 索引      |
-| 移动文件   | `ide_move_file`            | 移动文件并自动更新引用            |
-| 重命名重构  | `ide_refactor_rename`      | 安全重命名符号（自动更新所有引用）      |
-| 优化导入   | `ide_optimize_imports`     | 优化导入语句                  |
-| 格式化代码  | `ide_reformat_code`        | 代码格式化                   |
-| 构建项目   | `ide_build_project`        | 使用 IDE 构建系统编译项目        |
+| 操作类型   | 使用工具                       | 说明                |
+|--------|----------------------------|-------------------|
+| 查找定义   | `ide_find_definition`      | 跳转到符号定义位置         |
+| 查找引用   | `ide_find_references`      | 查找符号的所有引用         |
+| 搜索类    | `ide_find_class`           | 按名称查找类/接口/枚举      |
+| 搜索文件   | `ide_find_file`            | 快速文件查找（支持模糊匹配）    |
+| 搜索代码文本 | `ide_search_text`          | 基于索引的文本搜索         |
+| 查看类型层次 | `ide_type_hierarchy`       | 查看类的继承层次结构        |
+| 查看调用层次 | `ide_call_hierarchy`       | 查看方法的调用链          |
+| 查找实现   | `ide_find_implementations` | 查找接口/抽象类的实现       |
+| 查找父方法  | `ide_find_super_methods`   | 查找重写的方法在父类中的定义    |
+| 检查代码问题 | `ide_diagnostics`          | 获取代码错误和警告         |
+| 同步文件   | `ide_sync_files`           | 同步外部修改的文件到 IDE 索引 |
+| 移动文件   | `ide_move_file`            | 移动文件并自动更新引用       |
+| 重命名重构  | `ide_refactor_rename`      | 安全重命名符号（自动更新所有引用） |
+| 优化导入   | `ide_optimize_imports`     | 优化导入语句            |
+| 格式化代码  | `ide_reformat_code`        | 代码格式化             |
+| 构建项目   | `ide_build_project`        | 使用 IDE 构建系统编译项目   |
 
 **核心原则：相信 IDE MCP 的结果，不要重复搜索或验证。**
 
