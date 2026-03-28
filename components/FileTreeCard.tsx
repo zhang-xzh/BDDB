@@ -123,6 +123,7 @@ export function DiscTreeNodeContent({
                     placeholder={isIndeterminate && !isShared ? '不一致' : '卷号'}
                     suffixIcon={!isShared ? inconsistentIcon : undefined}
                     allowClear
+                    showSearch
                     options={selectOptions} onPopupScroll={handleScroll}
                 />
             )
@@ -130,6 +131,7 @@ export function DiscTreeNodeContent({
         if (!isShared) {
             return (
                 <Cascader
+                    expandTrigger="hover"
                     value={isIndeterminate ? undefined : toCascaderVal(volumeNo)}
                     onChange={val => !val || !(val as any[]).length
                         ? onVolumeChange(nodeKey, null)
@@ -138,17 +140,20 @@ export function DiscTreeNodeContent({
                     placeholder={isIndeterminate ? '不一致' : '作品/卷'}
                     suffixIcon={inconsistentIcon}
                     size="small"
-                    style={{width: 160, flexShrink: 0}} allowClear
+                    style={{width: 160, height: 24, flexShrink: 0}} allowClear
+                    showSearch
                 />
             )
         }
         return (
             <Cascader
                 multiple
+                expandTrigger="hover"
                 value={sharedVolumes.map(vn => toCascaderVal(vn)!)}
                 onChange={vals => onSharedVolumeChange(nodeKey, (vals as (string | number)[][]).map(fromCascaderVal))}
                 options={cascaderOptions} placeholder="作品/卷（多选）" size="small"
-                style={{minWidth: 200, flexShrink: 0}}
+                style={{minWidth: 200, height: 24, flexShrink: 0}}
+                showSearch
             />
         )
     }
@@ -232,6 +237,7 @@ export function MediaTreeNodeContent({
                         style={{minWidth: 150, flexShrink: 0}}
                         size="small"
                         placeholder="选择序号（多选）"
+                        showSearch
                         options={mediaNoOptions}
                         onPopupScroll={handleScroll}
                     />
@@ -246,6 +252,7 @@ export function MediaTreeNodeContent({
                             ? <BranchesOutlined style={{color: '#faad14', pointerEvents: 'none'}}/>
                             : undefined
                         }
+                        showSearch
                         options={mediaNoOptions}
                         onPopupScroll={handleScroll}
                         allowClear
