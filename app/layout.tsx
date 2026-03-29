@@ -17,7 +17,6 @@ const menuItems = [
     {key: '/torrents', label: '种子管理'},
     {key: '/media', label: '媒介管理'},
     {key: '/work', label: '作品管理'},
-    {key: '/graph', label: '图'},
     {key: '/config', label: '配置'},
 ]
 
@@ -69,24 +68,20 @@ function AppLayout({children, isDark, onToggle}: {
                     />
                 </Header>
                 <Layout>
-                    {selectedKey !== '/graph' && (
-                        <Sider width="25%" style={{
-                            margin: `${SPACING.lg}px ${SPACING.sm}px ${SPACING.md}px ${SPACING.lg}px`,
-                            padding: SPACING.lg,
-                            background: token.colorBgContainer,
-                            borderRadius: token.borderRadiusLG,
-                            position: 'sticky',
-                            maxHeight: 'var(--content-max-height)',
-                            overflow: 'auto',
-                        }}>
-                            <SiderContent/>
-                        </Sider>
-                    )}
+                    <Sider width="25%" style={{
+                        margin: `${SPACING.lg}px ${SPACING.sm}px ${SPACING.md}px ${SPACING.lg}px`,
+                        padding: SPACING.lg,
+                        background: token.colorBgContainer,
+                        borderRadius: token.borderRadiusLG,
+                        position: 'sticky',
+                        maxHeight: 'var(--content-max-height)',
+                        overflow: 'auto',
+                    }}>
+                        <SiderContent/>
+                    </Sider>
                     <Content
                         style={{
-                            margin: selectedKey === '/graph'
-                                ? `${SPACING.lg}px`
-                                : `${SPACING.lg}px ${SPACING.lg}px ${SPACING.md}px ${SPACING.sm}px`,
+                            margin: `${SPACING.lg}px ${SPACING.lg}px ${SPACING.md}px ${SPACING.sm}px`,
                             padding: SPACING.lg,
                             background: token.colorBgContainer,
                             borderRadius: token.borderRadiusLG,
