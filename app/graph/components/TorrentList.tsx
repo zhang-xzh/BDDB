@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, memo } from "react";
 import { Input, List, Tag, Typography, Empty, theme, Flex } from "antd";
 import { FileOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import type { TorrentWithVolume } from "@/lib/mongodb";
@@ -10,7 +10,63 @@ interface TorrentListProps {
   onSelect: (torrent: TorrentWithVolume) => void;
 }
 
-export const TorrentList: React.FC<TorrentListProps> = ({ torrents, onSelect }) => {
+interface TorrentItemProps {
+  torrent: TorrentWithVolume;
+  isSelected: boolean;
+  onSelect: (torrent: TorrentWithVolume) => void;
+}
+
+const TorrentItem = memo(function TorrentItem({ torrent, isSelected, onSelect }: TorrentItemProps) {
+  const { token } = theme.useToken();
+
+  const handleClick = () => onSelect(torrent);
+
+  return (
+    <List.Item
+      onClick={handleClick}
+      style={{
+        cursor: "pointer",
+        padding: "8px 12px",
+        borderRadius: 6,
+        marginBottom: 4,
+        transition: "all 0.2s",
+        background: isSelected ? token.colorPrimary : token.colorBgContainer,
+      }}
+    >
+      <Flex vertical gap={6} style={{ width: "100%" }}>
+        <Flex align="center" style={{ fontSize: 13, lineHeight: 1.4 }}>
+          <FileOutlined style={{ marginRight: 8, color: isSelected ? "#fff" : token.colorPrimary }} />
+          <Typography.Text
+            ellipsis
+            style={{
+              flex: 1,
+              color: isSelected ? "#fff" : token.colorText,
+            }}
+            title={torrent.name}
+          >
+            {torrent.name || "未命名种子"}
+          </Typography.Text>
+        </Flex>
+        <Flex align="center" gap={8}>
+          {torrent.hasVolumes && (
+            <Tag
+              icon={<CheckCircleOutlined />}
+              color={isSelected ? "default" : "success"}
+              style={isSelected ? { background: "rgba(255,255,255,0.2)", color: "#fff", fontSize: 12 } : { fontSize: 12 }}
+            >
+              {torrent.volumeCount} 卷
+            </Tag>
+          )}
+          <Typography.Text type="secondary" style={{ fontSize: 11, color: isSelected ? "rgba(255,255,255,0.7)" : undefined }}>
+            {(torrent.size ? (torrent.size / 1024 / 1024 / 1024).toFixed(2) : "0")} GB
+          </Typography.Text>
+        </Flex>
+      </Flex>
+    </List.Item>
+  );
+});
+
+export const TorrentList: React.FC<TorrentListProps> = memo(function TorrentList({ torrents, onSelect }) {
   const { token } = theme.useToken();
   const [searchText, setSearchText] = useState("");
   const [selectedHash, setSelectedHash] = useState<string | null>(null);
@@ -48,56 +104,17 @@ export const TorrentList: React.FC<TorrentListProps> = ({ torrents, onSelect }) 
           <List
             size="small"
             dataSource={filteredTorrents}
-            renderItem={(torrent) => {
-              const isSelected = selectedHash === torrent.hash;
-              return (
-                <List.Item
-                  key={torrent.hash}
-                  onClick={() => handleSelect(torrent)}
-                  style={{
-                    cursor: "pointer",
-                    padding: "8px 12px",
-                    borderRadius: 6,
-                    marginBottom: 4,
-                    transition: "all 0.2s",
-                    background: isSelected ? token.colorPrimary : token.colorBgContainer,
-                  }}
-                >
-                  <Flex vertical gap={6} style={{ width: "100%" }}>
-                    <Flex align="center" style={{ fontSize: 13, lineHeight: 1.4 }}>
-                      <FileOutlined style={{ marginRight: 8, color: isSelected ? "#fff" : token.colorPrimary }} />
-                      <Typography.Text 
-                        ellipsis 
-                        style={{ 
-                          flex: 1, 
-                          color: isSelected ? "#fff" : token.colorText,
-                        }} 
-                        title={torrent.name}
-                      >
-                        {torrent.name || "未命名种子"}
-                      </Typography.Text>
-                    </Flex>
-                    <Flex align="center" gap={8}>
-                      {torrent.hasVolumes && (
-                        <Tag 
-                          icon={<CheckCircleOutlined />} 
-                          color={isSelected ? "default" : "success"}
-                          style={isSelected ? { background: "rgba(255,255,255,0.2)", color: "#fff", fontSize: 12 } : { fontSize: 12 }}
-                        >
-                          {torrent.volumeCount} 卷
-                        </Tag>
-                      )}
-                      <Typography.Text type="secondary" style={{ fontSize: 11, color: isSelected ? "rgba(255,255,255,0.7)" : undefined }}>
-                        {(torrent.size ? (torrent.size / 1024 / 1024 / 1024).toFixed(2) : "0")} GB
-                      </Typography.Text>
-                    </Flex>
-                  </Flex>
-                </List.Item>
-              );
-            }}
+            renderItem={(torrent) => (
+              <TorrentItem
+                key={torrent.hash}
+                torrent={torrent}
+                isSelected={selectedHash === torrent.hash}
+                onSelect={handleSelect}
+              />
+            )}
           />
         )}
       </Flex>
     </Flex>
   );
-};
+});

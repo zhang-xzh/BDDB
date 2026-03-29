@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { Card, Typography, Tag, Avatar, theme, Flex } from "antd";
 import { BookOutlined, StarFilled } from "@ant-design/icons";
@@ -26,20 +26,14 @@ const typeNames: Record<number, string> = {
   6: "三次元",
 };
 
-export const WorkNode: React.FC<NodeProps> = ({ data }) => {
+export const WorkNode: React.FC<NodeProps> = memo(function WorkNode({ data }) {
   const { work } = data as unknown as WorkNodeData;
   const { token } = theme.useToken();
 
-  const cardStyle: React.CSSProperties = {
-    width: 240,
-    borderLeft: `4px solid ${token.colorSuccess}`,
-    background: token.colorSuccessBg,
-  };
-
   return (
-    <Card size="small" style={cardStyle} styles={{ body: { padding: 12 } }}>
+    <Card size="small" style={{ width: 240, borderLeft: `4px solid ${token.colorSuccess}`, background: token.colorSuccessBg }} styles={{ body: { padding: 12 } }}>
       <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
-      
+
       <Flex align="flex-start" gap={12} style={{ marginBottom: 8 }}>
         <Avatar
           size={40}
@@ -58,7 +52,7 @@ export const WorkNode: React.FC<NodeProps> = ({ data }) => {
           )}
         </Flex>
       </Flex>
-      
+
       <Flex align="center" gap={8} wrap>
         <Tag color={typeColors[work.type] || "default"} style={{ fontSize: 12 }}>
           {typeNames[work.type] || "其他"}
@@ -69,7 +63,7 @@ export const WorkNode: React.FC<NodeProps> = ({ data }) => {
           </Tag>
         )}
       </Flex>
-      
+
       {work.rank > 0 && (
         <Flex style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${token.colorBorderSecondary}` }}>
           <Typography.Text type="secondary" style={{ fontSize: 11 }}>
@@ -77,8 +71,8 @@ export const WorkNode: React.FC<NodeProps> = ({ data }) => {
           </Typography.Text>
         </Flex>
       )}
-      
+
       <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
     </Card>
   );
-};
+});

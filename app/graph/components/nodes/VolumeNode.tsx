@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { Card, Typography, Tag, theme, Flex } from "antd";
 import { DatabaseOutlined } from "@ant-design/icons";
@@ -10,20 +10,14 @@ interface VolumeNodeData {
   volume: Volume;
 }
 
-export const VolumeNode: React.FC<NodeProps> = ({ data }) => {
+export const VolumeNode: React.FC<NodeProps> = memo(function VolumeNode({ data }) {
   const { volume } = data as unknown as VolumeNodeData;
   const { token } = theme.useToken();
 
-  const cardStyle: React.CSSProperties = {
-    width: 220,
-    borderLeft: `4px solid ${token.colorInfo}`,
-    background: token.colorInfoBg,
-  };
-
   return (
-    <Card size="small" style={cardStyle} styles={{ body: { padding: 12 } }}>
+    <Card size="small" style={{ width: 220, borderLeft: `4px solid ${token.colorInfo}`, background: token.colorInfoBg }} styles={{ body: { padding: 12 } }}>
       <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
-      
+
       <Flex align="flex-start" gap={8} style={{ marginBottom: 8 }}>
         <DatabaseOutlined style={{ fontSize: 18, color: token.colorInfo }} />
         <Flex vertical style={{ flex: 1, minWidth: 0 }}>
@@ -35,7 +29,7 @@ export const VolumeNode: React.FC<NodeProps> = ({ data }) => {
           </Typography.Text>
         </Flex>
       </Flex>
-      
+
       <Flex align="center" gap={8} wrap>
         <Tag color="purple" style={{ fontSize: 12 }}>
           第{volume.volume_no}卷
@@ -46,8 +40,8 @@ export const VolumeNode: React.FC<NodeProps> = ({ data }) => {
           </Tag>
         )}
       </Flex>
-      
+
       <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
     </Card>
   );
-};
+});

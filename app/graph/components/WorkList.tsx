@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, memo } from "react";
 import { Input, List, Tag, Typography, Empty, Avatar, theme, Flex } from "antd";
 import { BookOutlined, StarFilled } from "@ant-design/icons";
 import type { BddbWork } from "@/lib/mongodb";
@@ -26,7 +26,96 @@ const typeNames: Record<number, string> = {
   6: "三次元",
 };
 
-export const WorkList: React.FC<WorkListProps> = ({ works, onSelect }) => {
+interface WorkItemProps {
+  work: BddbWork;
+  isSelected: boolean;
+  onSelect: (work: BddbWork) => void;
+}
+
+const WorkItem = memo(function WorkItem({ work, isSelected, onSelect }: WorkItemProps) {
+  const { token } = theme.useToken();
+
+  const handleClick = () => onSelect(work);
+
+  return (
+    <List.Item
+      onClick={handleClick}
+      style={{
+        cursor: "pointer",
+        padding: "10px 12px",
+        borderRadius: 6,
+        marginBottom: 4,
+        transition: "all 0.2s",
+        background: isSelected ? token.colorSuccess : token.colorBgContainer,
+      }}
+    >
+      <Flex vertical gap={8} style={{ width: "100%" }}>
+        <Flex align="flex-start" gap={10}>
+          <Avatar
+            size={40}
+            src={work.images?.small}
+            shape="square"
+            icon={<BookOutlined />}
+          />
+          <Flex vertical style={{ flex: 1, minWidth: 0 }}>
+            <Typography.Text
+              strong
+              ellipsis
+              style={{ width: "100%", color: isSelected ? "#fff" : token.colorText }}
+              title={work.name_cn || work.name}
+            >
+              {work.name_cn || work.name}
+            </Typography.Text>
+            {work.name_cn && work.name !== work.name_cn && (
+              <Typography.Text
+                type="secondary"
+                ellipsis
+                style={{
+                  width: "100%",
+                  fontSize: 11,
+                  color: isSelected ? "rgba(255,255,255,0.7)" : undefined,
+                }}
+                title={work.name}
+              >
+                {work.name}
+              </Typography.Text>
+            )}
+          </Flex>
+        </Flex>
+        <Flex align="center" gap={8} wrap>
+          <Tag
+            color={typeColors[work.type] || "default"}
+            style={isSelected ? { background: "rgba(255,255,255,0.9)", fontSize: 12 } : { fontSize: 12 }}
+          >
+            {typeNames[work.type] || "其他"}
+          </Tag>
+          {work.rating?.score > 0 && (
+            <Tag
+              icon={<StarFilled />}
+              color={isSelected ? "default" : "gold"}
+              style={isSelected ? { background: "rgba(255,255,255,0.9)", fontSize: 12 } : { fontSize: 12 }}
+            >
+              {work.rating.score}
+            </Tag>
+          )}
+          {work.rank > 0 && (
+            <Typography.Text
+              type="secondary"
+              style={{
+                fontSize: 11,
+                color: isSelected ? "rgba(255,255,255,0.7)" : undefined,
+              }}
+            >
+              #{work.rank}
+            </Typography.Text>
+          )}
+        </Flex>
+      </Flex>
+    </List.Item>
+  );
+});
+
+export const WorkList: React.FC<WorkListProps> = memo(function WorkList({ works, onSelect }) {
   const { token } = theme.useToken();
   const [searchText, setSearchText] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -68,89 +157,17 @@ export const WorkList: React.FC<WorkListProps> = ({ works, onSelect }) => {
           <List
             size="small"
             dataSource={filteredWorks}
-            renderItem={(work) => {
-              const isSelected = selectedId === work.id;
-              return (
-                <List.Item
-                  key={work.id}
-                  onClick={() => handleSelect(work)}
-                  style={{
-                    cursor: "pointer",
-                    padding: "10px 12px",
-                    borderRadius: 6,
-                    marginBottom: 4,
-                    transition: "all 0.2s",
-                    background: isSelected ? token.colorSuccess : token.colorBgContainer,
-                  }}
-                >
-                  <Flex vertical gap={8} style={{ width: "100%" }}>
-                    <Flex align="flex-start" gap={10}>
-                      <Avatar
-                        size={40}
-                        src={work.images?.small}
-                        shape="square"
-                        icon={<BookOutlined />}
-                      />
-                      <Flex vertical style={{ flex: 1, minWidth: 0 }}>
-                        <Typography.Text
-                          strong
-                          ellipsis
-                          style={{ width: "100%", color: isSelected ? "#fff" : token.colorText }}
-                          title={work.name_cn || work.name}
-                        >
-                          {work.name_cn || work.name}
-                        </Typography.Text>
-                        {work.name_cn && work.name !== work.name_cn && (
-                          <Typography.Text
-                            type="secondary"
-                            ellipsis
-                            style={{ 
-                              width: "100%", 
-                              fontSize: 11,
-                              color: isSelected ? "rgba(255,255,255,0.7)" : undefined,
-                            }}
-                            title={work.name}
-                          >
-                            {work.name}
-                          </Typography.Text>
-                        )}
-                      </Flex>
-                    </Flex>
-                    <Flex align="center" gap={8} wrap>
-                      <Tag 
-                        color={typeColors[work.type] || "default"}
-                        style={isSelected ? { background: "rgba(255,255,255,0.9)", fontSize: 12 } : { fontSize: 12 }}
-                      >
-                        {typeNames[work.type] || "其他"}
-                      </Tag>
-                      {work.rating?.score > 0 && (
-                        <Tag 
-                          icon={<StarFilled />} 
-                          color={isSelected ? "default" : "gold"}
-                          style={isSelected ? { background: "rgba(255,255,255,0.9)", fontSize: 12 } : { fontSize: 12 }}
-                        >
-                          {work.rating.score}
-                        </Tag>
-                      )}
-                      {work.rank > 0 && (
-                        <Typography.Text 
-                          type="secondary" 
-                          style={{ 
-                            fontSize: 11,
-                            color: isSelected ? "rgba(255,255,255,0.7)" : undefined,
-                          }}
-                        >
-                          #{work.rank}
-                        </Typography.Text>
-                      )}
-                    </Flex>
-                  </Flex>
-                </List.Item>
-              );
-            }}
+            renderItem={(work) => (
+              <WorkItem
+                key={work.id}
+                work={work}
+                isSelected={selectedId === work.id}
+                onSelect={handleSelect}
+              />
+            )}
           />
         )}
       </Flex>
     </Flex>
   );
-};
+});

@@ -2,6 +2,10 @@
 
 Always respond in Chinese unless the user asks for another language.
 
+# 代码要求
+
+1. 禁用一切原生标签和裸css，使用antd组件库
+
 # 环境说明
 
 当前环境为 **WebStorm IDE** 环境，通过 MCP 提供完整的 JetBrains 工具集。

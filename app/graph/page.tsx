@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useCallback, useEffect, useState} from "react";
-import {Layout, Spin, Tabs, theme} from "antd";
+import {Layout, Spin, Tabs, theme, Flex, Space} from "antd";
 import type {BddbWork, TorrentWithVolume, Volume} from "@/lib/mongodb";
 import {fetchApi} from "@/lib/api";
 import {TorrentList} from "./components/TorrentList";
@@ -38,7 +38,7 @@ export default function GraphPage() {
     const [works, setWorks] = useState<BddbWork[]>([]);
     const [graphData, setGraphData] = useState<GraphData | null>(null);
     const [direction, setDirection] = useState<"left-to-right" | "right-to-left">("left-to-right");
-    const [activeTab, setActiveTab] = useState<"torrents" | "works">("works");
+    const [activeTab, setActiveTab] = useState<"works" | "torrents">("works");
 
     // 加载种子列表
     const fetchTorrents = useCallback(async () => {
@@ -78,26 +78,24 @@ export default function GraphPage() {
             const volumesRes = await fetchApi<Volume[]>(`/api/volumes?torrent_id=${torrent._id}`);
             const volumes = volumesRes.success && volumesRes.data ? volumesRes.data : [];
 
-            // 获取每个 Volume 的 Medias
-            const volumesWithMedias: VolumeWithMedias[] = [];
-            for (const volume of volumes) {
-                const mediasRes = await fetchApi<MediaNode[]>(`/api/volumes/${volume._id}/medias`);
-                volumesWithMedias.push({
-                    ...volume,
-                    medias: mediasRes.success && mediasRes.data ? mediasRes.data : [],
-                });
-            }
+            // 并行获取每个 Volume 的 Medias
+            const mediasResList = await Promise.all(
+                volumes.map((volume) => fetchApi<MediaNode[]>(`/api/volumes/${volume._id}/medias`))
+            );
+            const volumesWithMedias: VolumeWithMedias[] = volumes.map((volume, i) => ({
+                ...volume,
+                medias: mediasResList[i].success && mediasResList[i].data ? mediasResList[i].data : [],
+            }));
 
-            // 获取关联的 Works
+            // 并行获取关联的 Works
             const workIds = new Set<string>();
             volumes.forEach((v) => v.work_ids?.forEach((id) => workIds.add(id.toString())));
-            const relatedWorks: BddbWork[] = [];
-            for (const workId of workIds) {
-                const workRes = await fetchApi<BddbWork>(`/api/works/${workId}`);
-                if (workRes.success && workRes.data) {
-                    relatedWorks.push(workRes.data);
-                }
-            }
+            const worksResList = await Promise.all(
+                Array.from(workIds).map((workId) => fetchApi<BddbWork>(`/api/works/${workId}`))
+            );
+            const relatedWorks = worksResList
+                .filter((res) => res.success && res.data)
+                .map((res) => res.data!);
 
             setGraphData({
                 torrent,
@@ -116,25 +114,19 @@ export default function GraphPage() {
         setLoading(true);
         setDirection("right-to-left");
         try {
-            // 获取关联该作品的所有 Volume
-            const allVolumesRes = await fetchApi<{ data: Volume[] }>("/api/volumes?page=1&pageSize=1000");
-            const allVolumes = allVolumesRes.success && allVolumesRes.data?.data ? allVolumesRes.data.data : [];
-
-            // 过滤出包含该 work 的 volumes
+            // 获取关联该作品的所有 Volume（服务端过滤）
             const workMongoId = (work as any)._id;
-            const workVolumes = allVolumes.filter((v) =>
-                v.work_ids?.some(id => id.toString() === workMongoId)
-            );
+            const volumesRes = await fetchApi<Volume[]>(`/api/volumes?work_id=${workMongoId}`);
+            const workVolumes = volumesRes.success && volumesRes.data ? volumesRes.data : [];
 
-            // 获取每个 Volume 的 Medias
-            const volumesWithMedias: VolumeWithMedias[] = [];
-            for (const volume of workVolumes) {
-                const mediasRes = await fetchApi<MediaNode[]>(`/api/volumes/${volume._id}/medias`);
-                volumesWithMedias.push({
-                    ...volume,
-                    medias: mediasRes.success && mediasRes.data ? mediasRes.data : [],
-                });
-            }
+            // 并行获取每个 Volume 的 Medias
+            const mediasResList = await Promise.all(
+                workVolumes.map((volume) => fetchApi<MediaNode[]>(`/api/volumes/${volume._id}/medias`))
+            );
+            const volumesWithMedias: VolumeWithMedias[] = workVolumes.map((volume, i) => ({
+                ...volume,
+                medias: mediasResList[i].success && mediasResList[i].data ? mediasResList[i].data : [],
+            }));
 
             setGraphData({
                 volumes: volumesWithMedias,
@@ -151,27 +143,35 @@ export default function GraphPage() {
         {
             key: "torrents",
             label: (
-                <span>
-          <FileOutlined style={{marginRight: 8}}/>
-          种子
-        </span>
+                <Space>
+                    <FileOutlined/>
+                    种子
+                </Space>
             ),
-            children: <TorrentList torrents={torrents} onSelect={handleTorrentClick}/>,
+            children: (
+                <Flex style={{height: "calc(100vh - 44px - 16px - 46px)", overflow: "hidden"}}>
+                    <TorrentList torrents={torrents} onSelect={handleTorrentClick}/>
+                </Flex>
+            ),
         },
         {
             key: "works",
             label: (
-                <span>
-          <BookOutlined style={{marginRight: 8}}/>
-          作品
-        </span>
+                <Space>
+                    <BookOutlined/>
+                    作品
+                </Space>
             ),
-            children: <WorkList works={works} onSelect={handleWorkClick}/>,
+            children: (
+                <Flex style={{height: "calc(100vh - 44px - 16px - 46px)", overflow: "hidden"}}>
+                    <WorkList works={works} onSelect={handleWorkClick}/>
+                </Flex>
+            ),
         },
     ];
 
     return (
-        <Layout style={{height: "100vh", background: token.colorBgLayout}}>
+        <Layout style={{height: "100%", background: token.colorBgLayout}}>
             {/* 左侧：Tab 切换的种子/作品列表 */}
             <Sider
                 width={320}
@@ -181,6 +181,7 @@ export default function GraphPage() {
                     borderRight: `1px solid ${token.colorBorderSecondary}`,
                     display: "flex",
                     flexDirection: "column",
+                    overflow: "hidden",
                 }}
             >
                 <Tabs
@@ -192,6 +193,7 @@ export default function GraphPage() {
                         padding: "0 16px",
                         marginBottom: 0,
                         borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                        flexShrink: 0,
                     }}
                 />
             </Sider>
@@ -203,9 +205,7 @@ export default function GraphPage() {
                 overflow: "hidden",
                 position: "relative",
             }}>
-                <Spin spinning={loading} size="large">
-                    <FlowCanvas data={graphData} direction={direction}/>
-                </Spin>
+                <FlowCanvas data={graphData} direction={direction} loading={loading}/>
             </Content>
         </Layout>
     );
