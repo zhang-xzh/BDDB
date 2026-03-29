@@ -5,6 +5,7 @@ Always respond in Chinese unless the user asks for another language.
 # 代码要求
 
 1. 禁用一切原生标签和裸css，使用antd组件库
+2. 桌面使用最优先,去TMD留白
 
 # 环境说明
 
