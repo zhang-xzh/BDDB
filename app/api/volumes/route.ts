@@ -1,12 +1,14 @@
 export const runtime = 'nodejs';
 
 import {NextRequest, NextResponse} from 'next/server';
-import {deleteStaleVolumes, getAllVolumes, getMediaCountsByVolume, getVolumesByTorrent, getWorkCountsByVolume, saveVolumeCompat as saveVolume} from '@/lib/mongodb';
+import {deleteStaleVolumes, getAllVolumes, getMediaCountsByVolume, getVolumesByTorrent, getWorkCountsByVolume, getVolumesWithPagination, saveVolumeCompat as saveVolume} from '@/lib/mongodb';
 
 export async function GET(request: NextRequest) {
     try {
-        const torrentId = request.nextUrl.searchParams.get('torrent_id');
+        const {searchParams} = request.nextUrl;
+        const torrentId = searchParams.get('torrent_id');
 
+        // torrent_id 查询保持向后兼容，返回所有关联卷
         if (torrentId) {
             let volumes = await getVolumesByTorrent(torrentId);
             // 默认按 catalog_no 排序
@@ -21,6 +23,51 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({success: true, data: result});
         }
 
+        // 检查是否需要分页
+        const pageParam = searchParams.get('page');
+        if (pageParam) {
+            // 分页查询模式
+            const page = parseInt(pageParam, 10) || 1;
+            const pageSize = parseInt(searchParams.get('pageSize') ?? '20', 10) || 20;
+            const searchCatalogNo = searchParams.get('searchCatalogNo') ?? undefined;
+            const searchTitle = searchParams.get('searchTitle') ?? undefined;
+            const filterHasWork = searchParams.get('filterHasWork') === 'true' ? true :
+                searchParams.get('filterHasWork') === 'false' ? false : undefined;
+            const filterHasMedia = searchParams.get('filterHasMedia') === 'true' ? true :
+                searchParams.get('filterHasMedia') === 'false' ? false : undefined;
+
+            const result = await getVolumesWithPagination({
+                page,
+                pageSize,
+                searchCatalogNo,
+                searchTitle,
+                filterHasWork,
+                filterHasMedia,
+            });
+
+            // 转换 ObjectId 为字符串
+            const data = result.data.map(v => ({
+                ...v,
+                _id: v._id.toString(),
+                torrent_id: v.torrent_id.toString(),
+                file_ids: v.file_ids.map(id => id.toString()),
+                work_ids: v.work_ids?.map(id => id.toString()) ?? [],
+                workCount: (v.work_ids?.length ?? 0),
+                mediaCount: (v as unknown as { mediaCount?: number }).mediaCount ?? 0,
+            }));
+
+            return NextResponse.json({
+                success: true,
+                data: {
+                    data,
+                    total: result.total,
+                    page: result.page,
+                    pageSize: result.pageSize,
+                }
+            });
+        }
+
+        // 全量查询模式（向后兼容）
         const [allVolumes, mediaCounts, workCounts] = await Promise.all([getAllVolumes(), getMediaCountsByVolume(), getWorkCountsByVolume()]);
         // 默认按 catalog_no 排序
         allVolumes.sort((a, b) => (a.catalog_no || '').localeCompare(b.catalog_no || ''));

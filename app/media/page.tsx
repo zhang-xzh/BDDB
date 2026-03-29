@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useCallback, useEffect, useMemo, useState} from "react";
+import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Card, Empty, Flex, Input, Select, Space, Spin, Switch, Tag, theme, Typography} from "antd";
 import {CheckCircleOutlined, CloseCircleOutlined} from "@ant-design/icons";
 import type {Volume} from "@/lib/mongodb";
@@ -19,57 +19,29 @@ interface VolumeWithMedia extends Volume {
     mediaCount?: number
 }
 
-function matchesFilters(volume: VolumeWithMedia, filters: {
-    searchCatalogNo: string
-    searchTitle: string; invertTitle: boolean
-    filterHasMedia?: boolean
-}): boolean {
-    const {searchCatalogNo, searchTitle, invertTitle, filterHasMedia} = filters
-    if (searchCatalogNo) {
-        const match = volume.catalog_no?.toLowerCase().includes(searchCatalogNo.toLowerCase())
-        if (!match) return false
-    }
-    if (searchTitle) {
-        const match = volume.volume_name?.toLowerCase().includes(searchTitle.toLowerCase())
-        if (invertTitle ? match : !match) return false
-    }
-    if (filterHasMedia !== undefined) {
-        const hasMedia = (volume.mediaCount ?? 0) > 0
-        if (hasMedia !== filterHasMedia) return false
-    }
-    return true
+interface VolumeListResponse {
+    data: VolumeWithMedia[]
+    total: number
+    page: number
+    pageSize: number
 }
 
-function useVolumeListView(volumes: VolumeWithMedia[]) {
+function useVolumeListView() {
     const [searchCatalogNo, setSearchCatalogNo] = useState('')
     const [searchTitle, setSearchTitle] = useState('')
     const [invertTitle, setInvertTitle] = useState(false)
     const [filterHasMedia, setFilterHasMedia] = useState<boolean | undefined>(undefined)
     const [currentPage, setCurrentPage] = useState(1)
+    const [total, setTotal] = useState(0)
 
-    const filteredVolumes = useMemo(() =>
-            volumes.filter(v => matchesFilters(v, {
-                searchCatalogNo,
-                searchTitle,
-                invertTitle,
-                filterHasMedia
-            })),
-        [volumes, searchCatalogNo, searchTitle, invertTitle, filterHasMedia])
-
-    const pagedVolumes = useMemo(() => {
-        const start = (currentPage - 1) * PAGE_SIZE
-        return filteredVolumes.slice(start, start + PAGE_SIZE)
-    }, [filteredVolumes, currentPage])
-
-    useEffect(() => {
-        setCurrentPage(1)
-    }, [searchCatalogNo, searchTitle, invertTitle, filterHasMedia])
+    // 重置页码的辅助函数
+    const resetPage = useCallback(() => setCurrentPage(1), [])
 
     return {
         searchCatalogNo, setSearchCatalogNo,
         searchTitle, setSearchTitle, invertTitle, setInvertTitle,
         filterHasMedia, setFilterHasMedia,
-        currentPage, setCurrentPage, filteredVolumes, pagedVolumes,
+        currentPage, setCurrentPage, resetPage, total, setTotal,
     }
 }
 
@@ -170,12 +142,39 @@ const MediaPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [volumes, setVolumes] = useState<VolumeWithMedia[]>([]);
 
-    const refreshVolumes = useCallback(async () => {
+    const {
+        searchCatalogNo, setSearchCatalogNo,
+        searchTitle, setSearchTitle, invertTitle, setInvertTitle,
+        filterHasMedia, setFilterHasMedia,
+        currentPage, setCurrentPage, resetPage, total, setTotal,
+    } = useVolumeListView();
+
+    const fetchVolumes = useCallback(async (page: number, catalogNo: string, title: string, inv: boolean, hasMedia: boolean | undefined) => {
         setLoading(true);
         try {
-            const res = await fetchApi<VolumeWithMedia[]>("/api/volumes");
-            if (res.success && res.data) {
-                setVolumes(res.data);
+            const params = new URLSearchParams();
+            params.set('page', page.toString());
+            params.set('pageSize', PAGE_SIZE.toString());
+            if (catalogNo) params.set('searchCatalogNo', catalogNo);
+            if (inv) {
+                // 反向标题筛选在前端处理
+            } else if (title) {
+                params.set('searchTitle', title);
+            }
+            if (hasMedia !== undefined) params.set('filterHasMedia', hasMedia.toString());
+
+            const res = await fetchApi<VolumeListResponse>(`/api/volumes?${params.toString()}`);
+            if (res.success && res.data?.data) {
+                // 处理反向标题筛选
+                let data = res.data.data;
+                if (inv && title) {
+                    data = data.filter(v => !v.volume_name?.toLowerCase().includes(title.toLowerCase()));
+                }
+                setVolumes(data);
+                setTotal(res.data.total ?? 0);
+            } else {
+                setVolumes([]);
+                setTotal(0);
             }
         } catch (err) {
             console.error("获取卷数据失败:", err);
@@ -184,28 +183,33 @@ const MediaPage: React.FC = () => {
         }
     }, []);
 
-    const {
-        searchCatalogNo, setSearchCatalogNo,
-        searchTitle, setSearchTitle, invertTitle, setInvertTitle,
-        filterHasMedia, setFilterHasMedia,
-        currentPage, setCurrentPage, filteredVolumes, pagedVolumes,
-    } = useVolumeListView(volumes);
+    // 页码或筛选条件变化时获取数据
+    useEffect(() => {
+        fetchVolumes(currentPage, searchCatalogNo, searchTitle, invertTitle, filterHasMedia);
+    }, [currentPage, searchCatalogNo, searchTitle, invertTitle, filterHasMedia]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // 筛选条件变化时重置页码（但只在非初始加载时）
+    useEffect(() => {
+        if (currentPage !== 1) {
+            setCurrentPage(1);
+        }
+    }, [searchCatalogNo, searchTitle, invertTitle, filterHasMedia]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const refreshVolumes = useCallback(async () => {
+        await fetchVolumes(currentPage, searchCatalogNo, searchTitle, invertTitle, filterHasMedia);
+    }, [currentPage, searchCatalogNo, searchTitle, invertTitle, filterHasMedia, fetchVolumes]);
 
     const editor = useMediaEditor(refreshVolumes);
     const {activeKey, handleCollapseChange, closeForPageChange} = useEditorPanel({
-        pagedItems: pagedVolumes,
+        pagedItems: volumes,
         getItemKey: v => v._id,
         openItem: v => editor.open(v._id, v.volume_no, v.catalog_no),
         editor,
     });
 
-    useEffect(() => {
-        refreshVolumes();
-    }, [refreshVolumes]);
-
     const hasActiveFilters = searchCatalogNo || searchTitle || filterHasMedia !== undefined
 
-    if (filteredVolumes.length === 0 && !loading) {
+    if (volumes.length === 0 && !loading) {
         return (
             <Flex vertical gap={SPACING.md}>
                 <VolumeFiltersBar
@@ -233,7 +237,7 @@ const MediaPage: React.FC = () => {
                 searchTitle={searchTitle}
                 invertTitle={invertTitle}
                 filterHasMedia={filterHasMedia}
-                total={filteredVolumes.length}
+                total={total}
                 onSearchCatalogNoChange={setSearchCatalogNo}
                 onSearchTitleChange={setSearchTitle}
                 onInvertTitleChange={setInvertTitle}
@@ -242,7 +246,7 @@ const MediaPage: React.FC = () => {
             <Spin spinning={loading}>
                 <Card styles={{body: {padding: 0}}}>
                     <CollapsePageList
-                        items={pagedVolumes}
+                        items={volumes}
                         getKey={v => v._id}
                         activeKey={activeKey}
                         onChange={handleCollapseChange}
@@ -253,7 +257,7 @@ const MediaPage: React.FC = () => {
             </Spin>
             <ListPagination
                 currentPage={currentPage}
-                total={filteredVolumes.length}
+                total={total}
                 onPageChange={async (page) => {
                     const ok = await closeForPageChange();
                     if (!ok) return;

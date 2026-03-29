@@ -804,6 +804,131 @@ export async function saveMediaCompat(
     await saveMedia(media)
 }
 
+// ─── 分页筛选查询 ─────────────────────────────────────────────────────────────
+
+export interface VolumeListParams {
+    page?: number
+    pageSize?: number
+    searchCatalogNo?: string
+    searchTitle?: string
+    filterHasWork?: boolean
+    filterHasMedia?: boolean
+}
+
+export interface VolumeListResult {
+    data: BddbVolume[]
+    total: number
+    page: number
+    pageSize: number
+}
+
+/**
+ * 获取卷列表（支持分页和筛选）
+ */
+export async function getVolumesWithPagination(params: VolumeListParams): Promise<VolumeListResult> {
+    const {
+        page = 1,
+        pageSize = 20,
+        searchCatalogNo,
+        searchTitle,
+        filterHasWork,
+        filterHasMedia,
+    } = params
+
+    try {
+        const collection = getVolumesCollection()
+
+        // 构建基础筛选条件
+        const matchStage: Record<string, unknown> = {is_deleted: false}
+
+        // catalog_no 筛选（模糊匹配）
+        if (searchCatalogNo?.trim()) {
+            matchStage.catalog_no = {$regex: searchCatalogNo.trim(), $options: 'i'}
+        }
+
+        // volume_name 筛选（模糊匹配）
+        if (searchTitle?.trim()) {
+            matchStage.volume_name = {$regex: searchTitle.trim(), $options: 'i'}
+        }
+
+        // work 数量筛选
+        if (filterHasWork !== undefined) {
+            if (filterHasWork) {
+                matchStage.work_ids = {$exists: true, $not: {$size: 0}}
+            } else {
+                matchStage.$or = [
+                    {work_ids: {$exists: false}},
+                    {work_ids: {$size: 0}},
+                ]
+            }
+        }
+
+        // media 数量筛选（需要在聚合中处理）
+        const pipeline: Record<string, unknown>[] = [{$match: matchStage}]
+
+        // 如果需要按 media 筛选，需要关联 media 集合
+        if (filterHasMedia !== undefined) {
+            pipeline.push({
+                $lookup: {
+                    from: 'bddb_medias',
+                    localField: '_id',
+                    foreignField: 'volume_id',
+                    as: 'medias',
+                },
+            })
+            pipeline.push({
+                $addFields: {
+                    mediaCount: {$size: '$medias'},
+                },
+            })
+            if (filterHasMedia) {
+                pipeline.push({$match: {mediaCount: {$gt: 0}}})
+            } else {
+                pipeline.push({$match: {mediaCount: {$eq: 0}}})
+            }
+        }
+
+        // 计算总数
+        const countPipeline = [...pipeline, {$count: 'total'}]
+        const countResult = await collection.aggregate(countPipeline).toArray()
+        const total = countResult[0]?.total ?? 0
+
+        // 分页查询
+        pipeline.push({$sort: {catalog_no: 1}})
+        pipeline.push({$skip: (page - 1) * pageSize})
+        pipeline.push({$limit: pageSize})
+
+        // 如果需要 media 计数但不筛选，添加 lookup
+        if (filterHasMedia === undefined) {
+            pipeline.push({
+                $lookup: {
+                    from: 'bddb_medias',
+                    localField: '_id',
+                    foreignField: 'volume_id',
+                    as: 'medias',
+                },
+            })
+            pipeline.push({
+                $addFields: {
+                    mediaCount: {$size: '$medias'},
+                },
+            })
+        }
+
+        const data = await collection.aggregate<BddbVolume & { mediaCount?: number }>(pipeline).toArray()
+
+        return {
+            data,
+            total,
+            page,
+            pageSize,
+        }
+    } catch (error) {
+        console.error('[mongodb] getVolumesWithPagination error:', error)
+        return {data: [], total: 0, page, pageSize}
+    }
+}
+
 // ─── 兼容旧命名导出（删除 lib/db 后直接使用）────────────────────────────────
 
 export const getVolumesByTorrent = getVolumesByTorrentId
