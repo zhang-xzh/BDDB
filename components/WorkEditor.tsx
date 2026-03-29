@@ -370,15 +370,16 @@ function WorkFormList({
 
     const handleSave = useCallback(async () => {
         try {
-            const fullSubjects: BangumiSubject[] = []
-            for (const tempWork of tempWorks) {
-                try {
-                    fullSubjects.push(await getBangumiSubject(tempWork.id, 'large'))
-                } catch (error) {
-                    console.error(`[WorkEditor] 获取条目 ${tempWork.id} 详情失败:`, error)
-                    fullSubjects.push(tempWork as BangumiSubject)
-                }
-            }
+            const fullSubjects = await Promise.all(
+                tempWorks.map(async (tempWork) => {
+                    try {
+                        return await getBangumiSubject(tempWork.id, 'large')
+                    } catch (error) {
+                        console.error(`[WorkEditor] 获取条目 ${tempWork.id} 详情失败:`, error)
+                        return tempWork as BangumiSubject
+                    }
+                })
+            )
 
             onWorksChange(fullSubjects)
             if (onSubmit) {
