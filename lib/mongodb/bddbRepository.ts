@@ -2,6 +2,7 @@ import {getMongoCollection} from './connection'
 import {Collection, Filter, ObjectId} from 'mongodb'
 import type {Torrent as QbTorrent, TorrentFile as QbTorrentFile,} from "@ctrl/qbittorrent";
 import type {BangumiCharacter, BangumiCollection, BangumiImages, BangumiRating, BangumiStaff} from '@/lib/bangumi';
+import {getProductsCollection} from './productRepository'
 
 // ─── 类型定义 ─────────────────────────────────────────────────────────────────
 
@@ -561,28 +562,6 @@ export async function removeWorkFromVolume(volumeId: string | ObjectId, workId: 
     }
 }
 
-// ─── 清理相关 ─────────────────────────────────────────────────────────────────
-
-/**
- * 清空所有数据
- */
-export async function clearAllData(): Promise<void> {
-    try {
-        const torrentsCollection = getTorrentsCollection()
-        const volumesCollection = getVolumesCollection()
-        const mediasCollection = getMediasCollection()
-        const worksCollection = getWorksCollection()
-
-        await torrentsCollection.deleteMany({})
-        await volumesCollection.deleteMany({})
-        await mediasCollection.deleteMany({})
-        await worksCollection.deleteMany({})
-    } catch (error) {
-        console.error('[mongodb] clearAllData error:', error)
-        throw error
-    }
-}
-
 // ─── 扩展功能 ─────────────────────────────────────────────────────────────────
 
 /**
@@ -926,6 +905,88 @@ export async function getVolumesWithPagination(params: VolumeListParams): Promis
     } catch (error) {
         console.error('[mongodb] getVolumesWithPagination error:', error)
         return {data: [], total: 0, page, pageSize}
+    }
+}
+
+// ─── 产品关联操作 ─────────────────────────────────────────────────────────────
+
+/**
+ * 根据 catalog_no 匹配产品并更新 volume 的 product_ids
+ * 查询 suruga_ya.products.attributes.型番 匹配 bddb_volumes.catalog_no
+ * 如果匹配到多个产品，将所有 product._id 填入 product_ids 数组（跳过已存在的）
+ * @returns 更新的卷数量
+ */
+export async function linkVolumesToProducts(): Promise<{
+    updated: number
+    matched: number
+    skipped: number
+    details: Array<{ volumeId: string; catalogNo: string; productIds: string[]; newIds: string[]; count: number }>
+}> {
+    const volumesCollection = getVolumesCollection()
+    const productsCollection = getProductsCollection()
+
+    const details: Array<{ volumeId: string; catalogNo: string; productIds: string[]; newIds: string[]; count: number }> = []
+    let updated = 0
+    let matched = 0
+    let skipped = 0
+
+    try {
+        // 获取所有未删除的卷
+        const volumes = await volumesCollection.find({is_deleted: false}).toArray()
+
+        for (const volume of volumes) {
+            const catalogNo = volume.catalog_no?.trim()
+            if (!catalogNo) continue
+
+            // 查询 products 集合中 attributes.型番 匹配 catalog_no 的产品
+            const products = await productsCollection
+                .find({'attributes.型番': catalogNo})
+                .toArray()
+
+            if (products.length > 0) {
+                // 获取已存在的 product_ids（转换为字符串便于比较）
+                const existingIds = new Set(
+                    (volume.product_ids ?? []).map(id => id.toString())
+                )
+
+                // 过滤出新的 product_ids
+                const newProductIds = products
+                    .map(p => p._id)
+                    .filter(id => !existingIds.has(id.toString()))
+
+                if (newProductIds.length > 0) {
+                    const now = Math.floor(Date.now() / 1000)
+
+                    // 使用 $addToSet 添加不重复的 product_ids
+                    await volumesCollection.updateOne(
+                        {_id: volume._id},
+                        {
+                            $addToSet: {product_ids: {$each: newProductIds}},
+                            $set: {updated_at: now}
+                        }
+                    )
+
+                    updated++
+                }
+
+                matched += products.length
+                skipped += products.length - newProductIds.length
+
+                details.push({
+                    volumeId: volume._id.toString(),
+                    catalogNo: catalogNo,
+                    productIds: products.map(p => p._id.toString()),
+                    newIds: newProductIds.map(id => id.toString()),
+                    count: newProductIds.length
+                })
+            }
+        }
+
+        console.log(`[linkVolumesToProducts] 更新了 ${updated} 个卷，匹配了 ${matched} 个产品，跳过了 ${skipped} 个重复`)
+        return {updated, matched, skipped, details}
+    } catch (error) {
+        console.error('[linkVolumesToProducts] error:', error)
+        throw error
     }
 }
 

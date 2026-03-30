@@ -1,14 +1,14 @@
 'use client'
 
 import React, {useCallback, useState} from 'react'
-import {Button, Card, Col, Flex, message, Modal, Row, Space, Typography} from 'antd'
-import {ReloadOutlined, SettingOutlined, SyncOutlined} from '@ant-design/icons'
+import {Button, Card, Col, Flex, message, Row, Space, Typography} from 'antd'
+import {LinkOutlined, SettingOutlined, SyncOutlined} from '@ant-design/icons'
 import {postApi} from '@/lib/api'
 import {SPACING} from '@/lib/utils'
 
 const ConfigPage: React.FC = () => {
     const [syncing, setSyncing] = useState(false)
-    const [rebuilding, setRebuilding] = useState(false)
+    const [linking, setLinking] = useState(false)
 
     // 同步 qBittorrent
     const syncTorrents = useCallback(async () => {
@@ -16,7 +16,7 @@ const ConfigPage: React.FC = () => {
         try {
             const data = await postApi('/api/torrents/sync')
             if (data?.success) {
-                message.success('开始同步 qBittorrent')
+                message.success('同步完成')
             } else {
                 message.error(data?.error || '同步失败')
             }
@@ -28,35 +28,24 @@ const ConfigPage: React.FC = () => {
         }
     }, [])
 
-    // 重建数据
-    const rebuildData = useCallback(async () => {
-        setRebuilding(true)
+    // 关联产品
+    const linkProducts = useCallback(async () => {
+        setLinking(true)
         try {
-            const data = await postApi('/api/torrents/rebuild')
+            const data = await postApi('/api/volumes/link-products')
             if (data?.success) {
-                message.success((data.data as any)?.message || '数据已重建')
+                const result = (data.data as { updated: number; matched: number; skipped: number })
+                message.success(`关联完成: 更新了 ${result.updated} 个卷，匹配了 ${result.matched} 个产品${result.skipped > 0 ? `，跳过 ${result.skipped} 个重复` : ''}`)
             } else {
-                message.error(data?.error || '重建失败')
+                message.error(data?.error || '关联失败')
             }
         } catch (error) {
-            console.error('重建失败:', error)
-            message.error('重建失败')
+            console.error('关联失败:', error)
+            message.error('关联失败')
         } finally {
-            setRebuilding(false)
+            setLinking(false)
         }
     }, [])
-
-    // 确认重建
-    const confirmRebuild = () => {
-        Modal.confirm({
-            title: '确认重建',
-            content: '确定要重建数据吗？这将清空所有本地数据并重新从 qBittorrent 同步。此操作不可逆！',
-            okText: '确定',
-            cancelText: '取消',
-            okButtonProps: {danger: true},
-            onOk: () => rebuildData(),
-        })
-    }
 
     return (
         <Flex vertical gap={SPACING.lg}>
@@ -69,7 +58,7 @@ const ConfigPage: React.FC = () => {
                 {/* 同步操作 */}
                 <Col xs={24} md={12}>
                     <Card title="同步操作" size="small" styles={{body: {padding: SPACING.md}}}>
-                        <Space style={{width: '100%'}} size={SPACING.md} direction="vertical">
+                        <Space style={{width: '100%'}} size={SPACING.md} orientation="vertical">
                             <Flex vertical gap="small">
                                 <Typography.Text strong style={{fontSize: 13}}>同步 qBittorrent</Typography.Text>
                                 <Typography.Paragraph type="secondary" style={{fontSize: 12}}>
@@ -94,22 +83,20 @@ const ConfigPage: React.FC = () => {
                 {/* 数据管理 */}
                 <Col xs={24} md={12}>
                     <Card title="数据管理" size="small" styles={{body: {padding: SPACING.md}}}>
-                        <Space style={{width: '100%'}} size={SPACING.md} direction="vertical">
+                        <Space style={{width: '100%'}} size={SPACING.md} orientation="vertical">
                             <Flex vertical gap="small">
-                                <Typography.Text strong style={{fontSize: 13}}>重建数据</Typography.Text>
+                                <Typography.Text strong style={{fontSize: 13}}>关联产品</Typography.Text>
                                 <Typography.Paragraph type="secondary" style={{fontSize: 12, marginBottom: 0}}>
-                                    清空所有本地数据（种子、文件、卷）并重新从 qBittorrent 同步。
+                                    根据 catalog_no 匹配 suruga_ya 产品库的型番，将匹配的产品 ID 填入卷的 product_ids 字段。
                                 </Typography.Paragraph>
-                                <Typography.Text type="danger">⚠️ 此操作不可逆，请谨慎使用！</Typography.Text>
                                 <Button
-                                    danger
-                                    onClick={confirmRebuild}
-                                    loading={rebuilding}
-                                    icon={<ReloadOutlined/>}
+                                    onClick={linkProducts}
+                                    loading={linking}
+                                    icon={<LinkOutlined/>}
                                     size="middle"
                                     block
                                 >
-                                    重建数据
+                                    {linking ? '关联中...' : '开始关联'}
                                 </Button>
                             </Flex>
                         </Space>
