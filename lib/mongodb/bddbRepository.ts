@@ -747,7 +747,7 @@ export async function saveVolumeCompat(
 ): Promise<void> {
     const tid = typeof torrentId === 'string' ? new ObjectId(torrentId) : torrentId
     const volume: BddbVolume = {
-        file_ids: [],
+        file_ids: fileIds.map(id => new ObjectId(id)),
         product_ids: [],
         work_ids: [],
         _id: new ObjectId(),
