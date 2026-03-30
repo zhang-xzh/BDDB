@@ -1,6 +1,5 @@
 import {getMongoCollection} from './connection'
-import type {Collection, Filter} from 'mongodb'
-import {ObjectId} from 'mongodb'
+import {Collection, Filter, ObjectId} from 'mongodb'
 import type {Torrent as QbTorrent, TorrentFile as QbTorrentFile,} from "@ctrl/qbittorrent";
 import type {BangumiCharacter, BangumiCollection, BangumiImages, BangumiRating, BangumiStaff} from '@/lib/bangumi';
 
@@ -31,7 +30,8 @@ export interface BddbVolume {
     is_deleted: boolean
     created_at: number
     updated_at: number
-    file_ids: ObjectId[]
+    product_id?: ObjectId[]
+    file_ids?: ObjectId[]
     work_ids?: ObjectId[]
 }
 
@@ -742,7 +742,7 @@ export async function getVolumeFilesAsFileItems(volumeId: string | ObjectId): Pr
         const torrent = await getTorrentById(volume.torrent_id)
         if (!torrent) return []
 
-        const fileIdSet = new Set(volume.file_ids.map(id => id.toString()))
+        const fileIdSet = new Set(volume.file_ids?.map(id => id.toString()) ?? [])
         return torrent.files
             .filter(f => fileIdSet.has(f._id.toString()))
             .map(f => ({
@@ -775,7 +775,6 @@ export async function saveVolumeCompat(
         is_deleted: false,
         created_at: Math.floor(Date.now() / 1000),
         updated_at: Math.floor(Date.now() / 1000),
-        file_ids: fileIds.map(id => new ObjectId(id)),
     }
     await saveVolume(volume)
 }
