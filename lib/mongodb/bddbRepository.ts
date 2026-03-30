@@ -27,13 +27,13 @@ export interface BddbVolume {
     torrent_id: ObjectId
     volume_no: number
     catalog_no: string
-    volume_name?: string
+    volume_name: string
     is_deleted: boolean
     created_at: number
     updated_at: number
-    product_ids?: ObjectId[]
-    file_ids?: ObjectId[]
-    work_ids?: ObjectId[]
+    product_ids: ObjectId[]
+    file_ids: ObjectId[]
+    work_ids: ObjectId[]
 }
 
 export type MediaType = 'bd' | 'dvd' | 'cd' | 'scan'
@@ -722,7 +722,7 @@ export async function getVolumeFilesAsFileItems(volumeId: string | ObjectId): Pr
         const torrent = await getTorrentById(volume.torrent_id)
         if (!torrent) return []
 
-        const fileIdSet = new Set(volume.file_ids?.map(id => id.toString()) ?? [])
+        const fileIdSet = new Set(volume.file_ids?.map(id => id.toString()))
         return torrent.files
             .filter(f => fileIdSet.has(f._id.toString()))
             .map(f => ({
@@ -743,10 +743,13 @@ export async function getVolumeFilesAsFileItems(volumeId: string | ObjectId): Pr
 export async function saveVolumeCompat(
     torrentId: string | ObjectId,
     fileIds: string[],
-    data: { volume_no?: number; catalog_no?: string; volume_name?: string }
+    data: { volume_no?: number; catalog_no?: string; volume_name: string }
 ): Promise<void> {
     const tid = typeof torrentId === 'string' ? new ObjectId(torrentId) : torrentId
     const volume: BddbVolume = {
+        file_ids: [],
+        product_ids: [],
+        work_ids: [],
         _id: new ObjectId(),
         torrent_id: tid,
         volume_no: data.volume_no ?? 0,
@@ -754,7 +757,7 @@ export async function saveVolumeCompat(
         volume_name: data.volume_name,
         is_deleted: false,
         created_at: Math.floor(Date.now() / 1000),
-        updated_at: Math.floor(Date.now() / 1000),
+        updated_at: Math.floor(Date.now() / 1000)
     }
     await saveVolume(volume)
 }
@@ -946,7 +949,7 @@ export async function linkVolumesToProducts(): Promise<{
             if (products.length > 0) {
                 // 获取已存在的 product_ids（转换为字符串便于比较）
                 const existingIds = new Set(
-                    (volume.product_ids ?? []).map(id => id.toString())
+                    (volume.product_ids).map(id => id.toString())
                 )
 
                 // 过滤出新的 product_ids

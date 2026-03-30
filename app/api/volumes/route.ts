@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
 import {NextRequest, NextResponse} from 'next/server';
-import {deleteStaleVolumes, getAllVolumes, getMediaCountsByVolume, getVolumesByTorrent, getWorkCountsByVolume, getVolumesWithPagination, saveVolumeCompat as saveVolume} from '@/lib/mongodb';
+import {deleteStaleVolumes, getAllVolumes, getMediaCountsByVolume, getVolumesByTorrent, getVolumesWithPagination, getWorkCountsByVolume, saveVolumeCompat as saveVolume} from '@/lib/mongodb';
 
 export async function GET(request: NextRequest) {
     try {
@@ -17,8 +17,8 @@ export async function GET(request: NextRequest) {
                 ...v,
                 _id: v._id.toString(),
                 torrent_id: v.torrent_id.toString(),
-                file_ids: (v.file_ids ?? []).map(id => id.toString()),
-                work_ids: v.work_ids?.map(id => id.toString()) ?? [],
+                file_ids: (v.file_ids).map(id => id.toString()),
+                work_ids: v.work_ids?.map(id => id.toString()),
             }))
             return NextResponse.json({success: true, data: result});
         }
@@ -50,8 +50,8 @@ export async function GET(request: NextRequest) {
                 ...v,
                 _id: v._id.toString(),
                 torrent_id: v.torrent_id.toString(),
-                file_ids: (v.file_ids ?? []).map(id => id.toString()),
-                work_ids: v.work_ids?.map(id => id.toString()) ?? [],
+                file_ids: (v.file_ids).map(id => id.toString()),
+                work_ids: v.work_ids?.map(id => id.toString()),
                 workCount: (v.work_ids?.length ?? 0),
                 mediaCount: (v as unknown as { mediaCount?: number }).mediaCount ?? 0,
             }));
@@ -77,8 +77,8 @@ export async function GET(request: NextRequest) {
                 ...v,
                 _id: id,
                 torrent_id: v.torrent_id.toString(),
-                file_ids: (v.file_ids ?? []).map(id => id.toString()),
-                work_ids: v.work_ids?.map(workId => workId.toString()) ?? [],
+                file_ids: (v.file_ids).map(id => id.toString()),
+                work_ids: v.work_ids?.map(workId => workId.toString()),
                 mediaCount: mediaCounts.get(id) ?? 0,
                 workCount: workCounts.get(id) ?? 0,
             }
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
             torrent_id: string;
             volumes: Array<{
                 volume_no: number;
-                volume_name?: string;
+                volume_name: string;
                 catalog_no: string;
                 files: string[];
             }>;
