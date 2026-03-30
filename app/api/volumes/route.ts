@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
                 ...v,
                 _id: v._id.toString(),
                 torrent_id: v.torrent_id.toString(),
-                file_ids: v.file_ids.map(id => id.toString()),
+                file_ids: (v.file_ids ?? []).map(id => id.toString()),
                 work_ids: v.work_ids?.map(id => id.toString()) ?? [],
             }))
             return NextResponse.json({success: true, data: result});
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
                 ...v,
                 _id: v._id.toString(),
                 torrent_id: v.torrent_id.toString(),
-                file_ids: v.file_ids.map(id => id.toString()),
+                file_ids: (v.file_ids ?? []).map(id => id.toString()),
                 work_ids: v.work_ids?.map(id => id.toString()) ?? [],
                 workCount: (v.work_ids?.length ?? 0),
                 mediaCount: (v as unknown as { mediaCount?: number }).mediaCount ?? 0,
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
                 ...v,
                 _id: id,
                 torrent_id: v.torrent_id.toString(),
-                file_ids: v.file_ids.map(id => id.toString()),
+                file_ids: (v.file_ids ?? []).map(id => id.toString()),
                 work_ids: v.work_ids?.map(workId => workId.toString()) ?? [],
                 mediaCount: mediaCounts.get(id) ?? 0,
                 workCount: workCounts.get(id) ?? 0,

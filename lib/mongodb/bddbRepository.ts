@@ -30,7 +30,7 @@ export interface BddbVolume {
     is_deleted: boolean
     created_at: number
     updated_at: number
-    product_id?: ObjectId[]
+    product_ids?: ObjectId[]
     file_ids?: ObjectId[]
     work_ids?: ObjectId[]
 }
@@ -121,6 +121,7 @@ export interface Volume {
     volume_name?: string
     is_deleted: boolean
     updated_at: number
+    product_ids?: string[]
     file_ids: string[]
     work_ids?: string[]
 }
