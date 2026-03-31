@@ -7,7 +7,8 @@ import {buildTree, FlatTree, SPACING} from "@/lib/utils";
 import {DeleteOutlined, EditOutlined, SaveOutlined,} from "@ant-design/icons";
 import {Button, Card, Empty, Flex, Input, message, Select, Space, Spin, Typography} from "antd";
 import type {DataNode} from "antd/es/tree";
-import {useCallback, useEffect, useMemo, useRef, useState,} from "react";
+import React, {useCallback, useEffect, useMemo, useRef, useState,} from "react";
+import {ProductNotePanel} from "@/components/ProductNotePanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -15,6 +16,12 @@ interface MediaInfo {
     volumeId: string;
     volumeNo?: number;
     catalogNo?: string;
+}
+
+export interface ProductNoteData {
+    product_id: string;
+    title: string;
+    note: unknown;
 }
 
 export interface MediaEditorContentProps {
@@ -28,6 +35,7 @@ export interface MediaEditorContentProps {
     visibleMedias: number;
     loadMoreMedias: () => void;
     mediaForms: Record<number, MediaForm>;
+    volumeId?: string;
     onMediaNoChange: (key: string, mediaNo: number | null) => void;
     onSharedMediaChange: (key: string, medias: number[]) => void;
     onToggleShared: (key: string, shared: boolean) => void;
@@ -53,6 +61,7 @@ interface UseMediaEditorReturn {
     loading: boolean;
     saving: boolean;
     volumeInfo: MediaInfo | null;
+    volumeId?: string;
     files: FileItem[];
     treeData: any[];
     nodeData: Map<string, NodeData>;
@@ -668,6 +677,7 @@ export function useMediaEditor(onSave?: () => void): UseMediaEditorReturn {
         loading,
         saving,
         volumeInfo,
+        volumeId: volumeInfo?.volumeId,
         files,
         treeData,
         nodeData,
@@ -805,7 +815,7 @@ function MediaFormList({
 
     return (
         <Card size="small" title="媒介信息" styles={{body: {padding: 12}}}>
-            <Space direction="vertical" style={{width: "100%"}} size={12}>
+            <Space orientation="vertical" style={{width: "100%"}} size={12}>
                 {selectedMedias.map((no) => (
                     <MediaRow
                         key={no}
@@ -839,7 +849,7 @@ function MediaReadOnlyView({
 
     return (
         <Card size="small" title="媒介信息" styles={{body: {padding: 12}}}>
-            <Space direction="vertical" style={{width: "100%"}} size={12}>
+            <Space orientation="vertical" style={{width: "100%"}} size={12}>
                 {selectedMedias.map((no) => {
                     const form = mediaForms[no] || {
                         media_type: "bd",
@@ -880,6 +890,7 @@ export function MediaEditorContent({
                                        visibleMedias,
                                        loadMoreMedias,
                                        mediaForms,
+                                       volumeId,
                                        onMediaNoChange,
                                        onSharedMediaChange,
                                        onToggleShared,
@@ -941,52 +952,61 @@ export function MediaEditorContent({
 
     return (
         <Spin spinning={loading}>
-            <Space
-                orientation="vertical"
-                style={{width: "100%", paddingTop: SPACING.sm}}
-                size={SPACING.md}
-            >
-                {isEditing ? (
-                    <>
-                        <FileTreeCard
-                            files={files}
-                            treeData={treeData}
-                            defaultExpandedKeys={defaultExpandedKeys}
-                            titleRender={titleRender}
-                        />
+            <Space orientation="vertical" style={{width: "100%"}}>
+                <Space
+                    orientation="vertical"
+                    style={{width: "100%", paddingTop: SPACING.sm}}
+                    size={SPACING.md}
+                >
+                    <ProductNotePanel volumeId={volumeId}/>
+                </Space>
+                <Space
+                    orientation="vertical"
+                    style={{width: "100%", paddingTop: SPACING.sm}}
+                    size={SPACING.md}
+                >
+                    {isEditing ? (
+                        <>
+                            <FileTreeCard
+                                files={files}
+                                treeData={treeData}
+                                defaultExpandedKeys={defaultExpandedKeys}
+                                titleRender={titleRender}
+                            />
 
-                        <MediaFormList
+                            <MediaFormList
+                                selectedMedias={selectedMedias}
+                                mediaForms={mediaForms}
+                                onMediaFormChange={updateMediaForm}
+                                onDeleteMedia={deleteMedia}
+                                onCancelEdit={
+                                    selectedMedias.length > 0
+                                        ? () => {
+                                            const hasSaved = cancelChanges?.();
+                                            if (hasSaved) setIsEditing(false);
+                                        }
+                                        : undefined
+                                }
+                                onSaveEdit={
+                                    selectedMedias.length > 0 && handleSubmit
+                                        ? () => {
+                                            void handleSubmit();
+                                        }
+                                        : undefined
+                                }
+                                saving={saving}
+                                isChanged={isChanged}
+                                submitted={submitted}
+                            />
+                        </>
+                    ) : (
+                        <MediaReadOnlyView
                             selectedMedias={selectedMedias}
                             mediaForms={mediaForms}
-                            onMediaFormChange={updateMediaForm}
-                            onDeleteMedia={deleteMedia}
-                            onCancelEdit={
-                                selectedMedias.length > 0
-                                    ? () => {
-                                        const hasSaved = cancelChanges?.();
-                                        if (hasSaved) setIsEditing(false);
-                                    }
-                                    : undefined
-                            }
-                            onSaveEdit={
-                                selectedMedias.length > 0 && handleSubmit
-                                    ? () => {
-                                        void handleSubmit();
-                                    }
-                                    : undefined
-                            }
-                            saving={saving}
-                            isChanged={isChanged}
-                            submitted={submitted}
+                            onEdit={() => setIsEditing(true)}
                         />
-                    </>
-                ) : (
-                    <MediaReadOnlyView
-                        selectedMedias={selectedMedias}
-                        mediaForms={mediaForms}
-                        onEdit={() => setIsEditing(true)}
-                    />
-                )}
+                    )}
+                </Space>
             </Space>
         </Spin>
     );

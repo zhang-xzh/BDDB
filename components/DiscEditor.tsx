@@ -571,7 +571,7 @@ function VolumeFormList({
     if (worksCount === 1) {
         return (
             <Card size="small" title="卷信息" styles={{body: {padding: 12}}}>
-                <Space direction="vertical" style={{width: '100%'}} size={12}>
+                <Space orientation="vertical" style={{width: '100%'}} size={12}>
                     {selectedVolumes.map(vol => <VolumeRow key={vol} vol={vol} label={`第${vol}卷`} {...rowProps} />)}
                     {actions}
                 </Space>
@@ -588,14 +588,14 @@ function VolumeFormList({
 
     return (
         <Card size="small" title="卷信息" styles={{body: {padding: 12}}}>
-            <Space direction="vertical" style={{width: '100%'}} size={SPACING.md}>
+            <Space orientation="vertical" style={{width: '100%'}} size={SPACING.md}>
                 {Object.entries(groups).sort(([a], [b]) => Number(a) - Number(b)).map(([wiStr, vols]) => {
                     const wi = Number(wiStr)
                     return (
                         <Flex key={wi} vertical>
                             <Typography.Text strong
                                              style={{display: 'block', marginBottom: 8}}>作品 {wi}</Typography.Text>
-                            <Space direction="vertical" style={{width: '100%', paddingLeft: SPACING.md}} size={SPACING.sm}>
+                            <Space orientation="vertical" style={{width: '100%', paddingLeft: SPACING.md}} size={SPACING.sm}>
                                 {vols.sort((a, b) => a - b).map(vn => {
                                     const enc = wi * 1000 + vn
                                     return <VolumeRow key={enc} vol={enc} label={`第${vn}卷`} {...rowProps} />
@@ -627,7 +627,7 @@ function VolumeReadOnlyView({
 
     return (
         <Card size="small" title="卷信息" styles={{body: {padding: 12}}}>
-            <Space direction="vertical" style={{width: '100%'}} size={12}>
+            <Space orientation="vertical" style={{width: '100%'}} size={12}>
                 {selectedVolumes.map(vol => {
                     const form = volumeForms[vol] || {catalog_no: '', volume_name: ''}
                     const label = worksCount === 1

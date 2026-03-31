@@ -10,6 +10,7 @@ import {App, Button, Card, Descriptions, Empty, Flex, Select, Space, Spin, Tag, 
 import type {DefaultOptionType, RefSelectProps} from 'antd/es/select'
 import type {DataNode} from 'antd/es/tree'
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {ProductNotePanel} from "@/components/ProductNotePanel";
 
 type SearchResultItem = BangumiSearchResult['list'][number]
 type WorkCandidate = BangumiSubject | SearchResultItem
@@ -439,21 +440,30 @@ export function WorkEditorContent({
                                   }: WorkEditorContentProps) {
     return (
         <Spin spinning={loading || saving}>
-            <Space direction="vertical" style={{width: '100%', paddingTop: SPACING.sm}} size={SPACING.md}>
-                <FileTreeCard
-                    files={files}
-                    treeData={treeData}
-                    defaultExpandedKeys={defaultExpandedKeys}
-                    blockNode
-                    selectable={false}
-                    titleSuffix={volumeInfo?.catalogNo || undefined}
-                />
-                <WorkFormList
-                    selectedWorks={selectedWorks}
-                    onWorksChange={onWorksChange}
-                    saving={saving}
-                    onSubmit={onSubmit}
-                />
+            <Space orientation="vertical" style={{width: "100%"}}>
+                <Space
+                    orientation="vertical"
+                    style={{width: "100%", paddingTop: SPACING.sm}}
+                    size={SPACING.md}
+                >
+                    <ProductNotePanel volumeId={volumeInfo?.volumeId}/>
+                </Space>
+                <Space orientation="vertical" style={{width: '100%', paddingTop: SPACING.sm}} size={SPACING.md}>
+                    <FileTreeCard
+                        files={files}
+                        treeData={treeData}
+                        defaultExpandedKeys={defaultExpandedKeys}
+                        blockNode
+                        selectable={false}
+                        titleSuffix={volumeInfo?.catalogNo || undefined}
+                    />
+                    <WorkFormList
+                        selectedWorks={selectedWorks}
+                        onWorksChange={onWorksChange}
+                        saving={saving}
+                        onSubmit={onSubmit}
+                    />
+                </Space>
             </Space>
         </Spin>
     )
