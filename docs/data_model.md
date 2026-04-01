@@ -139,14 +139,247 @@
 │ hash        │       │ catalog_no  │       │ media_type  │
 │ files[]     │──────►│ file_ids[]  │──────►│ file_ids[]  │
 └─────────────┘       │ work_ids[]  │─►─┐   └─────────────┘
+                      │ product_ids │   │
                       └─────────────┘   │
                               ▲         │
                       ┌───────┘         │
-                      │ N:M               │
-               ┌─────────────┐          │
-               │    Work     │◄─────────┘
-               ├─────────────┤
-               │ id (Bangumi)│
-               │ name        │
-               └─────────────┘
+                      │ N:M             │
+               ┌─────────────┐          │       ┌─────────────┐
+               │    Work     │◄─────────┘       │   Product   │
+               ├─────────────┤                  ├─────────────┤
+               │ id (Bangumi)│                  │ product_id  │
+               │ name        │                  │ title       │
+               └─────────────┘                  │ attributes  │
+                                                │  └ 型番     │
+                                                └─────────────┘
 ```
+
+---
+
+## UI 操作逻辑
+
+### 整体布局（双栏式）
+
+```
+┌───────────────────────────────────────────────────────────────────┐
+│  导航栏: BDDB | 种子管理 | 媒介管理 | 作品管理 | 配置              │
+├───────────────────────┬───────────────────────────────────────────┤
+│   LEFT PANEL (约25%)  │         RIGHT PANEL (约75%)                │
+│   产品搜索器           │         种子列表 + 编辑器                  │
+│   (Meilisearch)       │         (qBittorrent 同步来源)             │
+│                       │                                           │
+│  ┌─────────────────┐  │  ┌── 搜索栏 ──────────────────────────┐  │
+│  │ 搜索输入框 🔍    │  │  │ [搜索种子] [切换] 重置处理 共N条    │  │
+│  └─────────────────┘  │  └────────────────────────────────────┘  │
+│  共找到 N 个结果       │                                           │
+│  (滚动加载更多)        │  ► ○ 1  [种子名称长串 tag tag tag]        │
+│                       │  ▼ ○ 1  [Angel Beats!][BDMV][BOX...]     │
+│  ┌─────────────────┐  │  ┌────────────────────────────────────┐  │
+│  │ [封面图]         │  │  │ 文件列表 386个文件  作品数 — 1 +   │  │
+│  │ 型番 日期        │  │  │                                    │  │
+│  │ 标题名称         │  │  │  ▼ エンジェル ビーツ! [巻] [第1巻▾]│  │
+│  └─────────────────┘  │  │    ► DISC 1 [──] 第1巻 ▾           │  │
+│                       │  │    ► DISC 2 [──] 第1巻 ▾           │  │
+│  ┌─────────────────┐  │  │    ► DISC 3 [──] 第1巻 ▾           │  │
+│  │ 商品详情面板     │  │  │    ► DISC 4 [──] 第1巻 ▾           │  │
+│  │ 【収録時間】     │  │  │                                    │  │
+│  │ 【内容一覧】     │  │  │  卷信息                            │  │
+│  │ 【声优列表】     │  │  │  第1卷  [ANZX-11531] [Angel...] 🗑 │  │
+│  └─────────────────┘  │  │  [ 取消 ]  [ 💾 保存 ]             │  │
+│                       │  └────────────────────────────────────┘  │
+│  (更多搜索结果...)     │  ► ○ 4  [AURA～魔竜院光牙最後の戦門～]   │
+│                       │  ► ○ 1  [Blame!][BDMV]...               │
+└───────────────────────┴───────────────────────────────────────────┘
+```
+
+### 种子管理页 (`/torrents`) 操作流程
+
+#### 第一步：右侧展开种子 → 看文件树
+
+```
+种子列表行 [► 点击展开]
+    │
+    ▼
+展开后显示:
+  ┌──────────────────────────────────────────────────┐
+  │ 文件列表 N个文件    作品数 [−] [1] [+]           │
+  │                                                  │
+  │  ▼ 种子根目录 [卷类型选择] [分卷下拉]             │
+  │      ► DISC 1  [进度条]  第X卷 [▾]               │
+  │      ► DISC 2  [进度条]  第X卷 [▾]               │
+  │      ► DISC 3  [进度条]  第X卷 [▾]               │
+  │                                                  │
+  │  卷信息 (动态根据卷数渲染)                         │
+  │  第1卷  [catalog_no输入] [volume_name输入] [🗑]   │
+  │  第2卷  [catalog_no输入] [volume_name输入] [🗑]   │
+  │                                                  │
+  │  [ 取消 ]    [ 💾 保存 ]                          │
+  └──────────────────────────────────────────────────┘
+```
+
+**文件树节点交互规则（DiscEditor）：**
+
+- 每个文件/目录节点右侧有下拉选择器 → 分配到"第X卷"
+- `作品数 [−][N][+]` 控制卷数，自动生成对应卷信息表单行
+- 每个文件节点可折叠展开查看子文件
+
+#### 第二步：左侧产品搜索器填充信息
+
+```
+操作流程:
+  用户在左侧搜索框输入关键词 (如"エンジェル ビーツ")
+       │
+       ▼ (Meilisearch 全文检索 suruga_ya.products)
+  左侧列表显示匹配产品:
+  ┌────────────────────────┐
+  │ [封面] 标题名称         │  ← 点击展开/折叠
+  │       型番  发售日      │
+  ├────────────────────────┤
+  │ 【収録時間】200分       │  ← 产品详情面板
+  │ 【内容一覧】            │    (ProductNotePanel)
+  │   CAPTAIN_SCARLET      │
+  │ 【声優一覧】            │
+  │   中田浩二/野沢那智...  │
+  └────────────────────────┘
+
+  用户将产品信息 (型番/标题) 手动或点击填入右侧卷信息表单:
+    catalog_no  ← 来自产品 attributes.型番
+    volume_name ← 来自产品 title
+```
+
+#### 第三步：保存 Volume
+
+```
+点击 [💾 保存]
+  │
+  ▼ POST /api/volumes (或 PATCH /api/volumes/[id])
+  │
+  ├─ 写入 bddb_volumes:
+  │    torrent_id  → 当前种子 _id
+  │    volume_no   → 1, 2, 3...
+  │    catalog_no  → 型番 (如 ANZX-11531)
+  │    volume_name → 卷名 (如 Angel Beats! Blu-ray BOX)
+  │    file_ids[]  → 分配到该卷的文件 _id 列表
+  │
+  └─ 软删除旧 Volume (deleteStaleVolumes)
+     保留本次提交的 volume_no，其余标记 is_deleted=true
+```
+
+---
+
+### 媒介管理页 (`/media`) 操作流程
+
+```
+Volume 折叠列表
+  │
+  ▼ 展开某个 Volume
+  ┌──────────────────────────────────────────────────┐
+  │ 文件列表 (Volume 的文件子集)                      │
+  │                                                  │
+  │  ▼ DISC_1/                                       │
+  │      DISC_1.m2ts   [bd ▾]  [媒介N ▾]             │
+  │      DISC_1_extra.m2ts [cd ▾] [媒介N ▾]          │
+  │                                                  │
+  │  媒介信息 (MediaEditor)                           │
+  │  #1  bd   [content_title] [description]  [🗑]    │
+  │  #2  cd   [content_title] [description]  [🗑]    │
+  │                                                  │
+  │  [ 取消 ]    [ 💾 保存 ]                          │
+  └──────────────────────────────────────────────────┘
+
+保存 → POST /api/volumes/[id]/medias
+  写入 bddb_medias:
+    volume_id   → 当前 Volume _id
+    media_no    → 1, 2, 3...
+    media_type  → bd/dvd/cd/scan
+    content_title, description
+    file_ids[]  → 分配到该媒介的文件
+```
+
+---
+
+### 作品管理页 (`/work`) 操作流程
+
+```
+同样双栏布局:
+  左侧: Bangumi 搜索器 (搜索 bddb_works / Bangumi API)
+  右侧: Volume 列表 + WorkEditor
+
+展开 Volume 后:
+  ┌──────────────────────────────────────────────────┐
+  │  关联作品:                                        │
+  │  [作品封面] 作品名称  评分  [✕移除]              │
+  │  [作品封面] 作品名称  评分  [✕移除]              │
+  │                                                  │
+  │  [ + 从左侧搜索添加作品 ]                         │
+  └──────────────────────────────────────────────────┘
+
+保存 → POST /api/volumes/[id]/works
+  ├─ 调 Bangumi API 拉取完整 Work 数据
+  ├─ upsert 到 bddb_works
+  └─ 更新 Volume.work_ids[] 追加新 work _id
+```
+
+---
+
+## 完整端到端数据流
+
+```
+[qBittorrent]
+    │ syncTorrentsFromQb()
+    │ GET /api/torrents/sync  (手动触发)
+    ▼
+[bddb_torrents] ← 含 files[] 嵌入文档
+    │
+    │ 用户在 /torrents 页面操作 DiscEditor
+    │ 右侧展开种子 → 文件树分卷 → 左侧搜索产品填信息
+    │ POST /api/volumes
+    ▼
+[bddb_volumes]  (catalog_no, volume_name, file_ids[], product_ids[])
+    │                    ▲
+    │                    │ linkVolumesToProducts()
+    │                    │ 按 catalog_no 匹配 suruga_ya.products.attributes.型番
+    │                    │
+    │           [suruga_ya.products] (外部商品数据库)
+    │                    │
+    │                    └─ Meilisearch 索引 (productSearch)
+    │                       供左侧搜索器实时检索
+    │
+    │ 用户在 /media 页面操作 MediaEditor
+    │ 展开 Volume → 文件分类 → 填媒介信息
+    │ POST /api/volumes/[id]/medias
+    ▼
+[bddb_medias]   (media_type, content_title, file_ids[])
+    │
+    │ 用户在 /work 页面操作 WorkEditor
+    │ 左侧搜索 Bangumi → 点击关联到 Volume
+    │ POST /api/volumes/[id]/works
+    ▼
+[bddb_works]    (Bangumi API 1:1 数据)
+    │
+    └── Volume.work_ids[] 更新
+        Meilisearch bangumiSearch 索引同步
+```
+
+---
+
+## 搜索架构
+
+| 搜索器         | 数据源                        | 引擎          | 触发场景           |
+|-------------|----------------------------|-------------|----------------|
+| 产品搜索器 (左栏)  | `suruga_ya.products`       | Meilisearch | 种子管理页填写卷信息时    |
+| 种子搜索栏 (右栏)  | `bddb_torrents`            | MongoDB     | 过滤右侧种子列表       |
+| Bangumi 搜索器 | `bddb_works` / Bangumi API | Meilisearch | 作品管理页关联 Work 时 |
+
+---
+
+## 软删除策略
+
+所有实体均使用 `is_deleted: boolean` 软删除，不物理删除：
+
+| 操作          | 行为                                                |
+|-------------|---------------------------------------------------|
+| 种子在 QB 消失   | `softDeleteTorrent()` → `is_deleted=true`         |
+| 重新保存 Volume | `deleteStaleVolumes()` 软删除本次未提交的旧 volume_no       |
+| 重新保存 Media  | `deleteStaleMedias()` 软删除本次未提交的旧 media            |
+| Work 移除关联   | `removeWorkFromVolume()` 从 `work_ids[]` 中 `$pull` |
