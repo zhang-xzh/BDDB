@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
 # vcpkg toolchain must be set before project()
-# 注意：如果 IDE (CLion) 已配置 vcpkg，这段代码不会执行
 if (WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     set(VCPKG_CANDIDATES
             "C:/Users/zhang/.vcpkg-clion/vcpkg/scripts/buildsystems/vcpkg.cmake"
@@ -17,11 +16,16 @@ endif ()
 
 project(BDDB VERSION 0.1.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
+
+if (MSVC)
+    add_compile_options(/std:c++latest /W4 /permissive- /utf-8)
+endif ()
 
 # 自动检测 Qt6 路径 (Windows) - 优先使用 MSVC 版本
 if (WIN32 AND NOT DEFINED CMAKE_PREFIX_PATH)
