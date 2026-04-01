@@ -1,93 +1,28 @@
-# ========================================================================
-# Next.js + TypeScript .gitignore
-# ========================================================================
+# Qt Creator
+.cpp.o
+.cc.o
+.moc
+*.obj
+*.pch
+*.pdb
+*.exe
+*.dll
+*.a
+*.lib
+*.so
+*.dylib
 
-### --- 操作系统特定文件 (OS Junk) ---
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-._*
+# CMake
+build-*/
+cmake-build-*/
+*.cmake
+!cmake/modules/*.cmake
 
-# Windows
-Thumbs.db
-ehthumbs.db
-desktop.ini
-$RECYCLE.BIN/
-*.lnk
+# Config
+*.ini
+*.cfg
+*.json
 
-# Linux
-.fuse_hidden
-*.swp
-*~
-.trash
-
-
-### --- 常见编辑器与 IDE (IDEs & Editors) ---
-# VS Code
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-*.code-workspace
-
-# JetBrains (IntelliJ, WebStorm, PyCharm, etc.)
+# IDE
+.vscode/
 .idea/
-*.iws
-*.iml
-*.ipr
-out/
-
-
-### --- Next.js (重要!) ---
-.next/
-.out/
-.vercel/
-
-
-### --- Node.js ---
-node_modules/
-npm-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-.eslintcache
-
-
-### --- 敏感信息与环境变量 (Secrets - 重要!) ---
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env*.local
-
-
-# 密钥文件
-*.pem
-*.key
-*.cert
-*.crt
-*.pfx
-*.p12
-
-
-### --- 数据库与本地存储 ---
-*.sqlite
-*.sqlite-shm
-*.sqlite-wal
-*.db
-.data/
-*.nedb
-data
-.ai
-
-
-### --- 日志、缓存与临时文件 ---
-*.log
-logs/
-*.bak
-*.tmp
-*.temp
-*.cache
-/tsconfig.tsbuildinfo
