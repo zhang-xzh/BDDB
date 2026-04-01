@@ -9,7 +9,7 @@ Always respond in Chinese unless the user asks for another language.
 
 # 环境说明
 
-当前环境为 **WebStorm IDE** 环境，通过 MCP 提供完整的 JetBrains 工具集。
+当前为 **IDE** 环境，通过 MCP 提供完整的 JetBrains 工具集。
 
 # 工具使用绝对优先级
 
@@ -18,7 +18,6 @@ Always respond in Chinese unless the user asks for another language.
 优先级顺序：
 
 1. **IDE MCP 工具** (`intellij-util` + `intellij-index`) - 所有代码操作的第一选择
-2. **通用文件工具** (`filesystem` MCP) - 仅当 IDE MCP 无法满足的纯文件操作
 
 **注意：** 这里的 MCP 工具本身就是 JetBrains IDE 原生能力的封装，通过 MCP 调用等同于使用 IDE 功能。
 
