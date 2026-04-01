@@ -101,4 +101,224 @@ DbResult<std::vector<Product>> SurugaYaRepository::findProductsByCatalogNo(const
     }
 }
 
+DbResult<std::optional<Product>> SurugaYaRepository::findByProductId(const std::string &productId) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return std::nullopt;
+        auto db = MongoConnection::instance().database("suruga_ya");
+        auto coll = db["products"];
+        auto filter = make_document(kvp("product_id", productId));
+        
+        auto doc = coll.find_one(filter.view());
+        if (!doc) return std::nullopt;
+        
+        return parseProduct(doc->view());
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("findByProductId failed: ") + e.what());
+    }
+}
+
+DbResult<std::optional<Product>> SurugaYaRepository::findById(const std::string &id) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return std::nullopt;
+        auto db = MongoConnection::instance().database("suruga_ya");
+        auto coll = db["products"];
+        
+        bsoncxx::oid oid;
+        try {
+            oid = bsoncxx::oid{id};
+        } catch (...) {
+            return std::unexpected("Invalid ObjectId: " + id);
+        }
+        
+        auto filter = make_document(kvp("_id", oid));
+        auto doc = coll.find_one(filter.view());
+        if (!doc) return std::nullopt;
+        
+        return parseProduct(doc->view());
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("findById failed: ") + e.what());
+    }
+}
+
+DbResult<PaginatedResult<Product>> SurugaYaRepository::findAll(const PaginationParams& params) {
+    try {
+        if (!MongoConnection::instance().isConnected()) {
+            return PaginatedResult<Product>{};
+        }
+        auto db = MongoConnection::instance().database("suruga_ya");
+        auto coll = db["products"];
+        
+        // 获取总数
+        auto total = static_cast<int>(coll.count_documents({}));
+        
+        // 分页查询
+        int skip = (params.page - 1) * params.pageSize;
+        auto cursor = coll.find({})
+            .skip(skip)
+            .limit(params.pageSize);
+        
+        std::vector<Product> products;
+        for (auto&& doc : cursor) {
+            products.push_back(parseProduct(doc));
+        }
+        
+        PaginatedResult<Product> result;
+        result.data = std::move(products);
+        result.total = total;
+        result.page = params.page;
+        result.pageSize = params.pageSize;
+        result.totalPages = (total + params.pageSize - 1) / params.pageSize;
+        
+        return result;
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("findAll failed: ") + e.what());
+    }
+}
+
+DbResult<PaginatedResult<Product>> SurugaYaRepository::findByQuery(const ProductQueryOptions& options) {
+    try {
+        if (!MongoConnection::instance().isConnected()) {
+            return PaginatedResult<Product>{};
+        }
+        auto db = MongoConnection::instance().database("suruga_ya");
+        auto coll = db["products"];
+        
+        // 构建查询条件
+        auto builder = bsoncxx::builder::basic::document{};
+        bool hasFilter = false;
+        
+        if (options.catalogNo) {
+            builder.append(kvp("attributes.型番", *options.catalogNo));
+            hasFilter = true;
+        }
+        
+        if (options.title) {
+            builder.append(kvp("title", make_document(kvp("$regex", *options.title), kvp("$options", "i"))));
+            hasFilter = true;
+        }
+        
+        if (options.manufacturer) {
+            builder.append(kvp("attributes.メーカー", *options.manufacturer));
+            hasFilter = true;
+        }
+        
+        auto filter = hasFilter ? builder.extract() : bsoncxx::document::view{};
+        
+        // 获取总数
+        auto total = static_cast<int>(coll.count_documents(filter.view()));
+        
+        // 分页查询
+        int skip = (options.pagination.page - 1) * options.pagination.pageSize;
+        auto cursor = coll.find(filter.view())
+            .skip(skip)
+            .limit(options.pagination.pageSize);
+        
+        std::vector<Product> products;
+        for (auto&& doc : cursor) {
+            products.push_back(parseProduct(doc));
+        }
+        
+        PaginatedResult<Product> result;
+        result.data = std::move(products);
+        result.total = total;
+        result.page = options.pagination.page;
+        result.pageSize = options.pagination.pageSize;
+        result.totalPages = (total + options.pagination.pageSize - 1) / options.pagination.pageSize;
+        
+        return result;
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("findByQuery failed: ") + e.what());
+    }
+}
+
+DbResult<int> SurugaYaRepository::count() {
+    try {
+        if (!MongoConnection::instance().isConnected()) return 0;
+        auto db = MongoConnection::instance().database("suruga_ya");
+        auto coll = db["products"];
+        return static_cast<int>(coll.count_documents({}));
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("count failed: ") + e.what());
+    }
+}
+
+DbResult<std::vector<Product>> SurugaYaRepository::searchByTitle(const std::string& keyword, int limit) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return std::vector<Product>{};
+        auto db = MongoConnection::instance().database("suruga_ya");
+        auto coll = db["products"];
+        
+        auto filter = make_document(
+            kvp("title", make_document(kvp("$regex", keyword), kvp("$options", "i")))
+        );
+        
+        auto cursor = coll.find(filter.view()).limit(limit);
+        
+        std::vector<Product> products;
+        for (auto&& doc : cursor) {
+            products.push_back(parseProduct(doc));
+        }
+        
+        return products;
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("searchByTitle failed: ") + e.what());
+    }
+}
+
+DbResult<std::vector<std::string>> SurugaYaRepository::getAllManufacturers() {
+    try {
+        if (!MongoConnection::instance().isConnected()) return std::vector<std::string>{};
+        auto db = MongoConnection::instance().database("suruga_ya");
+        auto coll = db["products"];
+        
+        mongocxx::pipeline pipeline;
+        pipeline.group(make_document(
+            kvp("_id", "$attributes.メーカー"),
+            kvp("count", make_document(kvp("$sum", 1)))
+        ));
+        pipeline.match(make_document(kvp("_id", make_document(kvp("$ne", bsoncxx::types::b_null{})))));
+        pipeline.sort(make_document(kvp("count", -1)));
+        
+        auto cursor = coll.aggregate(pipeline);
+        
+        std::vector<std::string> manufacturers;
+        for (auto&& doc : cursor) {
+            if (doc["_id"]) {
+                manufacturers.push_back(bsonValueToString(doc["_id"]));
+            }
+        }
+        
+        return manufacturers;
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("getAllManufacturers failed: ") + e.what());
+    }
+}
+
+DbResult<std::vector<Product>> SurugaYaRepository::findByManufacturer(
+    const std::string& manufacturer, 
+    const PaginationParams& params
+) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return std::vector<Product>{};
+        auto db = MongoConnection::instance().database("suruga_ya");
+        auto coll = db["products"];
+        
+        auto filter = make_document(kvp("attributes.メーカー", manufacturer));
+        
+        int skip = (params.page - 1) * params.pageSize;
+        auto cursor = coll.find(filter.view())
+            .skip(skip)
+            .limit(params.pageSize);
+        
+        std::vector<Product> products;
+        for (auto&& doc : cursor) {
+            products.push_back(parseProduct(doc));
+        }
+        
+        return products;
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("findByManufacturer failed: ") + e.what());
+    }
+}
+
 #endif // HAVE_MONGODB

@@ -18,6 +18,7 @@ public:
     static DbResult<Torrent> getTorrentByHash(const std::string &hash);
     static DbResult<Torrent> getTorrentById(const std::string &id);
     static DbResult<void> upsertTorrent(const Torrent &torrent);
+    static DbResult<void> saveTorrent(const Torrent &torrent) { return upsertTorrent(torrent); }
     static DbResult<void> softDeleteTorrent(const std::string &hash);
 
     static DbResult<std::vector<FileItem>> getTorrentFilesAsFileItems(const std::string &torrentId);

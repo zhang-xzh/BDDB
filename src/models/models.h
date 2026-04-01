@@ -57,15 +57,15 @@ struct TrackList {
 };
 
 struct ProductAttributes {
-    std::string catalogNo;           // 型番
-    std::string manufacturer;        // メーカー
-    std::string releaseDate;         // 発売日
-    std::string price;               // 定価
-    std::string scenario;            // シナリオ
-    std::string characterDesign;     // キャラクターデザイン
-    std::string music;               // 音楽
+    std::string catalogNo; // 型番
+    std::string manufacturer; // メーカー
+    std::string releaseDate; // 発売日
+    std::string price; // 定価
+    std::string scenario; // シナリオ
+    std::string characterDesign; // キャラクターデザイン
+    std::string music; // 音楽
     std::vector<std::string> illustrators; // 原画
-    std::vector<std::string> voiceActors;  // 声優
+    std::vector<std::string> voiceActors; // 声優
     std::map<std::string, std::string> extra; // 其他未知属性
 };
 
@@ -118,11 +118,8 @@ struct Torrent {
     std::int64_t createdAt = 0;
     std::int64_t updatedAt = 0;
     std::vector<TorrentFile> files;
-
     bool hasVolumes = false;
     int volumeCount = 0;
-
-    // qBittorrent extended fields
     std::int64_t amountLeft = 0;
     bool autoTmm = false;
     double availability = 0.0;
@@ -197,11 +194,11 @@ inline MediaType mediaTypeFromString(const std::string &str) {
     return MediaType::Unknown;
 }
 
-inline QString toQString(const std::string& s) {
+inline QString toQString(const std::string &s) {
     return QString::fromUtf8(s.data(), static_cast<qsizetype>(s.size()));
 }
 
-inline std::string fromQString(const QString& s) {
+inline std::string fromQString(const QString &s) {
     return s.toStdString();
 }
 
@@ -224,9 +221,9 @@ struct Work {
     std::string id;
 
     // Bangumi API 原始字段 (bangumi.ts 中 BddbWork)
-    int bangumiSubjectId = 0;    // Bangumi subject ID (TS中的 id)
+    int bangumiSubjectId = 0; // Bangumi subject ID (TS中的 id)
     std::string url;
-    int type = 2;                // 条目类型 (1=书籍, 2=动画, 3=音乐, 4=游戏, 6=三次元)
+    int type = 2; // 条目类型 (1=书籍, 2=动画, 3=音乐, 4=游戏, 6=三次元)
     std::string name;
     std::string nameCn;
     std::string summary;
@@ -247,11 +244,11 @@ struct Work {
 
 struct Product {
     std::string id;
-    std::string productId;           // 商品ID (如 "109001543001")
+    std::string productId; // 商品ID (如 "109001543001")
     std::string title;
     std::string url;
     std::vector<std::string> images;
-    std::string noteRaw;             // 描述 (HTML格式)
+    std::string noteRaw; // 描述 (HTML格式)
     std::vector<TrackList> tracklist;
     ProductAttributes attributes;
 
@@ -294,7 +291,7 @@ struct VolumeListParams {
     std::string searchTitle;
     bool filterHasWork = false;
     bool filterHasMedia = false;
-    bool useFilterHasWork = false;  // 是否启用 filterHasWork
+    bool useFilterHasWork = false; // 是否启用 filterHasWork
     bool useFilterHasMedia = false; // 是否启用 filterHasMedia
 };
 

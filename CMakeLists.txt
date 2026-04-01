@@ -56,17 +56,6 @@ file(GLOB_RECURSE BDDB_SOURCES
         "src/*.h"
 )
 
-# Exclude MongoDB sources if driver not found
-if (NOT mongocxx_FOUND OR NOT bsoncxx_FOUND)
-    file(GLOB_RECURSE MONGODB_SOURCES
-            "src/db/*.cpp"
-            "src/db/*.h"
-    )
-    if (MONGODB_SOURCES)
-        list(REMOVE_ITEM BDDB_SOURCES ${MONGODB_SOURCES})
-    endif ()
-endif ()
-
 add_executable(BDDB ${BDDB_SOURCES})
 
 # MongoDB support
