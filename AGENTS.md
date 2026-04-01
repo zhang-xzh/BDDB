@@ -2,6 +2,11 @@
 
 Always respond in Chinese unless the user asks for another language.
 
+# 编码要求
+
+1. 使用现代c++, 但需要考虑qt环境的特殊性
+2. 如果支持, 头文件使用 #pragma once
+
 # 环境说明
 
 当前为 **IDE** 环境，通过 MCP 提供完整的 JetBrains 工具集。

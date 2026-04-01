@@ -26,3 +26,6 @@ cmake-build-*/
 # IDE
 .vscode/
 .idea/
+bddb_next/
+.ai/
+build/

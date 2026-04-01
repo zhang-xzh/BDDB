@@ -1,5 +1,0 @@
-C:/Users/zhang/CODE/BDDB/build/CMakeFiles/BDDB.dir
-C:/Users/zhang/CODE/BDDB/build/CMakeFiles/edit_cache.dir
-C:/Users/zhang/CODE/BDDB/build/CMakeFiles/rebuild_cache.dir
-C:/Users/zhang/CODE/BDDB/build/CMakeFiles/BDDB_autogen_timestamp_deps.dir
-C:/Users/zhang/CODE/BDDB/build/CMakeFiles/BDDB_autogen.dir
