@@ -90,6 +90,10 @@ if (WIN32)
     )
 endif ()
 
+if (MSVC)
+    target_compile_options(BDDB PRIVATE /Zc:__cplusplus)
+endif ()
+
 target_link_libraries(BDDB PRIVATE
         Qt6::Core
         Qt6::Gui
