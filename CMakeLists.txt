@@ -43,7 +43,7 @@ endif ()
 
 # Qt 6 - disable optional Vulkan support
 set(QT_NO_FIND_VULKAN_SDK TRUE)
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network Concurrent)
 
 # MongoDB C++ driver (via vcpkg)
 find_package(mongocxx CONFIG)
@@ -103,4 +103,5 @@ target_link_libraries(BDDB PRIVATE
         Qt6::Gui
         Qt6::Widgets
         Qt6::Network
+        Qt6::Concurrent
 )

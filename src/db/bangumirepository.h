@@ -4,19 +4,23 @@
 #ifdef HAVE_MONGODB
 
 #include "models/models.h"
-#include <QVector>
+#include <string>
+#include <vector>
+#include <expected>
+
+template<typename T> using DbResult = std::expected<T, std::string>;
 
 class BangumiRepository {
 public:
-    static BangumiSubjectDoc getSubjectById(int subjectId);
-    static QVector<BangumiStaffItem> getSubjectStaff(int subjectId);
-    static QVector<BangumiCharacterItem> getSubjectCharacters(int subjectId);
-    static QVector<BangumiEpisodeDoc> getSubjectEpisodes(int subjectId);
-    static QVector<BangumiSubjectRelationItem> getSubjectRelations(int subjectId);
-    static BangumiSubjectDetail getSubjectDetail(int subjectId);
+    static DbResult<BangumiSubjectDoc> getSubjectById(int subjectId);
+    static DbResult<std::vector<BangumiStaffItem>> getSubjectStaff(int subjectId);
+    static DbResult<std::vector<BangumiCharacterItem>> getSubjectCharacters(int subjectId);
+    static DbResult<std::vector<BangumiEpisodeDoc>> getSubjectEpisodes(int subjectId);
+    static DbResult<std::vector<BangumiSubjectRelationItem>> getSubjectRelations(int subjectId);
+    static DbResult<BangumiSubjectDetail> getSubjectDetail(int subjectId);
 
-    static QVector<BangumiSubjectDoc> getAllSubjects(int batchSize = 1000, int skip = 0);
-    static int getTotalSubjectsCount();
+    static DbResult<std::vector<BangumiSubjectDoc>> getAllSubjects(int batchSize = 1000, int skip = 0);
+    static DbResult<int> getTotalSubjectsCount();
 };
 
 #endif // HAVE_MONGODB

@@ -80,7 +80,7 @@ void MainWindow::setupUI() {
 
 void MainWindow::showTorrentManager() {
     if (!m_torrentManagerWindow) {
-        m_torrentManagerWindow = new TorrentManagerWindow();
+        m_torrentManagerWindow = new TorrentManagerWindow(this);
     }
     m_torrentManagerWindow->show();
     m_torrentManagerWindow->raise();
@@ -89,7 +89,7 @@ void MainWindow::showTorrentManager() {
 
 void MainWindow::showVolumeManager() {
     if (!m_volumeManagerWindow) {
-        m_volumeManagerWindow = new VolumeManagerWindow();
+        m_volumeManagerWindow = new VolumeManagerWindow(this);
     }
     m_volumeManagerWindow->show();
     m_volumeManagerWindow->raise();
@@ -98,7 +98,7 @@ void MainWindow::showVolumeManager() {
 
 void MainWindow::showProductSearch() {
     if (!m_productSearchWindow) {
-        m_productSearchWindow = new ProductSearchWindow();
+        m_productSearchWindow = new ProductSearchWindow(this);
     }
     m_productSearchWindow->show();
     m_productSearchWindow->raise();
@@ -107,7 +107,7 @@ void MainWindow::showProductSearch() {
 
 void MainWindow::showWorkSearch() {
     if (!m_workSearchWindow) {
-        m_workSearchWindow = new WorkSearchWindow();
+        m_workSearchWindow = new WorkSearchWindow(this);
     }
     m_workSearchWindow->show();
     m_workSearchWindow->raise();
@@ -116,7 +116,7 @@ void MainWindow::showWorkSearch() {
 
 void MainWindow::showSyncDialog() {
     if (!m_syncDialog) {
-        m_syncDialog = new ProgressDialog("同步");
+        m_syncDialog = new ProgressDialog("同步", this);
     }
     m_syncDialog->setStatus("正在同步...");
     m_syncDialog->setProgress(0);
@@ -127,7 +127,7 @@ void MainWindow::showSyncDialog() {
 
 void MainWindow::showLinkDialog() {
     if (!m_linkDialog) {
-        m_linkDialog = new ProgressDialog("关联");
+        m_linkDialog = new ProgressDialog("关联", this);
     }
     m_linkDialog->setStatus("正在关联...");
     m_linkDialog->setProgress(0);

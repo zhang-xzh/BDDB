@@ -12,6 +12,9 @@
 #include <bsoncxx/builder/basic/array.hpp>
 #include <bsoncxx/json.hpp>
 #include <bsoncxx/types.hpp>
+#include <chrono>
+#include <unordered_set>
+#include <ranges>
 
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_document;
@@ -19,45 +22,45 @@ using bsoncxx::builder::basic::make_array;
 
 // ==================== BSON Helpers ====================
 
-static QString bsonValueToString(const bsoncxx::document::element &elem) {
-    if (!elem) return QString();
+static std::string bsonValueToString(const bsoncxx::document::element &elem) {
+    if (!elem) return {};
     switch (elem.type()) {
         case bsoncxx::type::k_string:
-            return QString::fromStdString(std::string(elem.get_string().value));
+            return std::string(elem.get_string().value);
         case bsoncxx::type::k_int32:
-            return QString::number(elem.get_int32().value);
+            return std::to_string(elem.get_int32().value);
         case bsoncxx::type::k_int64:
-            return QString::number(elem.get_int64().value);
+            return std::to_string(elem.get_int64().value);
         case bsoncxx::type::k_double:
-            return QString::number(elem.get_double().value);
+            return std::to_string(elem.get_double().value);
         default:
-            return QString();
+            return {};
     }
 }
 
-static qint64 bsonValueToDateTime(const bsoncxx::document::element &elem) {
+static std::int64_t bsonValueToDateTime(const bsoncxx::document::element &elem) {
     if (!elem) return 0;
     switch (elem.type()) {
         case bsoncxx::type::k_date:
             return elem.get_date().value.count();
         case bsoncxx::type::k_int32:
-            return static_cast<qint64>(elem.get_int32().value) * 1000;
+            return static_cast<std::int64_t>(elem.get_int32().value) * 1000;
         case bsoncxx::type::k_int64:
-            return static_cast<qint64>(elem.get_int64().value) * 1000;
+            return static_cast<std::int64_t>(elem.get_int64().value) * 1000;
         default:
             return 0;
     }
 }
 
-static qint64 bsonValueToInt64(const bsoncxx::document::element &elem) {
+static std::int64_t bsonValueToInt64(const bsoncxx::document::element &elem) {
     if (!elem) return 0;
     switch (elem.type()) {
         case bsoncxx::type::k_int64:
-            return static_cast<qint64>(elem.get_int64().value);
+            return static_cast<std::int64_t>(elem.get_int64().value);
         case bsoncxx::type::k_int32:
-            return static_cast<qint64>(elem.get_int32().value);
+            return static_cast<std::int64_t>(elem.get_int32().value);
         case bsoncxx::type::k_double:
-            return static_cast<qint64>(elem.get_double().value);
+            return static_cast<std::int64_t>(elem.get_double().value);
         default:
             return 0;
     }
@@ -98,62 +101,62 @@ static bool bsonValueToBool(const bsoncxx::document::element &elem) {
     return false;
 }
 
-static QString bsonOidToString(const bsoncxx::document::element &elem) {
-    if (!elem) return QString();
+static std::string bsonOidToString(const bsoncxx::document::element &elem) {
+    if (!elem) return {};
     if (elem.type() == bsoncxx::type::k_oid)
-        return QString::fromStdString(elem.get_oid().value.to_string());
+        return elem.get_oid().value.to_string();
     return bsonValueToString(elem);
 }
 
-static bsoncxx::oid stringToOid(const QString &id) {
-    if (id.isEmpty()) return bsoncxx::oid();
+static bsoncxx::oid stringToOid(const std::string &id) {
+    if (id.empty()) return bsoncxx::oid();
     try {
-        return bsoncxx::oid(id.toStdString());
+        return bsoncxx::oid(id);
     } catch (...) {
         return bsoncxx::oid();
     }
 }
 
-static QVector<QString> bsonArrayToStringVector(const bsoncxx::document::element &elem) {
-    QVector<QString> vec;
+static std::vector<std::string> bsonArrayToStringVector(const bsoncxx::document::element &elem) {
+    std::vector<std::string> vec;
     if (!elem || elem.type() != bsoncxx::type::k_array) return vec;
     for (auto &&item : elem.get_array().value) {
         if (item.type() == bsoncxx::type::k_oid)
-            vec.append(QString::fromStdString(item.get_oid().value.to_string()));
+            vec.push_back(item.get_oid().value.to_string());
         else if (item.type() == bsoncxx::type::k_string)
-            vec.append(QString::fromStdString(std::string(item.get_string().value)));
+            vec.push_back(std::string(item.get_string().value));
     }
     return vec;
 }
 
-static QVector<int> bsonArrayToIntVector(const bsoncxx::document::element &elem) {
-    QVector<int> vec;
+static std::vector<int> bsonArrayToIntVector(const bsoncxx::document::element &elem) {
+    std::vector<int> vec;
     if (!elem || elem.type() != bsoncxx::type::k_array) return vec;
     for (auto &&item : elem.get_array().value) {
         if (item.type() == bsoncxx::type::k_int32)
-            vec.append(static_cast<int>(item.get_int32().value));
+            vec.push_back(static_cast<int>(item.get_int32().value));
         else if (item.type() == bsoncxx::type::k_int64)
-            vec.append(static_cast<int>(item.get_int64().value));
+            vec.push_back(static_cast<int>(item.get_int64().value));
     }
     return vec;
 }
 
-static void appendStringArray(bsoncxx::builder::basic::document &builder, const QString &key, const QVector<QString> &vec) {
+static void appendStringArray(bsoncxx::builder::basic::document &builder, const std::string &key, const std::vector<std::string> &vec) {
     bsoncxx::builder::basic::array arr;
     for (const auto &s : vec) {
-        arr.append(s.toStdString());
+        arr.append(s);
     }
-    builder.append(kvp(key.toStdString(), arr.extract()));
+    builder.append(kvp(key, arr.extract()));
 }
 
-static void appendOidArray(bsoncxx::builder::basic::document &builder, const QString &key, const QVector<QString> &vec) {
+static void appendOidArray(bsoncxx::builder::basic::document &builder, const std::string &key, const std::vector<std::string> &vec) {
     bsoncxx::builder::basic::array arr;
     for (const auto &s : vec) {
-        if (!s.isEmpty()) {
+        if (!s.empty()) {
             arr.append(stringToOid(s));
         }
     }
-    builder.append(kvp(key.toStdString(), arr.extract()));
+    builder.append(kvp(key, arr.extract()));
 }
 
 // ==================== Model Deserializers ====================
@@ -174,7 +177,7 @@ static BangumiRating parseBangumiRating(const bsoncxx::document::view &view) {
     if (view["total"]) r.total = bsonValueToInt32(view["total"]);
     if (view["count"] && view["count"].type() == bsoncxx::type::k_document) {
         for (auto &&kv : view["count"].get_document().value) {
-            r.count.insert(QString::fromStdString(std::string(kv.key())), bsonValueToInt32(kv));
+            r.count.emplace(std::string(kv.key()), bsonValueToInt32(kv));
         }
     }
     return r;
@@ -211,7 +214,7 @@ static BangumiStaff parseBangumiStaff(const bsoncxx::document::view &view) {
     if (view["jobs"] && view["jobs"].type() == bsoncxx::type::k_array) {
         for (auto &&item : view["jobs"].get_array().value) {
             if (item.type() == bsoncxx::type::k_string)
-                s.jobs.append(QString::fromStdString(std::string(item.get_string().value)));
+                s.jobs.push_back(std::string(item.get_string().value));
         }
     }
     if (view["images"] && view["images"].type() == bsoncxx::type::k_document)
@@ -304,7 +307,7 @@ static Torrent parseTorrent(const bsoncxx::document::view &view) {
     if (view["files"] && view["files"].type() == bsoncxx::type::k_array) {
         for (auto &&item : view["files"].get_array().value) {
             if (item.type() == bsoncxx::type::k_document)
-                t.files.append(parseTorrentFile(item.get_document().value));
+                t.files.push_back(parseTorrentFile(item.get_document().value));
         }
     }
     return t;
@@ -365,13 +368,13 @@ static Work parseWork(const bsoncxx::document::view &view) {
     if (view["crt"] && view["crt"].type() == bsoncxx::type::k_array) {
         for (auto &&item : view["crt"].get_array().value) {
             if (item.type() == bsoncxx::type::k_document)
-                w.characters.append(parseBangumiCharacter(item.get_document().value));
+                w.characters.push_back(parseBangumiCharacter(item.get_document().value));
         }
     }
     if (view["staff"] && view["staff"].type() == bsoncxx::type::k_array) {
         for (auto &&item : view["staff"].get_array().value) {
             if (item.type() == bsoncxx::type::k_document)
-                w.staff.append(parseBangumiStaff(item.get_document().value));
+                w.staff.push_back(parseBangumiStaff(item.get_document().value));
         }
     }
     if (view["created_at"]) w.createdAt = bsonValueToInt64(view["created_at"]);
@@ -382,19 +385,19 @@ static Work parseWork(const bsoncxx::document::view &view) {
 // ==================== Model Serializers ====================
 
 static void serializeBangumiImages(bsoncxx::builder::basic::document &builder, const BangumiImages &img) {
-    builder.append(kvp("large", img.large.toStdString()));
-    builder.append(kvp("common", img.common.toStdString()));
-    builder.append(kvp("medium", img.medium.toStdString()));
-    builder.append(kvp("small", img.small.toStdString()));
-    builder.append(kvp("grid", img.grid.toStdString()));
+    builder.append(kvp("large", img.large));
+    builder.append(kvp("common", img.common));
+    builder.append(kvp("medium", img.medium));
+    builder.append(kvp("small", img.small));
+    builder.append(kvp("grid", img.grid));
 }
 
 static void serializeBangumiRating(bsoncxx::builder::basic::document &builder, const BangumiRating &r) {
     builder.append(kvp("score", r.score));
     builder.append(kvp("total", r.total));
     bsoncxx::builder::basic::document countDoc;
-    for (auto it = r.count.cbegin(); it != r.count.cend(); ++it) {
-        countDoc.append(kvp(it.key().toStdString(), it.value()));
+    for (const auto &[key, value] : r.count) {
+        countDoc.append(kvp(key, value));
     }
     builder.append(kvp("count", countDoc.extract()));
 }
@@ -409,10 +412,10 @@ static void serializeBangumiCollection(bsoncxx::builder::basic::document &builde
 
 static void serializeBangumiCharacter(bsoncxx::builder::basic::document &builder, const BangumiCharacter &c) {
     builder.append(kvp("id", c.id));
-    builder.append(kvp("url", c.url.toStdString()));
-    builder.append(kvp("name", c.name.toStdString()));
-    builder.append(kvp("name_cn", c.nameCn.toStdString()));
-    builder.append(kvp("role_name", c.roleName.toStdString()));
+    builder.append(kvp("url", c.url));
+    builder.append(kvp("name", c.name));
+    builder.append(kvp("name_cn", c.nameCn));
+    builder.append(kvp("role_name", c.roleName));
     bsoncxx::builder::basic::document imgDoc;
     serializeBangumiImages(imgDoc, c.images);
     builder.append(kvp("images", imgDoc.extract()));
@@ -420,12 +423,12 @@ static void serializeBangumiCharacter(bsoncxx::builder::basic::document &builder
 
 static void serializeBangumiStaff(bsoncxx::builder::basic::document &builder, const BangumiStaff &s) {
     builder.append(kvp("id", s.id));
-    builder.append(kvp("url", s.url.toStdString()));
-    builder.append(kvp("name", s.name.toStdString()));
-    builder.append(kvp("name_cn", s.nameCn.toStdString()));
+    builder.append(kvp("url", s.url));
+    builder.append(kvp("name", s.name));
+    builder.append(kvp("name_cn", s.nameCn));
     bsoncxx::builder::basic::array jobsArr;
     for (const auto &job : s.jobs) {
-        jobsArr.append(job.toStdString());
+        jobsArr.append(job);
     }
     builder.append(kvp("jobs", jobsArr.extract()));
     bsoncxx::builder::basic::document imgDoc;
@@ -435,44 +438,44 @@ static void serializeBangumiStaff(bsoncxx::builder::basic::document &builder, co
 
 static bsoncxx::builder::basic::document torrentToBson(const Torrent &t) {
     bsoncxx::builder::basic::document builder{};
-    if (!t.id.isEmpty()) builder.append(kvp("_id", stringToOid(t.id)));
-    builder.append(kvp("hash", t.hash.toStdString()));
-    builder.append(kvp("name", t.name.toStdString()));
-    builder.append(kvp("size", static_cast<int64_t>(t.size)));
+    if (!t.id.empty()) builder.append(kvp("_id", stringToOid(t.id)));
+    builder.append(kvp("hash", t.hash));
+    builder.append(kvp("name", t.name));
+    builder.append(kvp("size", static_cast<std::int64_t>(t.size)));
     builder.append(kvp("progress", t.progress));
-    builder.append(kvp("state", t.state.toStdString()));
-    builder.append(kvp("added_on", static_cast<int64_t>(t.addedOn)));
+    builder.append(kvp("state", t.state));
+    builder.append(kvp("added_on", static_cast<std::int64_t>(t.addedOn)));
     builder.append(kvp("num_seeds", t.numSeeds));
     builder.append(kvp("num_leechs", t.numLeechs));
-    builder.append(kvp("completion_on", static_cast<int64_t>(t.completionOn)));
-    builder.append(kvp("save_path", t.savePath.toStdString()));
-    builder.append(kvp("uploaded", static_cast<int64_t>(t.uploaded)));
-    builder.append(kvp("downloaded", static_cast<int64_t>(t.downloaded)));
-    builder.append(kvp("category", t.category.toStdString()));
-    builder.append(kvp("tags", t.tags.toStdString()));
-    builder.append(kvp("content_path", t.contentPath.toStdString()));
-    builder.append(kvp("download_path", t.downloadPath.toStdString()));
-    builder.append(kvp("infohash_v1", t.infohashV1.toStdString()));
-    builder.append(kvp("infohash_v2", t.infohashV2.toStdString()));
-    builder.append(kvp("comment", t.comment.toStdString()));
+    builder.append(kvp("completion_on", static_cast<std::int64_t>(t.completionOn)));
+    builder.append(kvp("save_path", t.savePath));
+    builder.append(kvp("uploaded", static_cast<std::int64_t>(t.uploaded)));
+    builder.append(kvp("downloaded", static_cast<std::int64_t>(t.downloaded)));
+    builder.append(kvp("category", t.category));
+    builder.append(kvp("tags", t.tags));
+    builder.append(kvp("content_path", t.contentPath));
+    builder.append(kvp("download_path", t.downloadPath));
+    builder.append(kvp("infohash_v1", t.infohashV1));
+    builder.append(kvp("infohash_v2", t.infohashV2));
+    builder.append(kvp("comment", t.comment));
     builder.append(kvp("has_metadata", t.hasMetadata));
     builder.append(kvp("inactive_seeding_time_limit", t.inactiveSeedingTimeLimit));
     builder.append(kvp("max_inactive_seeding_time", t.maxInactiveSeedingTime));
     builder.append(kvp("popularity", t.popularity));
     builder.append(kvp("private", t.isPrivate));
-    builder.append(kvp("root_path", t.rootPath.toStdString()));
-    builder.append(kvp("amount_left", static_cast<int64_t>(t.amountLeft)));
+    builder.append(kvp("root_path", t.rootPath));
+    builder.append(kvp("amount_left", static_cast<std::int64_t>(t.amountLeft)));
     builder.append(kvp("auto_tmm", t.autoTmm));
     builder.append(kvp("availability", t.availability));
-    builder.append(kvp("completed", static_cast<int64_t>(t.completed)));
+    builder.append(kvp("completed", static_cast<std::int64_t>(t.completed)));
     builder.append(kvp("dl_limit", t.dlLimit));
-    builder.append(kvp("dlspeed", static_cast<int64_t>(t.dlSpeed)));
-    builder.append(kvp("downloaded_session", static_cast<int64_t>(t.downloadedSession)));
-    builder.append(kvp("eta", static_cast<int64_t>(t.eta)));
+    builder.append(kvp("dlspeed", static_cast<std::int64_t>(t.dlSpeed)));
+    builder.append(kvp("downloaded_session", static_cast<std::int64_t>(t.downloadedSession)));
+    builder.append(kvp("eta", static_cast<std::int64_t>(t.eta)));
     builder.append(kvp("f_l_piece_prio", t.fLPiecePrio));
     builder.append(kvp("force_start", t.forceStart));
-    builder.append(kvp("last_activity", static_cast<int64_t>(t.lastActivity)));
-    builder.append(kvp("magnet_uri", t.magnetUri.toStdString()));
+    builder.append(kvp("last_activity", static_cast<std::int64_t>(t.lastActivity)));
+    builder.append(kvp("magnet_uri", t.magnetUri));
     builder.append(kvp("max_ratio", t.maxRatio));
     builder.append(kvp("max_seeding_time", t.maxSeedingTime));
     builder.append(kvp("num_complete", t.numComplete));
@@ -481,29 +484,29 @@ static bsoncxx::builder::basic::document torrentToBson(const Torrent &t) {
     builder.append(kvp("ratio", t.ratio));
     builder.append(kvp("ratio_limit", t.ratioLimit));
     builder.append(kvp("reannounce", t.reannounce));
-    builder.append(kvp("seeding_time", static_cast<int64_t>(t.seedingTime)));
+    builder.append(kvp("seeding_time", static_cast<std::int64_t>(t.seedingTime)));
     builder.append(kvp("seeding_time_limit", t.seedingTimeLimit));
-    builder.append(kvp("seen_complete", static_cast<int64_t>(t.seenComplete)));
+    builder.append(kvp("seen_complete", static_cast<std::int64_t>(t.seenComplete)));
     builder.append(kvp("seq_dl", t.seqDl));
     builder.append(kvp("super_seeding", t.superSeeding));
-    builder.append(kvp("time_active", static_cast<int64_t>(t.timeActive)));
-    builder.append(kvp("total_size", static_cast<int64_t>(t.totalSize)));
-    builder.append(kvp("tracker", t.tracker.toStdString()));
+    builder.append(kvp("time_active", static_cast<std::int64_t>(t.timeActive)));
+    builder.append(kvp("total_size", static_cast<std::int64_t>(t.totalSize)));
+    builder.append(kvp("tracker", t.tracker));
     builder.append(kvp("trackers_count", t.trackersCount));
     builder.append(kvp("up_limit", t.upLimit));
-    builder.append(kvp("uploaded_session", static_cast<int64_t>(t.uploadedSession)));
-    builder.append(kvp("upspeed", static_cast<int64_t>(t.upSpeed)));
+    builder.append(kvp("uploaded_session", static_cast<std::int64_t>(t.uploadedSession)));
+    builder.append(kvp("upspeed", static_cast<std::int64_t>(t.upSpeed)));
     builder.append(kvp("is_deleted", t.isDeleted));
-    builder.append(kvp("synced_at", static_cast<int64_t>(t.syncedAt)));
-    builder.append(kvp("created_at", static_cast<int64_t>(t.createdAt)));
-    builder.append(kvp("updated_at", static_cast<int64_t>(t.updatedAt)));
+    builder.append(kvp("synced_at", static_cast<std::int64_t>(t.syncedAt)));
+    builder.append(kvp("created_at", static_cast<std::int64_t>(t.createdAt)));
+    builder.append(kvp("updated_at", static_cast<std::int64_t>(t.updatedAt)));
 
     bsoncxx::builder::basic::array fileArr{};
     for (const auto &f : t.files) {
         bsoncxx::builder::basic::document fdoc{};
-        if (!f.id.isEmpty()) fdoc.append(kvp("_id", stringToOid(f.id)));
-        fdoc.append(kvp("name", f.name.toStdString()));
-        fdoc.append(kvp("size", static_cast<int64_t>(f.size)));
+        if (!f.id.empty()) fdoc.append(kvp("_id", stringToOid(f.id)));
+        fdoc.append(kvp("name", f.name));
+        fdoc.append(kvp("size", static_cast<std::int64_t>(f.size)));
         fdoc.append(kvp("progress", f.progress));
         fdoc.append(kvp("index", f.index));
         fdoc.append(kvp("priority", f.priority));
@@ -512,8 +515,8 @@ static bsoncxx::builder::basic::document torrentToBson(const Torrent &t) {
         bsoncxx::builder::basic::array prArr{};
         for (int v : f.pieceRange) prArr.append(v);
         fdoc.append(kvp("piece_range", prArr.extract()));
-        fdoc.append(kvp("created_at", static_cast<int64_t>(f.createdAt)));
-        fdoc.append(kvp("updated_at", static_cast<int64_t>(f.updatedAt)));
+        fdoc.append(kvp("created_at", static_cast<std::int64_t>(f.createdAt)));
+        fdoc.append(kvp("updated_at", static_cast<std::int64_t>(f.updatedAt)));
         fileArr.append(fdoc.extract());
     }
     builder.append(kvp("files", fileArr.extract()));
@@ -522,48 +525,48 @@ static bsoncxx::builder::basic::document torrentToBson(const Torrent &t) {
 
 static bsoncxx::builder::basic::document volumeToBson(const Volume &v) {
     bsoncxx::builder::basic::document builder{};
-    if (!v.id.isEmpty()) builder.append(kvp("_id", stringToOid(v.id)));
+    if (!v.id.empty()) builder.append(kvp("_id", stringToOid(v.id)));
     builder.append(kvp("torrent_id", stringToOid(v.torrentId)));
     builder.append(kvp("volume_no", v.volumeNo));
-    builder.append(kvp("catalog_no", v.catalogNo.toStdString()));
-    builder.append(kvp("volume_name", v.volumeName.toStdString()));
+    builder.append(kvp("catalog_no", v.catalogNo));
+    builder.append(kvp("volume_name", v.volumeName));
     builder.append(kvp("is_deleted", v.isDeleted));
-    builder.append(kvp("created_at", static_cast<int64_t>(v.createdAt)));
-    builder.append(kvp("updated_at", static_cast<int64_t>(v.updatedAt)));
-    appendOidArray(builder, QStringLiteral("product_ids"), v.productIds);
-    appendOidArray(builder, QStringLiteral("file_ids"), v.fileIds);
-    appendOidArray(builder, QStringLiteral("work_ids"), v.workIds);
+    builder.append(kvp("created_at", static_cast<std::int64_t>(v.createdAt)));
+    builder.append(kvp("updated_at", static_cast<std::int64_t>(v.updatedAt)));
+    appendOidArray(builder, "product_ids", v.productIds);
+    appendOidArray(builder, "file_ids", v.fileIds);
+    appendOidArray(builder, "work_ids", v.workIds);
     return builder;
 }
 
 static bsoncxx::builder::basic::document mediaToBson(const Media &m) {
     bsoncxx::builder::basic::document builder{};
-    if (!m.id.isEmpty()) builder.append(kvp("_id", stringToOid(m.id)));
+    if (!m.id.empty()) builder.append(kvp("_id", stringToOid(m.id)));
     builder.append(kvp("volume_id", stringToOid(m.volumeId)));
     builder.append(kvp("media_no", m.mediaNo));
-    builder.append(kvp("media_type", mediaTypeToString(m.mediaType).toStdString()));
+    builder.append(kvp("media_type", mediaTypeToString(m.mediaType)));
     builder.append(kvp("volume_no", m.volumeNo));
-    builder.append(kvp("catalog_no", m.catalogNo.toStdString()));
-    builder.append(kvp("content_title", m.contentTitle.toStdString()));
-    builder.append(kvp("description", m.description.toStdString()));
+    builder.append(kvp("catalog_no", m.catalogNo));
+    builder.append(kvp("content_title", m.contentTitle));
+    builder.append(kvp("description", m.description));
     builder.append(kvp("is_deleted", m.isDeleted));
-    builder.append(kvp("created_at", static_cast<int64_t>(m.createdAt)));
-    builder.append(kvp("updated_at", static_cast<int64_t>(m.updatedAt)));
-    appendOidArray(builder, QStringLiteral("file_ids"), m.fileIds);
+    builder.append(kvp("created_at", static_cast<std::int64_t>(m.createdAt)));
+    builder.append(kvp("updated_at", static_cast<std::int64_t>(m.updatedAt)));
+    appendOidArray(builder, "file_ids", m.fileIds);
     return builder;
 }
 
 static bsoncxx::builder::basic::document workToBson(const Work &w) {
     bsoncxx::builder::basic::document builder{};
-    if (!w.id.isEmpty()) builder.append(kvp("_id", stringToOid(w.id)));
+    if (!w.id.empty()) builder.append(kvp("_id", stringToOid(w.id)));
     builder.append(kvp("id", w.bangumiSubjectId));
-    builder.append(kvp("url", w.url.toStdString()));
+    builder.append(kvp("url", w.url));
     builder.append(kvp("type", w.type));
-    builder.append(kvp("name", w.name.toStdString()));
-    builder.append(kvp("name_cn", w.nameCn.toStdString()));
-    builder.append(kvp("summary", w.summary.toStdString()));
+    builder.append(kvp("name", w.name));
+    builder.append(kvp("name_cn", w.nameCn));
+    builder.append(kvp("summary", w.summary));
     builder.append(kvp("eps", w.eps));
-    builder.append(kvp("air_date", w.airDate.toStdString()));
+    builder.append(kvp("air_date", w.airDate));
     builder.append(kvp("air_weekday", w.airWeekday));
 
     bsoncxx::builder::basic::document imgDoc;
@@ -596,8 +599,8 @@ static bsoncxx::builder::basic::document workToBson(const Work &w) {
     }
     builder.append(kvp("staff", staffArr.extract()));
 
-    builder.append(kvp("created_at", static_cast<int64_t>(w.createdAt)));
-    builder.append(kvp("updated_at", static_cast<int64_t>(w.updatedAt)));
+    builder.append(kvp("created_at", static_cast<std::int64_t>(w.createdAt)));
+    builder.append(kvp("updated_at", static_cast<std::int64_t>(w.updatedAt)));
     return builder;
 }
 
@@ -605,599 +608,727 @@ static bsoncxx::builder::basic::document workToBson(const Work &w) {
 
 // ==================== Torrents ====================
 
-QVector<Torrent> BddbRepository::loadTorrents(bool includeDeleted) {
-    QVector<Torrent> list;
-    if (!MongoConnection::instance().isConnected()) return list;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_torrents"];
-    mongocxx::options::find opts;
-    opts.projection(make_document(kvp("files", 0)));
-    if (includeDeleted) {
-        auto cursor = coll.find({}, opts);
-        for (auto &&doc : cursor) list.append(parseTorrent(doc));
-    } else {
-        auto filter = make_document(kvp("is_deleted", false));
-        auto cursor = coll.find(filter.view(), opts);
-        for (auto &&doc : cursor) list.append(parseTorrent(doc));
+DbResult<std::vector<Torrent>> BddbRepository::loadTorrents(bool includeDeleted) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return std::vector<Torrent>{};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_torrents"];
+        mongocxx::options::find opts;
+        opts.projection(make_document(kvp("files", 0)));
+
+        auto cursor = includeDeleted
+            ? coll.find({}, opts)
+            : coll.find(make_document(kvp("is_deleted", false)).view(), opts);
+
+        return cursor
+            | std::views::transform([](auto& doc) { return parseTorrent(doc); })
+            | std::ranges::to<std::vector>();
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("loadTorrents failed: ") + e.what());
     }
-    return list;
 }
 
-Torrent BddbRepository::getTorrentByHash(const QString &hash) {
-    Torrent t;
-    if (!MongoConnection::instance().isConnected()) return t;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_torrents"];
-    auto filter = make_document(kvp("hash", hash.toStdString()), kvp("is_deleted", false));
-    auto result = coll.find_one(filter.view());
-    if (result) t = parseTorrent(result->view());
-    return t;
-}
-
-Torrent BddbRepository::getTorrentById(const QString &id) {
-    Torrent t;
-    if (!MongoConnection::instance().isConnected()) return t;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_torrents"];
-    auto filter = make_document(kvp("_id", stringToOid(id)));
-    auto result = coll.find_one(filter.view());
-    if (result) t = parseTorrent(result->view());
-    return t;
-}
-
-void BddbRepository::upsertTorrent(const Torrent &torrent) {
-    if (!MongoConnection::instance().isConnected()) return;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_torrents"];
-    auto filter = make_document(kvp("hash", torrent.hash.toStdString()));
-    auto doc = torrentToBson(torrent);
-    auto update = make_document(kvp("$set", doc.extract()));
-    coll.update_one(filter.view(), update.view(), mongocxx::options::update{}.upsert(true));
-}
-
-void BddbRepository::softDeleteTorrent(const QString &hash) {
-    if (!MongoConnection::instance().isConnected()) return;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_torrents"];
-    auto filter = make_document(kvp("hash", hash.toStdString()));
-    qint64 now = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
-    auto update = make_document(kvp("$set", make_document(
-        kvp("is_deleted", true),
-        kvp("synced_at", static_cast<int64_t>(now)),
-        kvp("updated_at", static_cast<int64_t>(now))
-    )));
-    coll.update_one(filter.view(), update.view());
-}
-
-QVector<FileItem> BddbRepository::getTorrentFilesAsFileItems(const QString &torrentId) {
-    QVector<FileItem> list;
-    Torrent t = getTorrentById(torrentId);
-    for (const auto &f : t.files) {
-        FileItem item;
-        item.id = f.id;
-        item.name = f.name;
-        item.size = f.size;
-        item.progress = f.progress;
-        list.append(item);
-    }
-    return list;
-}
-
-void BddbRepository::saveTorrentFiles(const QString &torrentId, const QVector<TorrentFile> &files) {
-    if (!MongoConnection::instance().isConnected()) return;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_torrents"];
-    auto filter = make_document(kvp("_id", stringToOid(torrentId)));
-    auto existing = coll.find_one(filter.view());
-    qint64 now = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
-
-    QMap<QString, TorrentFile> existingMap;
-    if (existing && existing->view()["files"] && existing->view()["files"].type() == bsoncxx::type::k_array) {
-        for (auto &&item : existing->view()["files"].get_array().value) {
-            if (item.type() == bsoncxx::type::k_document) {
-                auto f = parseTorrentFile(item.get_document().value);
-                existingMap.insert(f.name, f);
-            }
+DbResult<Torrent> BddbRepository::getTorrentByHash(const std::string &hash) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return Torrent{};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_torrents"];
+        auto filter = make_document(kvp("hash", hash), kvp("is_deleted", false));
+        if (auto result = coll.find_one(filter.view()); result) {
+            return parseTorrent(result->view());
         }
+        return Torrent{};
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("getTorrentByHash failed: ") + e.what());
     }
-
-    bsoncxx::builder::basic::array fileArr{};
-    for (const auto &f : files) {
-        const auto &e = existingMap.value(f.name);
-        bsoncxx::builder::basic::document fdoc{};
-        if (!e.id.isEmpty()) fdoc.append(kvp("_id", stringToOid(e.id)));
-        else if (!f.id.isEmpty()) fdoc.append(kvp("_id", stringToOid(f.id)));
-        else fdoc.append(kvp("_id", bsoncxx::oid()));
-        fdoc.append(kvp("name", f.name.toStdString()));
-        fdoc.append(kvp("size", static_cast<int64_t>(f.size)));
-        fdoc.append(kvp("progress", f.progress));
-        fdoc.append(kvp("index", f.index));
-        fdoc.append(kvp("priority", f.priority));
-        fdoc.append(kvp("is_seed", f.isSeed));
-        fdoc.append(kvp("availability", f.availability));
-        bsoncxx::builder::basic::array prArr{};
-        for (int v : f.pieceRange) prArr.append(v);
-        fdoc.append(kvp("piece_range", prArr.extract()));
-        fdoc.append(kvp("created_at", static_cast<int64_t>(e.createdAt ? e.createdAt : now)));
-        fdoc.append(kvp("updated_at", static_cast<int64_t>(now)));
-        fileArr.append(fdoc.extract());
-    }
-
-    auto update = make_document(kvp("$set", make_document(
-        kvp("files", fileArr.extract()),
-        kvp("updated_at", static_cast<int64_t>(now))
-    )));
-    coll.update_one(filter.view(), update.view());
 }
 
-void BddbRepository::softDeleteTorrentFiles(const QString &torrentId) {
-    if (!MongoConnection::instance().isConnected()) return;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_torrents"];
-    auto filter = make_document(kvp("_id", stringToOid(torrentId)));
-    qint64 now = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
-    auto update = make_document(kvp("$set", make_document(
-        kvp("files", bsoncxx::builder::basic::array{}.extract()),
-        kvp("updated_at", static_cast<int64_t>(now))
-    )));
-    coll.update_one(filter.view(), update.view());
-}
-
-// ==================== Volumes ====================
-
-QVector<Volume> BddbRepository::loadVolumes(const QString &torrentId) {
-    return getAllVolumes(torrentId);
-}
-
-QVector<Volume> BddbRepository::getAllVolumes(const QString &torrentId) {
-    QVector<Volume> list;
-    if (!MongoConnection::instance().isConnected()) return list;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_volumes"];
-    mongocxx::options::find opts;
-    opts.sort(make_document(kvp("volume_no", 1)));
-    if (!torrentId.isEmpty()) {
-        auto filter = make_document(kvp("torrent_id", stringToOid(torrentId)), kvp("is_deleted", false));
-        auto cursor = coll.find(filter.view(), opts);
-        for (auto &&doc : cursor) list.append(parseVolume(doc));
-    } else {
-        auto filter = make_document(kvp("is_deleted", false));
-        auto cursor = coll.find(filter.view(), opts);
-        for (auto &&doc : cursor) list.append(parseVolume(doc));
-    }
-    return list;
-}
-
-Volume BddbRepository::getVolumeById(const QString &volumeId) {
-    Volume v;
-    if (!MongoConnection::instance().isConnected()) return v;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_volumes"];
-    auto filter = make_document(kvp("_id", stringToOid(volumeId)), kvp("is_deleted", false));
-    auto result = coll.find_one(filter.view());
-    if (result) v = parseVolume(result->view());
-    return v;
-}
-
-void BddbRepository::saveVolume(const Volume &volume) {
-    if (!MongoConnection::instance().isConnected()) return;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_volumes"];
-    qint64 now = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
-
-    auto delFilter = make_document(
-        kvp("torrent_id", stringToOid(volume.torrentId)),
-        kvp("volume_no", volume.volumeNo)
-    );
-    coll.delete_one(delFilter.view());
-
-    auto doc = volumeToBson(volume);
-    if (volume.createdAt == 0) {
-        doc.append(kvp("created_at", static_cast<int64_t>(now)));
-    }
-    doc.append(kvp("updated_at", static_cast<int64_t>(now)));
-    coll.insert_one(doc.extract());
-}
-
-QMap<QString, int> BddbRepository::getVolumeCounts() {
-    QMap<QString, int> counts;
-    if (!MongoConnection::instance().isConnected()) return counts;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_volumes"];
-    mongocxx::pipeline pipeline;
-    pipeline.match(make_document(kvp("is_deleted", false)));
-    pipeline.group(make_document(
-        kvp("_id", "$torrent_id"),
-        kvp("count", make_document(kvp("$sum", 1)))
-    ));
-    auto cursor = coll.aggregate(pipeline);
-    for (auto &&doc : cursor) {
-        if (doc["_id"]) {
-            QString tid = bsonOidToString(doc["_id"]);
-            int count = bsonValueToInt32(doc["count"]);
-            counts.insert(tid, count);
+DbResult<Torrent> BddbRepository::getTorrentById(const std::string &id) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return Torrent{};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_torrents"];
+        auto filter = make_document(kvp("_id", stringToOid(id)));
+        if (auto result = coll.find_one(filter.view()); result) {
+            return parseTorrent(result->view());
         }
+        return Torrent{};
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("getTorrentById failed: ") + e.what());
     }
-    return counts;
 }
 
-void BddbRepository::deleteStaleVolumes(const QString &torrentId, const QVector<int> &keepVolumeNos) {
-    if (!MongoConnection::instance().isConnected()) return;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_volumes"];
-    qint64 now = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
-
-    bsoncxx::builder::basic::document builder{};
-    builder.append(kvp("torrent_id", stringToOid(torrentId)));
-    builder.append(kvp("is_deleted", false));
-    if (!keepVolumeNos.isEmpty()) {
-        bsoncxx::builder::basic::array arr{};
-        for (int n : keepVolumeNos) arr.append(n);
-        builder.append(kvp("volume_no", make_document(kvp("$nin", arr.extract()))));
+DbResult<void> BddbRepository::upsertTorrent(const Torrent &torrent) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return {};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_torrents"];
+        auto filter = make_document(kvp("hash", torrent.hash));
+        auto doc = torrentToBson(torrent);
+        auto update = make_document(kvp("$set", doc.extract()));
+        coll.update_one(filter.view(), update.view(), mongocxx::options::update{}.upsert(true));
+        return {};
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("upsertTorrent failed: ") + e.what());
     }
-
-    auto update = make_document(kvp("$set", make_document(
-        kvp("is_deleted", true),
-        kvp("updated_at", static_cast<int64_t>(now))
-    )));
-    coll.update_many(builder.extract(), update.view());
 }
 
-QVector<FileItem> BddbRepository::getVolumeFilesAsFileItems(const QString &volumeId) {
-    QVector<FileItem> list;
-    Volume v = getVolumeById(volumeId);
-    if (v.id.isEmpty()) return list;
-    Torrent t = getTorrentById(v.torrentId);
-    QSet<QString> idSet;
-    for (const auto &fid : v.fileIds) idSet.insert(fid);
-    for (const auto &f : t.files) {
-        if (idSet.contains(f.id)) {
+DbResult<void> BddbRepository::softDeleteTorrent(const std::string &hash) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return {};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_torrents"];
+        auto filter = make_document(kvp("hash", hash));
+        auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        auto update = make_document(kvp("$set", make_document(
+            kvp("is_deleted", true),
+            kvp("synced_at", static_cast<std::int64_t>(now)),
+            kvp("updated_at", static_cast<std::int64_t>(now))
+        )));
+        coll.update_one(filter.view(), update.view());
+        return {};
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("softDeleteTorrent failed: ") + e.what());
+    }
+}
+
+DbResult<std::vector<FileItem>> BddbRepository::getTorrentFilesAsFileItems(const std::string &torrentId) {
+    try {
+        auto tResult = getTorrentById(torrentId);
+        if (!tResult) return std::unexpected(tResult.error());
+        std::vector<FileItem> list;
+        for (const auto &f : tResult->files) {
             FileItem item;
             item.id = f.id;
             item.name = f.name;
             item.size = f.size;
             item.progress = f.progress;
-            list.append(item);
+            list.push_back(item);
         }
+        return list;
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("getTorrentFilesAsFileItems failed: ") + e.what());
     }
-    return list;
+}
+
+DbResult<void> BddbRepository::saveTorrentFiles(const std::string &torrentId, const std::vector<TorrentFile> &files) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return {};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_torrents"];
+        auto filter = make_document(kvp("_id", stringToOid(torrentId)));
+        auto existing = coll.find_one(filter.view());
+        auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+        std::map<std::string, TorrentFile> existingMap;
+        if (existing && existing->view()["files"] && existing->view()["files"].type() == bsoncxx::type::k_array) {
+            for (auto &&item : existing->view()["files"].get_array().value) {
+                if (item.type() == bsoncxx::type::k_document) {
+                    auto f = parseTorrentFile(item.get_document().value);
+                    existingMap.emplace(f.name, f);
+                }
+            }
+        }
+
+        bsoncxx::builder::basic::array fileArr{};
+        for (const auto &f : files) {
+            auto it = existingMap.find(f.name);
+            const auto &e = (it != existingMap.end()) ? it->second : TorrentFile{};
+            bsoncxx::builder::basic::document fdoc{};
+            if (!e.id.empty()) fdoc.append(kvp("_id", stringToOid(e.id)));
+            else if (!f.id.empty()) fdoc.append(kvp("_id", stringToOid(f.id)));
+            else fdoc.append(kvp("_id", bsoncxx::oid()));
+            fdoc.append(kvp("name", f.name));
+            fdoc.append(kvp("size", static_cast<std::int64_t>(f.size)));
+            fdoc.append(kvp("progress", f.progress));
+            fdoc.append(kvp("index", f.index));
+            fdoc.append(kvp("priority", f.priority));
+            fdoc.append(kvp("is_seed", f.isSeed));
+            fdoc.append(kvp("availability", f.availability));
+            bsoncxx::builder::basic::array prArr{};
+            for (int v : f.pieceRange) prArr.append(v);
+            fdoc.append(kvp("piece_range", prArr.extract()));
+            fdoc.append(kvp("created_at", static_cast<std::int64_t>(e.createdAt ? e.createdAt : now)));
+            fdoc.append(kvp("updated_at", static_cast<std::int64_t>(now)));
+            fileArr.append(fdoc.extract());
+        }
+
+        auto update = make_document(kvp("$set", make_document(
+            kvp("files", fileArr.extract()),
+            kvp("updated_at", static_cast<std::int64_t>(now))
+        )));
+        coll.update_one(filter.view(), update.view());
+        return {};
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("saveTorrentFiles failed: ") + e.what());
+    }
+}
+
+DbResult<void> BddbRepository::softDeleteTorrentFiles(const std::string &torrentId) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return {};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_torrents"];
+        auto filter = make_document(kvp("_id", stringToOid(torrentId)));
+        auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        auto update = make_document(kvp("$set", make_document(
+            kvp("files", bsoncxx::builder::basic::array{}.extract()),
+            kvp("updated_at", static_cast<std::int64_t>(now))
+        )));
+        coll.update_one(filter.view(), update.view());
+        return {};
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("softDeleteTorrentFiles failed: ") + e.what());
+    }
+}
+
+// ==================== Volumes ====================
+
+DbResult<std::vector<Volume>> BddbRepository::loadVolumes(const std::string &torrentId) {
+    return getAllVolumes(torrentId);
+}
+
+DbResult<std::vector<Volume>> BddbRepository::getAllVolumes(const std::string &torrentId) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return std::vector<Volume>{};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_volumes"];
+        mongocxx::options::find opts;
+        opts.sort(make_document(kvp("volume_no", 1)));
+
+        auto cursor = !torrentId.empty()
+            ? coll.find(make_document(kvp("torrent_id", stringToOid(torrentId)), kvp("is_deleted", false)).view(), opts)
+            : coll.find(make_document(kvp("is_deleted", false)).view(), opts);
+
+        return cursor
+            | std::views::transform([](auto& doc) { return parseVolume(doc); })
+            | std::ranges::to<std::vector>();
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("getAllVolumes failed: ") + e.what());
+    }
+}
+
+DbResult<Volume> BddbRepository::getVolumeById(const std::string &volumeId) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return Volume{};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_volumes"];
+        auto filter = make_document(kvp("_id", stringToOid(volumeId)), kvp("is_deleted", false));
+        if (auto result = coll.find_one(filter.view()); result) {
+            return parseVolume(result->view());
+        }
+        return Volume{};
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("getVolumeById failed: ") + e.what());
+    }
+}
+
+DbResult<void> BddbRepository::saveVolume(const Volume &volume) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return {};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_volumes"];
+        auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+        auto delFilter = make_document(
+            kvp("torrent_id", stringToOid(volume.torrentId)),
+            kvp("volume_no", volume.volumeNo)
+        );
+        coll.delete_one(delFilter.view());
+
+        auto doc = volumeToBson(volume);
+        if (volume.createdAt == 0) {
+            doc.append(kvp("created_at", static_cast<std::int64_t>(now)));
+        }
+        doc.append(kvp("updated_at", static_cast<std::int64_t>(now)));
+        coll.insert_one(doc.extract());
+        return {};
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("saveVolume failed: ") + e.what());
+    }
+}
+
+DbResult<std::map<std::string, int>> BddbRepository::getVolumeCounts() {
+    try {
+        if (!MongoConnection::instance().isConnected()) return std::map<std::string, int>{};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_volumes"];
+        mongocxx::pipeline pipeline;
+        pipeline.match(make_document(kvp("is_deleted", false)));
+        pipeline.group(make_document(
+            kvp("_id", "$torrent_id"),
+            kvp("count", make_document(kvp("$sum", 1)))
+        ));
+
+        auto cursor = coll.aggregate(pipeline);
+        std::map<std::string, int> counts;
+        for (auto &&doc : cursor) {
+            if (auto idElem = doc["_id"]; idElem) {
+                auto [tid, count] = std::make_pair(
+                    bsonOidToString(idElem),
+                    bsonValueToInt32(doc["count"])
+                );
+                counts.emplace(tid, count);
+            }
+        }
+        return counts;
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("getVolumeCounts failed: ") + e.what());
+    }
+}
+
+DbResult<void> BddbRepository::deleteStaleVolumes(const std::string &torrentId, const std::vector<int> &keepVolumeNos) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return {};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_volumes"];
+        auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+        bsoncxx::builder::basic::document builder{};
+        builder.append(kvp("torrent_id", stringToOid(torrentId)));
+        builder.append(kvp("is_deleted", false));
+        if (!keepVolumeNos.empty()) {
+            bsoncxx::builder::basic::array arr{};
+            for (int n : keepVolumeNos) arr.append(n);
+            builder.append(kvp("volume_no", make_document(kvp("$nin", arr.extract()))));
+        }
+
+        auto update = make_document(kvp("$set", make_document(
+            kvp("is_deleted", true),
+            kvp("updated_at", static_cast<std::int64_t>(now))
+        )));
+        coll.update_many(builder.extract(), update.view());
+        return {};
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("deleteStaleVolumes failed: ") + e.what());
+    }
+}
+
+DbResult<std::vector<FileItem>> BddbRepository::getVolumeFilesAsFileItems(const std::string &volumeId) {
+    try {
+        auto vResult = getVolumeById(volumeId);
+        if (!vResult) return std::unexpected(vResult.error());
+        if (vResult->id.empty()) return std::vector<FileItem>{};
+        auto tResult = getTorrentById(vResult->torrentId);
+        if (!tResult) return std::unexpected(tResult.error());
+        std::unordered_set<std::string> idSet(vResult->fileIds.begin(), vResult->fileIds.end());
+        std::vector<FileItem> list;
+        for (const auto &f : tResult->files) {
+            if (idSet.contains(f.id)) {
+                FileItem item;
+                item.id = f.id;
+                item.name = f.name;
+                item.size = f.size;
+                item.progress = f.progress;
+                list.push_back(item);
+            }
+        }
+        return list;
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("getVolumeFilesAsFileItems failed: ") + e.what());
+    }
 }
 
 // ==================== Medias ====================
 
-QVector<Media> BddbRepository::loadMedias(const QString &volumeId) {
-    QVector<Media> list;
-    if (!MongoConnection::instance().isConnected()) return list;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_medias"];
-    mongocxx::options::find opts;
-    opts.sort(make_document(kvp("media_no", 1)));
-    auto filter = make_document(kvp("volume_id", stringToOid(volumeId)), kvp("is_deleted", false));
-    auto cursor = coll.find(filter.view(), opts);
-    for (auto &&doc : cursor) list.append(parseMedia(doc));
-    return list;
-}
-
-QMap<QString, int> BddbRepository::getMediaCountsByVolume() {
-    QMap<QString, int> counts;
-    if (!MongoConnection::instance().isConnected()) return counts;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_medias"];
-    mongocxx::pipeline pipeline;
-    pipeline.match(make_document(kvp("is_deleted", false)));
-    pipeline.group(make_document(
-        kvp("_id", "$volume_id"),
-        kvp("count", make_document(kvp("$sum", 1)))
-    ));
-    auto cursor = coll.aggregate(pipeline);
-    for (auto &&doc : cursor) {
-        if (doc["_id"]) {
-            QString vid = bsonOidToString(doc["_id"]);
-            int count = bsonValueToInt32(doc["count"]);
-            counts.insert(vid, count);
-        }
-    }
-    return counts;
-}
-
-void BddbRepository::saveMedia(const Media &media) {
-    if (!MongoConnection::instance().isConnected()) return;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_medias"];
-    qint64 now = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
-
-    auto delFilter = make_document(
-        kvp("volume_id", stringToOid(media.volumeId)),
-        kvp("media_no", media.mediaNo),
-        kvp("media_type", mediaTypeToString(media.mediaType).toStdString())
-    );
-    coll.delete_one(delFilter.view());
-
-    auto doc = mediaToBson(media);
-    if (media.createdAt == 0) {
-        doc.append(kvp("created_at", static_cast<int64_t>(now)));
-    }
-    doc.append(kvp("updated_at", static_cast<int64_t>(now)));
-    coll.insert_one(doc.extract());
-}
-
-void BddbRepository::deleteStaleMedias(const QString &volumeId, const QVector<QPair<int, MediaType>> &keepMedias) {
-    if (!MongoConnection::instance().isConnected()) return;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_medias"];
-    qint64 now = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
-
-    if (keepMedias.isEmpty()) {
+DbResult<std::vector<Media>> BddbRepository::loadMedias(const std::string &volumeId) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return std::vector<Media>{};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_medias"];
+        mongocxx::options::find opts;
+        opts.sort(make_document(kvp("media_no", 1)));
         auto filter = make_document(kvp("volume_id", stringToOid(volumeId)), kvp("is_deleted", false));
+
+        return coll.find(filter.view(), opts)
+            | std::views::transform([](auto& doc) { return parseMedia(doc); })
+            | std::ranges::to<std::vector>();
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("loadMedias failed: ") + e.what());
+    }
+}
+
+DbResult<std::map<std::string, int>> BddbRepository::getMediaCountsByVolume() {
+    try {
+        if (!MongoConnection::instance().isConnected()) return std::map<std::string, int>{};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_medias"];
+        mongocxx::pipeline pipeline;
+        pipeline.match(make_document(kvp("is_deleted", false)));
+        pipeline.group(make_document(
+            kvp("_id", "$volume_id"),
+            kvp("count", make_document(kvp("$sum", 1)))
+        ));
+
+        auto cursor = coll.aggregate(pipeline);
+        std::map<std::string, int> counts;
+        for (auto &&doc : cursor) {
+            if (auto idElem = doc["_id"]; idElem) {
+                auto [vid, count] = std::make_pair(
+                    bsonOidToString(idElem),
+                    bsonValueToInt32(doc["count"])
+                );
+                counts.emplace(vid, count);
+            }
+        }
+        return counts;
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("getMediaCountsByVolume failed: ") + e.what());
+    }
+}
+
+DbResult<void> BddbRepository::saveMedia(const Media &media) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return {};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_medias"];
+        auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+        auto delFilter = make_document(
+            kvp("volume_id", stringToOid(media.volumeId)),
+            kvp("media_no", media.mediaNo),
+            kvp("media_type", mediaTypeToString(media.mediaType))
+        );
+        coll.delete_one(delFilter.view());
+
+        auto doc = mediaToBson(media);
+        if (media.createdAt == 0) {
+            doc.append(kvp("created_at", static_cast<std::int64_t>(now)));
+        }
+        doc.append(kvp("updated_at", static_cast<std::int64_t>(now)));
+        coll.insert_one(doc.extract());
+        return {};
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("saveMedia failed: ") + e.what());
+    }
+}
+
+DbResult<void> BddbRepository::deleteStaleMedias(const std::string &volumeId, const std::vector<std::pair<int, MediaType>> &keepMedias) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return {};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_medias"];
+        auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+        if (keepMedias.empty()) {
+            auto filter = make_document(kvp("volume_id", stringToOid(volumeId)), kvp("is_deleted", false));
+            auto update = make_document(kvp("$set", make_document(
+                kvp("is_deleted", true),
+                kvp("updated_at", static_cast<std::int64_t>(now))
+            )));
+            coll.update_many(filter.view(), update.view());
+            return {};
+        }
+
+        bsoncxx::builder::basic::array norArr{};
+        for (const auto &p : keepMedias) {
+            bsoncxx::builder::basic::document cond{};
+            cond.append(kvp("media_no", p.first));
+            cond.append(kvp("media_type", mediaTypeToString(p.second)));
+            norArr.append(cond.extract());
+        }
+
+        auto filter = make_document(
+            kvp("volume_id", stringToOid(volumeId)),
+            kvp("is_deleted", false),
+            kvp("$nor", norArr.extract())
+        );
         auto update = make_document(kvp("$set", make_document(
             kvp("is_deleted", true),
-            kvp("updated_at", static_cast<int64_t>(now))
+            kvp("updated_at", static_cast<std::int64_t>(now))
         )));
         coll.update_many(filter.view(), update.view());
-        return;
+        return {};
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("deleteStaleMedias failed: ") + e.what());
     }
-
-    bsoncxx::builder::basic::array norArr{};
-    for (const auto &p : keepMedias) {
-        bsoncxx::builder::basic::document cond{};
-        cond.append(kvp("media_no", p.first));
-        cond.append(kvp("media_type", mediaTypeToString(p.second).toStdString()));
-        norArr.append(cond.extract());
-    }
-
-    auto filter = make_document(
-        kvp("volume_id", stringToOid(volumeId)),
-        kvp("is_deleted", false),
-        kvp("$nor", norArr.extract())
-    );
-    auto update = make_document(kvp("$set", make_document(
-        kvp("is_deleted", true),
-        kvp("updated_at", static_cast<int64_t>(now))
-    )));
-    coll.update_many(filter.view(), update.view());
 }
 
-QMap<QString, int> BddbRepository::getWorkCountsByVolume() {
-    QMap<QString, int> counts;
-    if (!MongoConnection::instance().isConnected()) return counts;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_volumes"];
-    mongocxx::pipeline pipeline;
-    pipeline.match(make_document(kvp("is_deleted", false)));
-    pipeline.add_fields(make_document(
-        kvp("work_ids", make_document(
-            kvp("$ifNull", make_array("$work_ids", make_array()))
-        ))
-    ));
-    pipeline.add_fields(make_document(
-        kvp("count", make_document(kvp("$size", "$work_ids")))
-    ));
-    auto cursor = coll.aggregate(pipeline);
-    for (auto &&doc : cursor) {
-        if (doc["_id"]) {
-            QString vid = bsonOidToString(doc["_id"]);
-            int count = bsonValueToInt32(doc["count"]);
-            counts.insert(vid, count);
+DbResult<std::map<std::string, int>> BddbRepository::getWorkCountsByVolume() {
+    try {
+        if (!MongoConnection::instance().isConnected()) return std::map<std::string, int>{};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_volumes"];
+        mongocxx::pipeline pipeline;
+        pipeline.match(make_document(kvp("is_deleted", false)));
+        pipeline.add_fields(make_document(
+            kvp("work_ids", make_document(
+                kvp("$ifNull", make_array("$work_ids", make_array()))
+            ))
+        ));
+        pipeline.add_fields(make_document(
+            kvp("count", make_document(kvp("$size", "$work_ids")))
+        ));
+        auto cursor = coll.aggregate(pipeline);
+        std::map<std::string, int> counts;
+        for (auto &&doc : cursor) {
+            if (auto idElem = doc["_id"]; idElem) {
+                auto [vid, count] = std::make_pair(
+                    bsonOidToString(idElem),
+                    bsonValueToInt32(doc["count"])
+                );
+                counts.emplace(vid, count);
+            }
         }
+        return counts;
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("getWorkCountsByVolume failed: ") + e.what());
     }
-    return counts;
 }
 
 // ==================== Works ====================
 
-QVector<Work> BddbRepository::loadWorks() {
-    QVector<Work> list;
-    if (!MongoConnection::instance().isConnected()) return list;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_works"];
-    auto cursor = coll.find({});
-    for (auto &&doc : cursor) list.append(parseWork(doc));
-    return list;
-}
+DbResult<std::vector<Work>> BddbRepository::loadWorks() {
+    try {
+        if (!MongoConnection::instance().isConnected()) return std::vector<Work>{};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_works"];
 
-Work BddbRepository::getWorkById(const QString &id) {
-    Work w;
-    if (!MongoConnection::instance().isConnected()) return w;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_works"];
-    auto filter = make_document(kvp("_id", stringToOid(id)));
-    auto result = coll.find_one(filter.view());
-    if (result) w = parseWork(result->view());
-    return w;
-}
-
-Work BddbRepository::getWorkByBangumiSubjectId(int subjectId) {
-    Work w;
-    if (!MongoConnection::instance().isConnected()) return w;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_works"];
-    auto filter = make_document(kvp("id", subjectId));
-    auto result = coll.find_one(filter.view());
-    if (result) w = parseWork(result->view());
-    return w;
-}
-
-void BddbRepository::saveWork(const Work &work) {
-    if (!MongoConnection::instance().isConnected()) return;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_works"];
-    qint64 now = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
-
-    Work existing = getWorkByBangumiSubjectId(work.bangumiSubjectId);
-    auto doc = workToBson(work);
-    if (existing.id.isEmpty()) {
-        doc.append(kvp("created_at", static_cast<int64_t>(now)));
-    } else {
-        doc.append(kvp("created_at", static_cast<int64_t>(existing.createdAt)));
+        return coll.find({})
+            | std::views::transform([](auto& doc) { return parseWork(doc); })
+            | std::ranges::to<std::vector>();
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("loadWorks failed: ") + e.what());
     }
-    doc.append(kvp("updated_at", static_cast<int64_t>(now)));
+}
 
-    if (!existing.id.isEmpty()) {
-        auto filter = make_document(kvp("_id", stringToOid(existing.id)));
-        auto update = make_document(kvp("$set", doc.extract()));
+DbResult<Work> BddbRepository::getWorkById(const std::string &id) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return Work{};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_works"];
+        auto filter = make_document(kvp("_id", stringToOid(id)));
+        if (auto result = coll.find_one(filter.view()); result) {
+            return parseWork(result->view());
+        }
+        return Work{};
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("getWorkById failed: ") + e.what());
+    }
+}
+
+DbResult<Work> BddbRepository::getWorkByBangumiSubjectId(int subjectId) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return Work{};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_works"];
+        auto filter = make_document(kvp("id", subjectId));
+        if (auto result = coll.find_one(filter.view()); result) {
+            return parseWork(result->view());
+        }
+        return Work{};
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("getWorkByBangumiSubjectId failed: ") + e.what());
+    }
+}
+
+DbResult<void> BddbRepository::saveWork(const Work &work) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return {};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_works"];
+        auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+        auto existingResult = getWorkByBangumiSubjectId(work.bangumiSubjectId);
+        if (!existingResult) return std::unexpected(existingResult.error());
+        auto doc = workToBson(work);
+        if (existingResult->id.empty()) {
+            doc.append(kvp("created_at", static_cast<std::int64_t>(now)));
+        } else {
+            doc.append(kvp("created_at", static_cast<std::int64_t>(existingResult->createdAt)));
+        }
+        doc.append(kvp("updated_at", static_cast<std::int64_t>(now)));
+
+        if (!existingResult->id.empty()) {
+            auto filter = make_document(kvp("_id", stringToOid(existingResult->id)));
+            auto update = make_document(kvp("$set", doc.extract()));
+            coll.update_one(filter.view(), update.view());
+        } else {
+            coll.insert_one(doc.extract());
+        }
+        return {};
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("saveWork failed: ") + e.what());
+    }
+}
+
+DbResult<void> BddbRepository::removeWorkFromVolume(const std::string &volumeId, const std::string &workId) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return {};
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_volumes"];
+        auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        auto filter = make_document(kvp("_id", stringToOid(volumeId)));
+        auto update = make_document(kvp("$pull", make_document(
+            kvp("work_ids", stringToOid(workId))
+        )), kvp("$set", make_document(
+            kvp("updated_at", static_cast<std::int64_t>(now))
+        )));
         coll.update_one(filter.view(), update.view());
-    } else {
-        coll.insert_one(doc.extract());
+        return {};
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("removeWorkFromVolume failed: ") + e.what());
     }
-}
-
-void BddbRepository::removeWorkFromVolume(const QString &volumeId, const QString &workId) {
-    if (!MongoConnection::instance().isConnected()) return;
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_volumes"];
-    qint64 now = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
-    auto filter = make_document(kvp("_id", stringToOid(volumeId)));
-    auto update = make_document(kvp("$pull", make_document(
-        kvp("work_ids", stringToOid(workId))
-    )), kvp("$set", make_document(
-        kvp("updated_at", static_cast<int64_t>(now))
-    )));
-    coll.update_one(filter.view(), update.view());
 }
 
 // ==================== Pagination & Search ====================
 
-VolumeListResult BddbRepository::getVolumesWithPagination(const VolumeListParams &params) {
-    VolumeListResult result;
-    result.page = params.page;
-    result.pageSize = params.pageSize;
-    if (!MongoConnection::instance().isConnected()) return result;
+DbResult<VolumeListResult> BddbRepository::getVolumesWithPagination(const VolumeListParams &params) {
+    try {
+        VolumeListResult result;
+        result.page = params.page;
+        result.pageSize = params.pageSize;
+        if (!MongoConnection::instance().isConnected()) return result;
 
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto coll = db["bddb_volumes"];
-    mongocxx::pipeline pipeline;
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto coll = db["bddb_volumes"];
+        mongocxx::pipeline pipeline;
 
-    bsoncxx::builder::basic::document matchStage{};
-    matchStage.append(kvp("is_deleted", false));
+        bsoncxx::builder::basic::document matchStage{};
+        matchStage.append(kvp("is_deleted", false));
 
-    if (!params.searchCatalogNo.isEmpty()) {
-        matchStage.append(kvp("catalog_no", make_document(
-            kvp("$regex", params.searchCatalogNo.toStdString()),
-            kvp("$options", "i")
-        )));
-    }
-    if (!params.searchTitle.isEmpty()) {
-        matchStage.append(kvp("volume_name", make_document(
-            kvp("$regex", params.searchTitle.toStdString()),
-            kvp("$options", "i")
-        )));
-    }
-    if (params.useFilterHasWork) {
-        if (params.filterHasWork) {
-            matchStage.append(kvp("work_ids", make_document(
-                kvp("$exists", true),
-                kvp("$not", make_document(kvp("$size", 0)))
-            )));
-        } else {
-            matchStage.append(kvp("$or", make_array(
-                make_document(kvp("work_ids", make_document(kvp("$exists", false)))),
-                make_document(kvp("work_ids", make_document(kvp("$size", 0))))
+        if (!params.searchCatalogNo.empty()) {
+            matchStage.append(kvp("catalog_no", make_document(
+                kvp("$regex", params.searchCatalogNo),
+                kvp("$options", "i")
             )));
         }
-    }
-
-    pipeline.match(matchStage.extract());
-
-    if (params.useFilterHasMedia) {
-        pipeline.lookup(make_document(
-            kvp("from", "bddb_medias"),
-            kvp("localField", "_id"),
-            kvp("foreignField", "volume_id"),
-            kvp("as", "medias")
-        ));
-        pipeline.add_fields(make_document(
-            kvp("mediaCount", make_document(kvp("$size", "$medias")))
-        ));
-        if (params.filterHasMedia) {
-            pipeline.match(make_document(kvp("mediaCount", make_document(kvp("$gt", 0)))));
-        } else {
-            pipeline.match(make_document(kvp("mediaCount", make_document(kvp("$eq", 0)))));
+        if (!params.searchTitle.empty()) {
+            matchStage.append(kvp("volume_name", make_document(
+                kvp("$regex", params.searchTitle),
+                kvp("$options", "i")
+            )));
         }
-    }
+        if (params.useFilterHasWork) {
+            if (params.filterHasWork) {
+                matchStage.append(kvp("work_ids", make_document(
+                    kvp("$exists", true),
+                    kvp("$not", make_document(kvp("$size", 0)))
+                )));
+            } else {
+                matchStage.append(kvp("$or", make_array(
+                    make_document(kvp("work_ids", make_document(kvp("$exists", false)))),
+                    make_document(kvp("work_ids", make_document(kvp("$size", 0))))
+                )));
+            }
+        }
 
-    // Count total using a separate pipeline (pipeline is non-copyable)
-    {
-        mongocxx::pipeline countPipeline;
-        countPipeline.match(matchStage.extract());
+        pipeline.match(matchStage.extract());
+
         if (params.useFilterHasMedia) {
-            countPipeline.lookup(make_document(
+            pipeline.lookup(make_document(
                 kvp("from", "bddb_medias"),
                 kvp("localField", "_id"),
                 kvp("foreignField", "volume_id"),
                 kvp("as", "medias")
             ));
-            countPipeline.add_fields(make_document(
+            pipeline.add_fields(make_document(
                 kvp("mediaCount", make_document(kvp("$size", "$medias")))
             ));
             if (params.filterHasMedia) {
-                countPipeline.match(make_document(kvp("mediaCount", make_document(kvp("$gt", 0)))));
+                pipeline.match(make_document(kvp("mediaCount", make_document(kvp("$gt", 0)))));
             } else {
-                countPipeline.match(make_document(kvp("mediaCount", make_document(kvp("$eq", 0)))));
+                pipeline.match(make_document(kvp("mediaCount", make_document(kvp("$eq", 0)))));
             }
         }
-        countPipeline.count("total");
-        auto countCursor = coll.aggregate(countPipeline);
-        for (auto &&doc : countCursor) {
-            result.total = bsonValueToInt32(doc["total"]);
+
+        // Count total using a separate pipeline
+        {
+            mongocxx::pipeline countPipeline;
+            countPipeline.match(matchStage.extract());
+            if (params.useFilterHasMedia) {
+                countPipeline.lookup(make_document(
+                    kvp("from", "bddb_medias"),
+                    kvp("localField", "_id"),
+                    kvp("foreignField", "volume_id"),
+                    kvp("as", "medias")
+                ));
+                countPipeline.add_fields(make_document(
+                    kvp("mediaCount", make_document(kvp("$size", "$medias")))
+                ));
+                if (params.filterHasMedia) {
+                    countPipeline.match(make_document(kvp("mediaCount", make_document(kvp("$gt", 0)))));
+                } else {
+                    countPipeline.match(make_document(kvp("mediaCount", make_document(kvp("$eq", 0)))));
+                }
+            }
+            countPipeline.count("total");
+            auto countCursor = coll.aggregate(countPipeline);
+            for (auto &&doc : countCursor) {
+                result.total = bsonValueToInt32(doc["total"]);
+            }
         }
-    }
 
-    pipeline.sort(make_document(kvp("catalog_no", 1)));
-    pipeline.skip((params.page - 1) * params.pageSize);
-    pipeline.limit(static_cast<int64_t>(params.pageSize));
+        pipeline.sort(make_document(kvp("catalog_no", 1)));
+        pipeline.skip((params.page - 1) * params.pageSize);
+        pipeline.limit(params.pageSize);
 
-    auto cursor = coll.aggregate(pipeline);
-    for (auto &&doc : cursor) {
-        result.data.append(parseVolume(doc));
+        auto cursor = coll.aggregate(pipeline);
+        result.data = cursor
+            | std::views::transform([](auto& doc) { return parseVolume(doc); })
+            | std::ranges::to<std::vector>();
+        return result;
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("getVolumesWithPagination failed: ") + e.what());
     }
-    return result;
 }
 
 // ==================== Product Linking ====================
 
-BddbRepository::LinkResult BddbRepository::linkVolumesToProducts() {
-    LinkResult result;
-    if (!MongoConnection::instance().isConnected()) return result;
+DbResult<BddbRepository::LinkResult> BddbRepository::linkVolumesToProducts() {
+    try {
+        LinkResult result;
+        if (!MongoConnection::instance().isConnected()) return result;
 
-    auto db = MongoConnection::instance().database(resolveBddbDbName());
-    auto volumesColl = db["bddb_volumes"];
+        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto volumesColl = db["bddb_volumes"];
 
-    auto filter = make_document(kvp("is_deleted", false));
-    auto cursor = volumesColl.find(filter.view());
+        auto filter = make_document(kvp("is_deleted", false));
+        auto cursor = volumesColl.find(filter.view());
 
-    for (auto &&doc : cursor) {
-        Volume v = parseVolume(doc);
-        QString catalogNo = v.catalogNo.trimmed();
-        if (catalogNo.isEmpty()) continue;
+        for (auto &&doc : cursor) {
+            Volume v = parseVolume(doc);
+            auto catalogNo = v.catalogNo;
+            auto start = catalogNo.find_first_not_of(" \t\r\n");
+            if (start == std::string::npos) continue;
+            auto end = catalogNo.find_last_not_of(" \t\r\n");
+            catalogNo = catalogNo.substr(start, end - start + 1);
+            if (catalogNo.empty()) continue;
 
-        QVector<Product> products = SurugaYaRepository::findProductsByCatalogNo(catalogNo);
-        QVector<QString> newIds;
-        QSet<QString> existingSet(v.productIds.cbegin(), v.productIds.cend());
+            auto productsResult = SurugaYaRepository::findProductsByCatalogNo(catalogNo);
+            if (!productsResult) continue;
+            const auto& products = *productsResult;
 
-        for (const auto &product : products) {
-            result.matched++;
-            if (!existingSet.contains(product.id)) {
-                newIds.append(product.id);
-            } else {
-                result.skipped++;
+            std::vector<std::string> newIds;
+            std::unordered_set<std::string> existingSet(v.productIds.begin(), v.productIds.end());
+
+            for (const auto &product : products) {
+                result.matched++;
+                if (!existingSet.contains(product.id)) {
+                    newIds.push_back(product.id);
+                } else {
+                    result.skipped++;
+                }
+            }
+
+            if (!newIds.empty()) {
+                auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                bsoncxx::builder::basic::array addArr{};
+                for (const auto &nid : newIds) addArr.append(stringToOid(nid));
+                auto vFilter = make_document(kvp("_id", stringToOid(v.id)));
+                auto update = make_document(
+                    kvp("$addToSet", make_document(kvp("product_ids", make_document(kvp("$each", addArr.extract()))))),
+                    kvp("$set", make_document(kvp("updated_at", static_cast<std::int64_t>(now))))
+                );
+                volumesColl.update_one(vFilter.view(), update.view());
+                result.updated++;
             }
         }
 
-        if (!newIds.isEmpty()) {
-            qint64 now = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
-            bsoncxx::builder::basic::array addArr{};
-            for (const auto &nid : newIds) addArr.append(stringToOid(nid));
-            auto vFilter = make_document(kvp("_id", stringToOid(v.id)));
-            auto update = make_document(
-                kvp("$addToSet", make_document(kvp("product_ids", make_document(kvp("$each", addArr.extract()))))),
-                kvp("$set", make_document(kvp("updated_at", static_cast<int64_t>(now))))
-            );
-            volumesColl.update_one(vFilter.view(), update.view());
-            result.updated++;
-        }
+        return result;
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("linkVolumesToProducts failed: ") + e.what());
     }
-
-    return result;
 }
 
 #endif // HAVE_MONGODB

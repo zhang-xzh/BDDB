@@ -4,7 +4,7 @@
 #ifdef HAVE_MONGODB
 
 #include <memory>
-#include <QString>
+#include <string>
 #include <mongocxx/client.hpp>
 #include <mongocxx/database.hpp>
 
@@ -12,10 +12,10 @@ class MongoConnection {
 public:
     static MongoConnection& instance();
 
-    bool connect(const QString &uri = QStringLiteral("mongodb://localhost:27017"));
+    bool connect(const std::string &uri = "mongodb://localhost:27017");
     bool isConnected() const;
 
-    mongocxx::database database(const QString &name);
+    mongocxx::database database(const std::string &name);
 
 private:
     MongoConnection();
@@ -27,7 +27,7 @@ private:
     bool m_connected = false;
 };
 
-QString resolveBddbDbName();
+std::string resolveBddbDbName();
 
 #endif // HAVE_MONGODB
 

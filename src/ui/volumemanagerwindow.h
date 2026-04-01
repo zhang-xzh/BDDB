@@ -3,6 +3,10 @@
 
 #include <QMainWindow>
 
+class VolumeModel;
+class QTableView;
+class QLineEdit;
+
 class VolumeManagerWindow : public QMainWindow {
     Q_OBJECT
 
@@ -12,6 +16,12 @@ public:
 
 private:
     void setupUI();
+    void loadData();
+
+    VolumeModel *m_model = nullptr;
+    QTableView *m_tableView = nullptr;
+    QLineEdit *m_codeEdit = nullptr;
+    QLineEdit *m_titleEdit = nullptr;
 };
 
 #endif // VOLUMEMANAGERWINDOW_H

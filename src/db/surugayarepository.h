@@ -4,12 +4,15 @@
 #ifdef HAVE_MONGODB
 
 #include "models/models.h"
-#include <QVector>
-#include <QString>
+#include <string>
+#include <vector>
+#include <expected>
+
+template<typename T> using DbResult = std::expected<T, std::string>;
 
 class SurugaYaRepository {
 public:
-    static QVector<Product> findProductsByCatalogNo(const QString &catalogNo);
+    static DbResult<std::vector<Product>> findProductsByCatalogNo(const std::string &catalogNo);
 };
 
 #endif // HAVE_MONGODB

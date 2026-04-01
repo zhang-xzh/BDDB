@@ -6,27 +6,28 @@
 #include <mongocxx/collection.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
+#include <ranges>
 
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_document;
 
-static QString bsonValueToString(const bsoncxx::document::element &elem) {
-    if (!elem) return QString();
+static std::string bsonValueToString(const bsoncxx::document::element &elem) {
+    if (!elem) return {};
     switch (elem.type()) {
         case bsoncxx::type::k_string:
-            return QString::fromStdString(std::string(elem.get_string().value));
+            return std::string(elem.get_string().value);
         case bsoncxx::type::k_int32:
-            return QString::number(elem.get_int32().value);
+            return std::to_string(elem.get_int32().value);
         case bsoncxx::type::k_int64:
-            return QString::number(elem.get_int64().value);
+            return std::to_string(elem.get_int64().value);
         default:
-            return QString();
+            return {};
     }
 }
 
 static Product parseProduct(const bsoncxx::document::view &view) {
     Product p;
-    if (view["_id"]) p.id = QString::fromStdString(std::string(view["_id"].get_oid().value.to_string()));
+    if (view["_id"]) p.id = std::string(view["_id"].get_oid().value.to_string());
     if (view["product_id"]) p.productId = bsonValueToString(view["product_id"]);
     if (view["title"]) p.title = bsonValueToString(view["title"]);
     if (view["url"]) p.url = bsonValueToString(view["url"]);
@@ -43,13 +44,13 @@ static Product parseProduct(const bsoncxx::document::view &view) {
         if (attr["原画"] && attr["原画"].type() == bsoncxx::type::k_array) {
             for (auto &&item : attr["原画"].get_array().value) {
                 if (item.type() == bsoncxx::type::k_string)
-                    p.attributes.illustrators.append(QString::fromStdString(std::string(item.get_string().value)));
+                    p.attributes.illustrators.push_back(std::string(item.get_string().value));
             }
         }
         if (attr["声優"] && attr["声優"].type() == bsoncxx::type::k_array) {
             for (auto &&item : attr["声優"].get_array().value) {
                 if (item.type() == bsoncxx::type::k_string)
-                    p.attributes.voiceActors.append(QString::fromStdString(std::string(item.get_string().value)));
+                    p.attributes.voiceActors.push_back(std::string(item.get_string().value));
             }
         }
         p.manufacturer = p.attributes.manufacturer;
@@ -63,7 +64,7 @@ static Product parseProduct(const bsoncxx::document::view &view) {
     if (view["images"] && view["images"].type() == bsoncxx::type::k_array) {
         for (auto &&item : view["images"].get_array().value) {
             if (item.type() == bsoncxx::type::k_string)
-                p.images.append(QString::fromStdString(std::string(item.get_string().value)));
+                p.images.push_back(std::string(item.get_string().value));
         }
     }
     if (view["tracklist"] && view["tracklist"].type() == bsoncxx::type::k_array) {
@@ -75,27 +76,29 @@ static Product parseProduct(const bsoncxx::document::view &view) {
                 if (tdoc["tracks"] && tdoc["tracks"].type() == bsoncxx::type::k_array) {
                     for (auto &&tr : tdoc["tracks"].get_array().value) {
                         if (tr.type() == bsoncxx::type::k_string)
-                            tl.tracks.append(QString::fromStdString(std::string(tr.get_string().value)));
+                            tl.tracks.push_back(std::string(tr.get_string().value));
                     }
                 }
-                p.tracklist.append(tl);
+                p.tracklist.push_back(tl);
             }
         }
     }
     return p;
 }
 
-QVector<Product> SurugaYaRepository::findProductsByCatalogNo(const QString &catalogNo) {
-    QVector<Product> list;
-    if (!MongoConnection::instance().isConnected()) return list;
-    auto db = MongoConnection::instance().database(QStringLiteral("suruga_ya"));
-    auto coll = db["products"];
-    auto filter = make_document(kvp("attributes.型番", catalogNo.toStdString()));
-    auto cursor = coll.find(filter.view());
-    for (auto &&doc : cursor) {
-        list.append(parseProduct(doc));
+DbResult<std::vector<Product>> SurugaYaRepository::findProductsByCatalogNo(const std::string &catalogNo) {
+    try {
+        if (!MongoConnection::instance().isConnected()) return std::vector<Product>{};
+        auto db = MongoConnection::instance().database("suruga_ya");
+        auto coll = db["products"];
+        auto filter = make_document(kvp("attributes.型番", catalogNo));
+
+        return coll.find(filter.view())
+            | std::views::transform([](auto& doc) { return parseProduct(doc); })
+            | std::ranges::to<std::vector>();
+    } catch (const std::exception &e) {
+        return std::unexpected(std::string("findProductsByCatalogNo failed: ") + e.what());
     }
-    return list;
 }
 
 #endif // HAVE_MONGODB

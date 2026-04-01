@@ -2,6 +2,11 @@
 #define TORRENTMANAGERWINDOW_H
 
 #include <QMainWindow>
+#include <memory>
+
+class TorrentModel;
+class QTableView;
+class QLineEdit;
 
 class TorrentManagerWindow : public QMainWindow {
     Q_OBJECT
@@ -12,6 +17,13 @@ public:
 
 private:
     void setupUI();
+    void loadData();
+
+    void onSearchTextChanged(const QString &text);
+
+    TorrentModel *m_model = nullptr;
+    QTableView *m_tableView = nullptr;
+    QLineEdit *m_searchEdit = nullptr;
 };
 
 #endif // TORRENTMANAGERWINDOW_H
