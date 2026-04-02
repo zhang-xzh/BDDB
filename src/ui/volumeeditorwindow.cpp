@@ -6,7 +6,6 @@
 #include <QListWidget>
 #include <QPushButton>
 #include <QTreeWidget>
-#include <QVBoxLayout>
 #include <QWidget>
 
 VolumeEditorWindow::VolumeEditorWindow(QWidget *parent)
@@ -54,13 +53,4 @@ void VolumeEditorWindow::setupUI() {
     splitLayout->addWidget(leftTree);
     splitLayout->addWidget(rightList);
     layout->addLayout(splitLayout, 1);
-
-    // 底部按钮
-    auto *bottomLayout = new QHBoxLayout();
-    bottomLayout->addStretch();
-    auto *saveBtn = new QPushButton("保存全部", this);
-    auto *cancelBtn = new QPushButton("取消", this);
-    bottomLayout->addWidget(saveBtn);
-    bottomLayout->addWidget(cancelBtn);
-    layout->addLayout(bottomLayout);
 }

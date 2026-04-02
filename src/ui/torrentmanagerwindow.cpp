@@ -1,13 +1,10 @@
 #include "torrentmanagerwindow.h"
 #include "models/torrentmodel.h"
 #include "db/bddbrepository.h"
-#include <QLabel>
 #include <QLineEdit>
-#include <QPushButton>
 #include <QTableView>
 #include <QVBoxLayout>
 #include <QWidget>
-#include <QTimer>
 #include <QtConcurrent>
 #include <QFutureWatcher>
 
@@ -48,29 +45,19 @@ void TorrentManagerWindow::setupUI() {
     m_tableView->setSelectionMode(QAbstractItemView::SingleSelection);
     m_tableView->setAlternatingRowColors(true);
     layout->addWidget(m_tableView);
-
-    // 底部操作栏
-    auto *bottomLayout = new QHBoxLayout();
-    auto *statusLabel = new QLabel("选中: -", this);
-    auto *openEditorBtn = new QPushButton("编辑分卷", this);
-    bottomLayout->addWidget(statusLabel);
-    bottomLayout->addStretch();
-    bottomLayout->addWidget(openEditorBtn);
-    layout->addLayout(bottomLayout);
 }
 
 void TorrentManagerWindow::loadData() {
     // 在后台线程加载数据
-    auto *watcher = new QFutureWatcher<DbResult<std::vector<Torrent>>>(this);
-    connect(watcher, &QFutureWatcher<DbResult<std::vector<Torrent>>>::finished, this, [this, watcher]() {
-        auto result = watcher->result();
-        if (result) {
+    auto *watcher = new QFutureWatcher<DbResult<std::vector<Torrent> > >(this);
+    connect(watcher, &QFutureWatcher<DbResult<std::vector<Torrent> > >::finished, this, [this, watcher]() {
+        if (auto result = watcher->result()) {
             m_model->setTorrents(std::move(*result));
         }
         watcher->deleteLater();
     });
 
-    auto future = QtConcurrent::run([]() -> DbResult<std::vector<Torrent>> {
+    auto future = QtConcurrent::run([]() -> DbResult<std::vector<Torrent> > {
         return BddbRepository::loadTorrents(false);
     });
     watcher->setFuture(future);

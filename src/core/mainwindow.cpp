@@ -11,13 +11,11 @@
 #include <QApplication>
 #include <QGroupBox>
 #include <QPushButton>
-#include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QWidget>
 #include <QListWidget>
 #include <QDateTime>
 #include <QThread>
-#include <string>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent) {
