@@ -1,12 +1,12 @@
-import {MeiliSearch} from 'meilisearch'
+import {Meilisearch} from 'meilisearch'
 
 const MEILI_HOST = process.env.MEILI_HOST || 'http://localhost:17700'
 
-let client: MeiliSearch | null = null
+let client: Meilisearch | null = null
 
-export function getMeiliClient(): MeiliSearch {
+export function getMeiliClient(): Meilisearch {
     if (!client) {
-        client = new MeiliSearch({
+        client = new Meilisearch({
             host: MEILI_HOST,
         })
     }
@@ -17,10 +17,10 @@ export async function ensureMeiliConnected(): Promise<boolean> {
     try {
         const meili = getMeiliClient()
         await meili.health()
-        console.log('[meilisearch] Connected successfully')
+        console.log('[Meilisearch] Connected successfully')
         return true
     } catch (error) {
-        console.error('[meilisearch] Connection failed:', error)
+        console.error('[Meilisearch] Connection failed:', error)
         return false
     }
 }
@@ -35,13 +35,13 @@ export async function setupProductsIndex(): Promise<void> {
     try {
         // 获取或创建索引
         const index = await meili.getIndex(PRODUCTS_INDEX)
-        console.log('[meilisearch] Index already exists:', PRODUCTS_INDEX)
+        console.log('[Meilisearch] Index already exists:', PRODUCTS_INDEX)
 
         // 更新设置
         await updateIndexSettings(index)
     } catch {
         // 索引不存在，创建它
-        console.log('[meilisearch] Creating index:', PRODUCTS_INDEX)
+        console.log('[Meilisearch] Creating index:', PRODUCTS_INDEX)
         await meili.createIndex(PRODUCTS_INDEX, {
             primaryKey: 'product_id',
         })
@@ -88,7 +88,7 @@ async function updateIndexSettings(index: any): Promise<void> {
         stopWords: [],
     })
 
-    console.log('[meilisearch] Index settings updated')
+    console.log('[Meilisearch] Index settings updated')
 }
 
 // 删除索引
@@ -96,8 +96,8 @@ export async function deleteProductsIndex(): Promise<void> {
     const meili = getMeiliClient()
     try {
         await meili.deleteIndex(PRODUCTS_INDEX)
-        console.log('[meilisearch] Deleted index:', PRODUCTS_INDEX)
+        console.log('[Meilisearch] Deleted index:', PRODUCTS_INDEX)
     } catch (error) {
-        console.log('[meilisearch] Index does not exist:', PRODUCTS_INDEX)
+        console.log('[Meilisearch] Index does not exist:', PRODUCTS_INDEX)
     }
 }
