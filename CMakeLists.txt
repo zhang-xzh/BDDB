@@ -68,6 +68,7 @@ if (MSVC)
     add_link_options(
             /INCREMENTAL:NO   # 禁用增量链接以获得更干净的构建
     )
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 endif ()
 
 # ═══════════════════════════════════════════════════════════════════════════════

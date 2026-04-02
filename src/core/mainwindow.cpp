@@ -1,15 +1,11 @@
 #include "core/mainwindow.h"
 #include "ui/torrentmanagerwindow.h"
 #include "ui/volumemanagerwindow.h"
-#include "ui/volumeeditorwindow.h"
-#include "ui/mediaeditorwindow.h"
-#include "ui/worklinkwindow.h"
 #include "ui/productsearchwindow.h"
 #include "ui/worksearchwindow.h"
 #include "ui/progressdialog.h"
 #include <QApplication>
 #include <QGroupBox>
-#include <QHBoxLayout>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QWidget>

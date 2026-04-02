@@ -12,7 +12,7 @@ MongoConnection::MongoConnection() {
 
 MongoConnection::~MongoConnection() = default;
 
-MongoConnection& MongoConnection::instance() {
+MongoConnection &MongoConnection::instance() {
     static MongoConnection conn;
     return conn;
 }
@@ -37,17 +37,13 @@ mongocxx::database MongoConnection::database(const std::string &name) {
 }
 
 std::string resolveBddbDbName() {
-    const char* env = std::getenv("NODE_ENV");
+    const char *env = std::getenv("NODE_ENV");
     if (!env) env = "";
     if (std::string(env) == "production") {
-        const char* prod = std::getenv("MONGO_DB_PROD");
+        const char *prod = std::getenv("MONGO_DB_PROD");
         return prod && prod[0] ? prod : "bddb_prod";
     }
-    if (std::string(env) == "test") {
-        const char* test = std::getenv("MONGO_DB_TEST");
-        return test && test[0] ? test : "bddb_test";
-    }
-    const char* dev = std::getenv("MONGO_DB_DEV");
+    const char *dev = std::getenv("MONGO_DB_DEV");
     return dev && dev[0] ? dev : "bddb_dev";
 }
 

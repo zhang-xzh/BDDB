@@ -2,6 +2,10 @@
 
 Always respond in Chinese unless the user asks for another language.
 
+# 环境说明
+
+1. 没有跨平台,一切单机
+
 # Qt 现代 C++ 编码规范（AI 指令文档）
 
 ## 环境约束
