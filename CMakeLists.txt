@@ -3,6 +3,11 @@ cmake_minimum_required(VERSION 3.20)
 # ═══════════════════════════════════════════════════════════════════════════════
 # vcpkg 工具链自动检测
 # ═══════════════════════════════════════════════════════════════════════════════
+# 若命令行已指定 toolchain，显式标记为已使用，避免 CMake 未使用变量警告
+if (DEFINED CMAKE_TOOLCHAIN_FILE)
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_TOOLCHAIN_FILE}" CACHE STRING "vcpkg toolchain" FORCE)
+endif ()
+
 if (WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     # 候选 vcpkg 安装路径（按优先级排序）
     set(VCPKG_CANDIDATE_PATHS
@@ -47,8 +52,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Qt 自动处理
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
-set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # 导出编译命令（便于 IDE 和工具使用）
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -147,11 +150,16 @@ find_qt6_smart()
 # 查找 Qt6 组件
 # ═══════════════════════════════════════════════════════════════════════════════
 set(QT_NO_FIND_VULKAN_SDK TRUE)  # 禁用可选的 Vulkan 支持
+set(CMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders TRUE)
+set(CMAKE_DISABLE_FIND_PACKAGE_Qt6TaskTree TRUE)
+set(CMAKE_DISABLE_FIND_PACKAGE_Qt6QmlAssetDownloaderPrivate TRUE)
+set(Qt6QmlAssetDownloaderPrivate_DIR "" CACHE PATH "Disabled" FORCE)
 
 find_package(Qt6 REQUIRED COMPONENTS
         Core
         Gui
-        Widgets
+        Quick
+        QuickControls2
         Network
         Concurrent
 )
@@ -163,15 +171,25 @@ endif ()
 
 message(STATUS "✓ Using Qt ${Qt6Core_VERSION}")
 
+# Qt 6 策略设置
+if (COMMAND qt_policy)
+    qt_policy(SET QTP0004 NEW)
+endif ()
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # MongoDB C++ 驱动查找
 # ═══════════════════════════════════════════════════════════════════════════════
-message(STATUS "🔍 Searching for MongoDB C++ driver...")
+# 临时提升日志级别以抑制 mongocxx 依赖链中的弃用警告
+set(_BDDB_OLD_MESSAGE_LOG_LEVEL ${CMAKE_MESSAGE_LOG_LEVEL})
+set(CMAKE_MESSAGE_LOG_LEVEL ERROR)
 
 # 首先尝试标准 find_package（通过 CMAKE_PREFIX_PATH 或 vcpkg）
 find_package(mongocxx CONFIG)
 find_package(bsoncxx CONFIG)
 
+set(CMAKE_MESSAGE_LOG_LEVEL ${_BDDB_OLD_MESSAGE_LOG_LEVEL})
+
+message(STATUS "🔍 Searching for MongoDB C++ driver...")
 if (mongocxx_FOUND AND bsoncxx_FOUND)
     message(STATUS "✓ Found MongoDB C++ driver via CMake config")
 else ()
@@ -233,7 +251,6 @@ file(GLOB_RECURSE BDDB_SOURCES
         "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.ui"
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -263,7 +280,8 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Core
         Qt6::Gui
-        Qt6::Widgets
+        Qt6::Quick
+        Qt6::QuickControls2
         Qt6::Network
         Qt6::Concurrent
 )
@@ -284,14 +302,23 @@ else ()
 endif ()
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 资源文件
+# QML 模块
 # ═══════════════════════════════════════════════════════════════════════════════
-set(RESOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/BDDB.qrc")
-if (EXISTS ${RESOURCE_FILES})
-    target_sources(${PROJECT_NAME} PRIVATE ${RESOURCE_FILES})
-else ()
-    message(STATUS "⚠ Resource file not found: ${RESOURCE_FILES}")
-endif ()
+qt_add_qml_module(${PROJECT_NAME}
+        URI BDDB
+        VERSION 1.0
+        RESOURCE_PREFIX /qt/qml
+        QML_FILES
+        qml/MainWindow.qml
+        qml/TorrentManagerWindow.qml
+        qml/VolumeManagerWindow.qml
+        qml/ProductSearchWindow.qml
+        qml/WorkSearchWindow.qml
+        qml/ProgressDialog.qml
+        qml/VolumeEditorWindow.qml
+        qml/MediaEditorWindow.qml
+        qml/WorkLinkWindow.qml
+)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 平台特定配置
@@ -318,6 +345,7 @@ if (WIN32)
             add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
                     COMMAND "${WINDEPLOYQT_EXECUTABLE}"
                     "$<TARGET_FILE:${PROJECT_NAME}>"
+                    --qmldir "${CMAKE_CURRENT_SOURCE_DIR}/qml"
                     --no-translations
                     --no-compiler-runtime
                     --no-opengl-sw
