@@ -6,8 +6,8 @@
 
 ProgressDialogViewModel::ProgressDialogViewModel(const QString &title, QObject *parent)
     : QObject(parent)
-    , m_title(title)
-    , m_engine(new QQmlApplicationEngine(this)) {
+      , m_title(title)
+      , m_engine(new QQmlApplicationEngine(this)) {
 }
 
 ProgressDialogViewModel::~ProgressDialogViewModel() {
@@ -65,6 +65,13 @@ void ProgressDialogViewModel::setProgress(int value) {
     }
 }
 
+bool ProgressDialogViewModel::cancelling() const {
+    return m_cancelling;
+}
+
 void ProgressDialogViewModel::cancel() {
-    emit finished();
+    m_cancelled.store(true);
+    m_cancelling = true;
+    emit cancellingChanged();
+    setStatus(m_statusText + " (正在取消...)");
 }

@@ -8,7 +8,7 @@ ApplicationWindow {
 
     property var viewModel
 
-    flags: Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
+    flags: Qt.Dialog | Qt.WindowTitleHint
     height: 150
     maximumHeight: 200
     maximumWidth: 600

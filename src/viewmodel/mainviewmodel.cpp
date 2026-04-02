@@ -23,7 +23,8 @@ class SyncWorker : public QObject {
     Q_OBJECT
 
 public:
-    explicit SyncWorker(QObject *parent = nullptr) : QObject(parent) {
+    explicit SyncWorker(const std::atomic<bool> &cancelled, QObject *parent = nullptr)
+        : QObject(parent), m_cancelled(cancelled) {
     }
 
 signals:
@@ -39,13 +40,17 @@ public slots:
         });
         emit finished(result);
     }
+
+private:
+    const std::atomic<bool> &m_cancelled;
 };
 
 class LinkWorker : public QObject {
     Q_OBJECT
 
 public:
-    explicit LinkWorker(QObject *parent = nullptr) : QObject(parent) {
+    explicit LinkWorker(const std::atomic<bool> &cancelled, QObject *parent = nullptr)
+        : QObject(parent), m_cancelled(cancelled) {
     }
 
 signals:
@@ -55,6 +60,7 @@ signals:
 
 public slots:
     void doWork() {
+        TorrentSyncResult partialResult{true, 0, 0, 0, ""};
         auto result = BddbRepository::linkVolumesToProducts(
             [this](int current, int total, const std::string &message) {
                 emit progressUpdated(current, total, QString::fromStdString(message));
@@ -62,13 +68,17 @@ public slots:
         ).value_or(BddbRepository::LinkResult{});
         emit finished(result);
     }
+
+private:
+    const std::atomic<bool> &m_cancelled;
 };
 
 class BangumiRebuildWorker : public QObject {
     Q_OBJECT
 
 public:
-    explicit BangumiRebuildWorker(QObject *parent = nullptr) : QObject(parent) {
+    explicit BangumiRebuildWorker(const std::atomic<bool> &cancelled, QObject *parent = nullptr)
+        : QObject(parent), m_cancelled(cancelled) {
     }
 
 signals:
@@ -85,13 +95,17 @@ public slots:
         );
         emit finished(result);
     }
+
+private:
+    const std::atomic<bool> &m_cancelled;
 };
 
 class SurugaRebuildWorker : public QObject {
     Q_OBJECT
 
 public:
-    explicit SurugaRebuildWorker(QObject *parent = nullptr) : QObject(parent) {
+    explicit SurugaRebuildWorker(const std::atomic<bool> &cancelled, QObject *parent = nullptr)
+        : QObject(parent), m_cancelled(cancelled) {
     }
 
 signals:
@@ -108,6 +122,9 @@ public slots:
         );
         emit finished(result);
     }
+
+private:
+    const std::atomic<bool> &m_cancelled;
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -157,12 +174,13 @@ void MainViewModel::showSyncDialog() {
     if (!m_syncDialogVM) {
         m_syncDialogVM = new ProgressDialogViewModel("同步", this);
     }
+    m_syncDialogVM->m_cancelled.store(false);
     m_syncDialogVM->setStatus("准备同步...");
     m_syncDialogVM->setProgress(0);
     m_syncDialogVM->show();
 
     auto *thread = new QThread(this);
-    auto *worker = new SyncWorker();
+    auto *worker = new SyncWorker(m_syncDialogVM->m_cancelled);
     worker->moveToThread(thread);
 
     connect(thread, &QThread::started, worker, &SyncWorker::doWork);
@@ -176,7 +194,9 @@ void MainViewModel::showSyncDialog() {
     });
     connect(worker, &SyncWorker::finished, this, [this, thread, worker](const TorrentSyncResult &result) {
         if (m_syncDialogVM) {
-            if (result.success) {
+            if (m_syncDialogVM->m_cancelled.load()) {
+                m_syncDialogVM->setStatus("同步已取消");
+            } else if (result.success) {
                 m_syncDialogVM->setStatus(
                     QStringLiteral("同步完成: 新增 %1, 更新 %2, 总计 %3")
                     .arg(result.newCount)
@@ -194,6 +214,11 @@ void MainViewModel::showSyncDialog() {
         thread->deleteLater();
         worker->deleteLater();
     });
+    // 取消时关闭对话框
+    connect(m_syncDialogVM, &ProgressDialogViewModel::finished, thread, [thread]() {
+        thread->quit();
+        thread->wait();
+    });
 
     thread->start();
 }
@@ -202,12 +227,13 @@ void MainViewModel::showLinkDialog() {
     if (!m_linkDialogVM) {
         m_linkDialogVM = new ProgressDialogViewModel("关联", this);
     }
+    m_linkDialogVM->m_cancelled.store(false);
     m_linkDialogVM->setStatus("准备关联产品...");
     m_linkDialogVM->setProgress(0);
     m_linkDialogVM->show();
 
     auto *thread = new QThread(this);
-    auto *worker = new LinkWorker();
+    auto *worker = new LinkWorker(m_linkDialogVM->m_cancelled);
     worker->moveToThread(thread);
 
     connect(thread, &QThread::started, worker, &LinkWorker::doWork);
@@ -221,17 +247,26 @@ void MainViewModel::showLinkDialog() {
     });
     connect(worker, &LinkWorker::finished, this, [this, thread, worker](const BddbRepository::LinkResult &result) {
         if (m_linkDialogVM) {
-            m_linkDialogVM->setStatus(
-                QStringLiteral("关联完成: 更新 %1, 匹配 %2, 跳过 %3")
-                .arg(result.updated)
-                .arg(result.matched)
-                .arg(result.skipped));
+            if (m_linkDialogVM->m_cancelled.load()) {
+                m_linkDialogVM->setStatus("关联已取消");
+            } else {
+                m_linkDialogVM->setStatus(
+                    QStringLiteral("关联完成: 更新 %1, 匹配 %2, 跳过 %3")
+                    .arg(result.updated)
+                    .arg(result.matched)
+                    .arg(result.skipped));
+            }
             m_linkDialogVM->setProgress(100);
         }
         thread->quit();
         thread->wait();
         thread->deleteLater();
         worker->deleteLater();
+    });
+    // 取消时关闭对话框
+    connect(m_linkDialogVM, &ProgressDialogViewModel::finished, thread, [thread]() {
+        thread->quit();
+        thread->wait();
     });
 
     thread->start();
@@ -241,12 +276,13 @@ void MainViewModel::showRebuildBangumiDialog() {
     if (!m_rebuildBangumiVM) {
         m_rebuildBangumiVM = new ProgressDialogViewModel("重建 Bangumi 索引", this);
     }
+    m_rebuildBangumiVM->m_cancelled.store(false);
     m_rebuildBangumiVM->setStatus("准备重建 Bangumi 索引...");
     m_rebuildBangumiVM->setProgress(0);
     m_rebuildBangumiVM->show();
 
     auto *thread = new QThread(this);
-    auto *worker = new BangumiRebuildWorker();
+    auto *worker = new BangumiRebuildWorker(m_rebuildBangumiVM->m_cancelled);
     worker->moveToThread(thread);
 
     connect(thread, &QThread::started, worker, &BangumiRebuildWorker::doWork);
@@ -260,7 +296,9 @@ void MainViewModel::showRebuildBangumiDialog() {
     });
     connect(worker, &BangumiRebuildWorker::finished, this, [this, thread, worker](const SearchResult<BangumiSyncResult> &result) {
         if (m_rebuildBangumiVM) {
-            if (result) {
+            if (m_rebuildBangumiVM->m_cancelled.load()) {
+                m_rebuildBangumiVM->setStatus("重建已取消");
+            } else if (result) {
                 m_rebuildBangumiVM->setStatus(
                     QStringLiteral("重建完成: 总计 %1, 索引 %2, 失败 %3")
                     .arg(result->total)
@@ -278,6 +316,11 @@ void MainViewModel::showRebuildBangumiDialog() {
         thread->deleteLater();
         worker->deleteLater();
     });
+    // 取消时关闭对话框
+    connect(m_rebuildBangumiVM, &ProgressDialogViewModel::finished, thread, [thread]() {
+        thread->quit();
+        thread->wait();
+    });
 
     thread->start();
 }
@@ -286,12 +329,13 @@ void MainViewModel::showRebuildSurugaDialog() {
     if (!m_rebuildSurugaVM) {
         m_rebuildSurugaVM = new ProgressDialogViewModel("重建 suruga-ya 索引", this);
     }
+    m_rebuildSurugaVM->m_cancelled.store(false);
     m_rebuildSurugaVM->setStatus("准备重建 suruga-ya 索引...");
     m_rebuildSurugaVM->setProgress(0);
     m_rebuildSurugaVM->show();
 
     auto *thread = new QThread(this);
-    auto *worker = new SurugaRebuildWorker();
+    auto *worker = new SurugaRebuildWorker(m_rebuildSurugaVM->m_cancelled);
     worker->moveToThread(thread);
 
     connect(thread, &QThread::started, worker, &SurugaRebuildWorker::doWork);
@@ -305,7 +349,9 @@ void MainViewModel::showRebuildSurugaDialog() {
     });
     connect(worker, &SurugaRebuildWorker::finished, this, [this, thread, worker](const SearchResult<SyncResult> &result) {
         if (m_rebuildSurugaVM) {
-            if (result) {
+            if (m_rebuildSurugaVM->m_cancelled.load()) {
+                m_rebuildSurugaVM->setStatus("重建已取消");
+            } else if (result) {
                 m_rebuildSurugaVM->setStatus(
                     QStringLiteral("重建完成: 总计 %1, 索引 %2, 失败 %3")
                     .arg(result->total)
@@ -322,6 +368,11 @@ void MainViewModel::showRebuildSurugaDialog() {
         thread->wait();
         thread->deleteLater();
         worker->deleteLater();
+    });
+    // 取消时关闭对话框
+    connect(m_rebuildSurugaVM, &ProgressDialogViewModel::finished, thread, [thread]() {
+        thread->quit();
+        thread->wait();
     });
 
     thread->start();
