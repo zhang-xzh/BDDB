@@ -5,6 +5,10 @@
 #include "core/mainwindow.h"
 #include "db/connection.h"
 #include "search/meilisearchclient.h"
+#include "api/qbittorrentclient.h"
+#include "db/bddbrepository.h"
+#include "search/bangumisync.h"
+#include "search/productsync.h"
 
 int main(int argc, char *argv[]) {
     // Windows 高 DPI 支持 - 必须在 QApplication 之前设置
@@ -16,6 +20,12 @@ int main(int argc, char *argv[]) {
 
     QApplication::setApplicationName("BDDB");
     QApplication::setOrganizationName("BDDB");
+
+    // 注册元类型以便跨线程信号使用
+    qRegisterMetaType<TorrentSyncResult>();
+    qRegisterMetaType<BddbRepository::LinkResult>();
+    qRegisterMetaType<SearchResult<BangumiSyncResult>>();
+    qRegisterMetaType<SearchResult<SyncResult>>();
 
     // 全局抗锯齿字体 - 使用系统默认字体但强制抗锯齿
     QFont font = QFontDatabase::systemFont(QFontDatabase::GeneralFont);

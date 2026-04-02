@@ -16,8 +16,8 @@
 #include <QWidget>
 #include <QListWidget>
 #include <QDateTime>
-#include <QtConcurrent>
-#include <QFutureWatcher>
+#include <QThread>
+#include <string>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent) {
@@ -211,8 +211,13 @@ void MainWindow::showSyncDialog() {
     m_syncDialog->raise();
     m_syncDialog->activateWindow();
 
-    auto *watcher = new QFutureWatcher<TorrentSyncResult>(this);
-    connect(this, &MainWindow::syncProgressUpdated, this, [this](int current, int total, const QString &message) {
+    // 使用 QThread 确保有事件循环
+    auto *thread = new QThread(this);
+    auto *worker = new SyncWorker();
+    worker->moveToThread(thread);
+
+    connect(thread, &QThread::started, worker, &SyncWorker::doWork);
+    connect(worker, &SyncWorker::progressUpdated, this, [this](int current, int total, const QString &message) {
         if (m_syncDialog) {
             const int progress = total > 0 ? static_cast<int>((current * 100.0) / total) : 0;
             m_syncDialog->setProgress(progress);
@@ -220,9 +225,7 @@ void MainWindow::showSyncDialog() {
         }
         appendLog(QString("%1/%2: %3").arg(current).arg(total).arg(message));
     });
-
-    connect(watcher, &QFutureWatcher<TorrentSyncResult>::finished, this, [this, watcher]() {
-        const auto result = watcher->result();
+    connect(worker, &SyncWorker::finished, this, [this, thread, worker](const TorrentSyncResult &result) {
         if (m_syncDialog) {
             if (result.success) {
                 m_syncDialog->setStatus(
@@ -237,16 +240,13 @@ void MainWindow::showSyncDialog() {
             }
             m_syncDialog->setProgress(100);
         }
-        watcher->deleteLater();
+        thread->quit();
+        thread->wait();
+        thread->deleteLater();
+        worker->deleteLater();
     });
 
-    auto future = QtConcurrent::run([this]() -> TorrentSyncResult {
-        QBittorrentClient client;
-        return client.syncTorrents([this](int current, int total, const std::string &message) {
-            emit syncProgressUpdated(current, total, QString::fromStdString(message));
-        });
-    });
-    watcher->setFuture(future);
+    thread->start();
 }
 
 void MainWindow::showLinkDialog() {
@@ -260,8 +260,13 @@ void MainWindow::showLinkDialog() {
     m_linkDialog->raise();
     m_linkDialog->activateWindow();
 
-    auto *watcher = new QFutureWatcher<BddbRepository::LinkResult>(this);
-    connect(this, &MainWindow::linkProgressUpdated, this, [this](int current, int total, const QString &message) {
+    // 使用 QThread 确保有事件循环
+    auto *thread = new QThread(this);
+    auto *worker = new LinkWorker();
+    worker->moveToThread(thread);
+
+    connect(thread, &QThread::started, worker, &LinkWorker::doWork);
+    connect(worker, &LinkWorker::progressUpdated, this, [this](int current, int total, const QString &message) {
         if (m_linkDialog) {
             const int progress = total > 0 ? static_cast<int>((current * 100.0) / total) : 0;
             m_linkDialog->setProgress(progress);
@@ -269,9 +274,7 @@ void MainWindow::showLinkDialog() {
         }
         appendLog(QString("%1/%2: %3").arg(current).arg(total).arg(message));
     });
-
-    connect(watcher, &QFutureWatcher<BddbRepository::LinkResult>::finished, this, [this, watcher]() {
-        const auto result = watcher->result();
+    connect(worker, &LinkWorker::finished, this, [this, thread, worker](const BddbRepository::LinkResult &result) {
         if (m_linkDialog) {
             m_linkDialog->setStatus(
                 QStringLiteral("关联完成: 更新 %1, 匹配 %2, 跳过 %3")
@@ -280,17 +283,13 @@ void MainWindow::showLinkDialog() {
                 .arg(result.skipped));
             m_linkDialog->setProgress(100);
         }
-        watcher->deleteLater();
+        thread->quit();
+        thread->wait();
+        thread->deleteLater();
+        worker->deleteLater();
     });
 
-    auto future = QtConcurrent::run([this]() -> BddbRepository::LinkResult {
-        return BddbRepository::linkVolumesToProducts(
-            [this](int current, int total, const std::string &message) {
-                emit linkProgressUpdated(current, total, QString::fromStdString(message));
-            }
-        ).value_or(BddbRepository::LinkResult{});
-    });
-    watcher->setFuture(future);
+    thread->start();
 }
 
 void MainWindow::showRebuildBangumiDialog() {
@@ -304,8 +303,13 @@ void MainWindow::showRebuildBangumiDialog() {
     m_rebuildBangumiDialog->raise();
     m_rebuildBangumiDialog->activateWindow();
 
-    auto *watcher = new QFutureWatcher<SearchResult<BangumiSyncResult>>(this);
-    connect(this, &MainWindow::bangumiRebuildProgressUpdated, this, [this](int current, int total, const QString &message) {
+    // 使用 QThread 确保有事件循环
+    auto *thread = new QThread(this);
+    auto *worker = new BangumiRebuildWorker();
+    worker->moveToThread(thread);
+
+    connect(thread, &QThread::started, worker, &BangumiRebuildWorker::doWork);
+    connect(worker, &BangumiRebuildWorker::progressUpdated, this, [this](int current, int total, const QString &message) {
         if (m_rebuildBangumiDialog) {
             const int progress = total > 0 ? static_cast<int>((current * 100.0) / total) : 0;
             m_rebuildBangumiDialog->setProgress(progress);
@@ -313,9 +317,7 @@ void MainWindow::showRebuildBangumiDialog() {
         }
         appendLog(QString("%1/%2: %3").arg(current).arg(total).arg(message));
     });
-
-    connect(watcher, &QFutureWatcher<SearchResult<BangumiSyncResult>>::finished, this, [this, watcher]() {
-        const auto result = watcher->result();
+    connect(worker, &BangumiRebuildWorker::finished, this, [this, thread, worker](const SearchResult<BangumiSyncResult> &result) {
         if (m_rebuildBangumiDialog) {
             if (result) {
                 m_rebuildBangumiDialog->setStatus(
@@ -330,17 +332,13 @@ void MainWindow::showRebuildBangumiDialog() {
             }
             m_rebuildBangumiDialog->setProgress(100);
         }
-        watcher->deleteLater();
+        thread->quit();
+        thread->wait();
+        thread->deleteLater();
+        worker->deleteLater();
     });
 
-    auto future = QtConcurrent::run([this]() -> SearchResult<BangumiSyncResult> {
-        return BangumiSyncService::rebuildIndex(
-            [this](int processed, int total) {
-                emit bangumiRebuildProgressUpdated(processed, total, QString("Processing %1/%2").arg(processed).arg(total));
-            }
-        );
-    });
-    watcher->setFuture(future);
+    thread->start();
 }
 
 void MainWindow::showRebuildSurugaDialog() {
@@ -354,8 +352,13 @@ void MainWindow::showRebuildSurugaDialog() {
     m_rebuildSurugaDialog->raise();
     m_rebuildSurugaDialog->activateWindow();
 
-    auto *watcher = new QFutureWatcher<SearchResult<SyncResult>>(this);
-    connect(this, &MainWindow::productRebuildProgressUpdated, this, [this](int current, int total, const QString &message) {
+    // 使用 QThread 确保有事件循环
+    auto *thread = new QThread(this);
+    auto *worker = new SurugaRebuildWorker();
+    worker->moveToThread(thread);
+
+    connect(thread, &QThread::started, worker, &SurugaRebuildWorker::doWork);
+    connect(worker, &SurugaRebuildWorker::progressUpdated, this, [this](int current, int total, const QString &message) {
         if (m_rebuildSurugaDialog) {
             const int progress = total > 0 ? static_cast<int>((current * 100.0) / total) : 0;
             m_rebuildSurugaDialog->setProgress(progress);
@@ -363,9 +366,7 @@ void MainWindow::showRebuildSurugaDialog() {
         }
         appendLog(QString("%1/%2: %3").arg(current).arg(total).arg(message));
     });
-
-    connect(watcher, &QFutureWatcher<SearchResult<SyncResult>>::finished, this, [this, watcher]() {
-        const auto result = watcher->result();
+    connect(worker, &SurugaRebuildWorker::finished, this, [this, thread, worker](const SearchResult<SyncResult> &result) {
         if (m_rebuildSurugaDialog) {
             if (result) {
                 m_rebuildSurugaDialog->setStatus(
@@ -380,15 +381,11 @@ void MainWindow::showRebuildSurugaDialog() {
             }
             m_rebuildSurugaDialog->setProgress(100);
         }
-        watcher->deleteLater();
+        thread->quit();
+        thread->wait();
+        thread->deleteLater();
+        worker->deleteLater();
     });
 
-    auto future = QtConcurrent::run([this]() -> SearchResult<SyncResult> {
-        return ProductSyncService::rebuildIndex(
-            [this](int processed, int total) {
-                emit productRebuildProgressUpdated(processed, total, QString("Processing %1/%2").arg(processed).arg(total));
-            }
-        );
-    });
-    watcher->setFuture(future);
+    thread->start();
 }
