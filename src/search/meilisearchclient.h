@@ -4,6 +4,7 @@
 #include <string>
 #include <memory>
 #include <expected>
+#include <vector>
 
 template<typename T> using SearchResult = std::expected<T, std::string>;
 

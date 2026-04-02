@@ -93,9 +93,12 @@ DbResult<std::vector<Product>> SurugaYaRepository::findProductsByCatalogNo(const
         auto coll = db["products"];
         auto filter = make_document(kvp("attributes.型番", catalogNo));
 
-        return coll.find(filter.view())
-            | std::views::transform([](auto& doc) { return parseProduct(doc); })
-            | std::ranges::to<std::vector>();
+        auto cursor = coll.find(filter.view());
+        std::vector<Product> results;
+        for (auto&& doc : cursor) {
+            results.push_back(parseProduct(doc));
+        }
+        return results;
     } catch (const std::exception &e) {
         return std::unexpected(std::string("findProductsByCatalogNo failed: ") + e.what());
     }
@@ -153,9 +156,10 @@ DbResult<PaginatedResult<Product>> SurugaYaRepository::findAll(const PaginationP
         
         // 分页查询
         int skip = (params.page - 1) * params.pageSize;
-        auto cursor = coll.find({})
-            .skip(skip)
-            .limit(params.pageSize);
+        mongocxx::options::find opts;
+        opts.skip(skip);
+        opts.limit(params.pageSize);
+        auto cursor = coll.find({}, opts);
         
         std::vector<Product> products;
         for (auto&& doc : cursor) {
@@ -184,38 +188,45 @@ DbResult<PaginatedResult<Product>> SurugaYaRepository::findByQuery(const Product
         auto coll = db["products"];
         
         // 构建查询条件
-        auto builder = bsoncxx::builder::basic::document{};
-        bool hasFilter = false;
-        
-        if (options.catalogNo) {
-            builder.append(kvp("attributes.型番", *options.catalogNo));
-            hasFilter = true;
-        }
-        
-        if (options.title) {
-            builder.append(kvp("title", make_document(kvp("$regex", *options.title), kvp("$options", "i"))));
-            hasFilter = true;
-        }
-        
-        if (options.manufacturer) {
-            builder.append(kvp("attributes.メーカー", *options.manufacturer));
-            hasFilter = true;
-        }
-        
-        auto filter = hasFilter ? builder.extract() : bsoncxx::document::view{};
-        
+        bsoncxx::document::value filterDoc = [&]() {
+            auto builder = bsoncxx::builder::basic::document{};
+            if (options.catalogNo) {
+                builder.append(kvp("attributes.型番", *options.catalogNo));
+            }
+            if (options.title) {
+                builder.append(kvp("title", make_document(kvp("$regex", *options.title), kvp("$options", "i"))));
+            }
+            if (options.manufacturer) {
+                builder.append(kvp("attributes.メーカー", *options.manufacturer));
+            }
+            return builder.extract();
+        }();
+
         // 获取总数
-        auto total = static_cast<int>(coll.count_documents(filter.view()));
-        
+        int total = 0;
+        if (options.catalogNo || options.title || options.manufacturer) {
+            total = static_cast<int>(coll.count_documents(filterDoc.view()));
+        } else {
+            total = static_cast<int>(coll.count_documents({}));
+        }
+
         // 分页查询
         int skip = (options.pagination.page - 1) * options.pagination.pageSize;
-        auto cursor = coll.find(filter.view())
-            .skip(skip)
-            .limit(options.pagination.pageSize);
-        
+        mongocxx::options::find opts;
+        opts.skip(skip);
+        opts.limit(options.pagination.pageSize);
+
         std::vector<Product> products;
-        for (auto&& doc : cursor) {
-            products.push_back(parseProduct(doc));
+        if (options.catalogNo || options.title || options.manufacturer) {
+            auto cursor = coll.find(filterDoc.view(), opts);
+            for (auto&& doc : cursor) {
+                products.push_back(parseProduct(doc));
+            }
+        } else {
+            auto cursor = coll.find({}, opts);
+            for (auto&& doc : cursor) {
+                products.push_back(parseProduct(doc));
+            }
         }
         
         PaginatedResult<Product> result;
@@ -252,7 +263,9 @@ DbResult<std::vector<Product>> SurugaYaRepository::searchByTitle(const std::stri
             kvp("title", make_document(kvp("$regex", keyword), kvp("$options", "i")))
         );
         
-        auto cursor = coll.find(filter.view()).limit(limit);
+        mongocxx::options::find opts;
+        opts.limit(limit);
+        auto cursor = coll.find(filter.view(), opts);
         
         std::vector<Product> products;
         for (auto&& doc : cursor) {
@@ -306,9 +319,10 @@ DbResult<std::vector<Product>> SurugaYaRepository::findByManufacturer(
         auto filter = make_document(kvp("attributes.メーカー", manufacturer));
         
         int skip = (params.page - 1) * params.pageSize;
-        auto cursor = coll.find(filter.view())
-            .skip(skip)
-            .limit(params.pageSize);
+        mongocxx::options::find opts;
+        opts.skip(skip);
+        opts.limit(params.pageSize);
+        auto cursor = coll.find(filter.view(), opts);
         
         std::vector<Product> products;
         for (auto&& doc : cursor) {

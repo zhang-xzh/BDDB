@@ -6,6 +6,7 @@
 #include <string>
 #include <optional>
 #include <map>
+#include <functional>
 
 // Bangumi 搜索文档类型
 struct BangumiSearchDoc {

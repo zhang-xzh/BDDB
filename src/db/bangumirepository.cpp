@@ -305,9 +305,11 @@ DbResult<std::vector<BangumiSubjectDoc>> BangumiRepository::getAllSubjects(int b
         opts.skip(skip);
         opts.limit(batchSize);
         auto cursor = coll.find({}, opts);
-        return cursor
-            | std::views::transform([](auto& doc) { return parseSubjectDoc(doc); })
-            | std::ranges::to<std::vector>();
+        std::vector<BangumiSubjectDoc> results;
+        for (auto&& doc : cursor) {
+            results.push_back(parseSubjectDoc(doc));
+        }
+        return results;
     } catch (const std::exception &e) {
         return std::unexpected(std::string("getAllSubjects failed: ") + e.what());
     }

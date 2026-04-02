@@ -620,9 +620,11 @@ DbResult<std::vector<Torrent>> BddbRepository::loadTorrents(bool includeDeleted)
             ? coll.find({}, opts)
             : coll.find(make_document(kvp("is_deleted", false)).view(), opts);
 
-        return cursor
-            | std::views::transform([](auto& doc) { return parseTorrent(doc); })
-            | std::ranges::to<std::vector>();
+        std::vector<Torrent> results;
+        for (auto&& doc : cursor) {
+            results.push_back(parseTorrent(doc));
+        }
+        return results;
     } catch (const std::exception &e) {
         return std::unexpected(std::string("loadTorrents failed: ") + e.what());
     }
@@ -800,9 +802,11 @@ DbResult<std::vector<Volume>> BddbRepository::getAllVolumes(const std::string &t
             ? coll.find(make_document(kvp("torrent_id", stringToOid(torrentId)), kvp("is_deleted", false)).view(), opts)
             : coll.find(make_document(kvp("is_deleted", false)).view(), opts);
 
-        return cursor
-            | std::views::transform([](auto& doc) { return parseVolume(doc); })
-            | std::ranges::to<std::vector>();
+        std::vector<Volume> results;
+        for (auto&& doc : cursor) {
+            results.push_back(parseVolume(doc));
+        }
+        return results;
     } catch (const std::exception &e) {
         return std::unexpected(std::string("getAllVolumes failed: ") + e.what());
     }
@@ -940,9 +944,12 @@ DbResult<std::vector<Media>> BddbRepository::loadMedias(const std::string &volum
         opts.sort(make_document(kvp("media_no", 1)));
         auto filter = make_document(kvp("volume_id", stringToOid(volumeId)), kvp("is_deleted", false));
 
-        return coll.find(filter.view(), opts)
-            | std::views::transform([](auto& doc) { return parseMedia(doc); })
-            | std::ranges::to<std::vector>();
+        auto cursor = coll.find(filter.view(), opts);
+        std::vector<Media> results;
+        for (auto&& doc : cursor) {
+            results.push_back(parseMedia(doc));
+        }
+        return results;
     } catch (const std::exception &e) {
         return std::unexpected(std::string("loadMedias failed: ") + e.what());
     }
@@ -1084,9 +1091,12 @@ DbResult<std::vector<Work>> BddbRepository::loadWorks() {
         auto db = MongoConnection::instance().database(resolveBddbDbName());
         auto coll = db["bddb_works"];
 
-        return coll.find({})
-            | std::views::transform([](auto& doc) { return parseWork(doc); })
-            | std::ranges::to<std::vector>();
+        auto cursor = coll.find({});
+        std::vector<Work> results;
+        for (auto&& doc : cursor) {
+            results.push_back(parseWork(doc));
+        }
+        return results;
     } catch (const std::exception &e) {
         return std::unexpected(std::string("loadWorks failed: ") + e.what());
     }
@@ -1264,9 +1274,9 @@ DbResult<VolumeListResult> BddbRepository::getVolumesWithPagination(const Volume
         pipeline.limit(params.pageSize);
 
         auto cursor = coll.aggregate(pipeline);
-        result.data = cursor
-            | std::views::transform([](auto& doc) { return parseVolume(doc); })
-            | std::ranges::to<std::vector>();
+        for (auto&& doc : cursor) {
+            result.data.push_back(parseVolume(doc));
+        }
         return result;
     } catch (const std::exception &e) {
         return std::unexpected(std::string("getVolumesWithPagination failed: ") + e.what());

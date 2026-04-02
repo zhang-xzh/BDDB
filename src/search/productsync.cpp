@@ -1,12 +1,13 @@
 #include "search/productsync.h"
 #include "search/productsearch.h"
 #include "db/surugayarepository.h"
+#include "db/connection.h"
 
 #include <mongocxx/collection.hpp>
 #include <mongocxx/database.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
-#include <ranges>
+#include <unordered_set>
 
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_document;
@@ -54,9 +55,10 @@ SearchResult<SyncResult> ProductSyncService::syncAllProducts(
                 filter = make_document(kvp("product_id", make_document(kvp("$gt", lastId))));
             }
             
-            auto cursor = collection.find(filter.view())
-                .sort(make_document(kvp("product_id", 1)))
-                .limit(batchSize);
+            mongocxx::options::find opts;
+            opts.sort(make_document(kvp("product_id", 1)));
+            opts.limit(batchSize);
+            auto cursor = collection.find(filter.view(), opts);
             
             std::vector<Product> products;
             for (auto&& doc : cursor) {
@@ -288,37 +290,34 @@ SearchResult<LinkVolumesResult> ProductSyncService::linkVolumesToProducts() {
             auto productFilter = make_document(
                 kvp("attributes.型番", catalogNo)
             );
-            auto products = productsColl.find(productFilter.view()).to_array();
+            auto cursor = productsColl.find(productFilter.view());
+            std::vector<bsoncxx::document::view> products;
+            for (auto&& doc : cursor) {
+                products.push_back(doc);
+            }
             
             if (!products.empty()) {
-                // 获取已存在的 product_ids
-                std::vector<bsoncxx::document::element> existingIds;
+                // 获取已存在的 product_ids (存储为字符串)
+                std::unordered_set<std::string> existingIdSet;
                 if (volume["product_ids"] && volume["product_ids"].type() == bsoncxx::type::k_array) {
                     for (auto&& id : volume["product_ids"].get_array().value) {
-                        existingIds.push_back(id);
+                        if (id.type() == bsoncxx::type::k_oid) {
+                            existingIdSet.insert(id.get_oid().value.to_string());
+                        }
                     }
                 }
-                
+
                 // 过滤出新的 product_ids
                 std::vector<bsoncxx::oid> newProductIds;
                 std::vector<std::string> productIdStrs;
                 std::vector<std::string> newIdStrs;
-                
+
                 for (auto&& product : products) {
                     auto oid = product["_id"].get_oid().value;
                     std::string oidStr = oid.to_string();
                     productIdStrs.push_back(oidStr);
-                    
-                    bool exists = false;
-                    for (auto&& existing : existingIds) {
-                        if (existing.type() == bsoncxx::type::k_oid && 
-                            existing.get_oid().value.to_string() == oidStr) {
-                            exists = true;
-                            break;
-                        }
-                    }
-                    
-                    if (!exists) {
+
+                    if (!existingIdSet.contains(oidStr)) {
                         newProductIds.push_back(oid);
                         newIdStrs.push_back(oidStr);
                     }
