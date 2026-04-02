@@ -1,5 +1,4 @@
 #include <QApplication>
-#include <QFont>
 #include <QFontDatabase>
 #include <QDebug>
 #include "core/mainwindow.h"
@@ -24,8 +23,8 @@ int main(int argc, char *argv[]) {
     // 注册元类型以便跨线程信号使用
     qRegisterMetaType<TorrentSyncResult>();
     qRegisterMetaType<BddbRepository::LinkResult>();
-    qRegisterMetaType<SearchResult<BangumiSyncResult>>();
-    qRegisterMetaType<SearchResult<SyncResult>>();
+    qRegisterMetaType<SearchResult<BangumiSyncResult> >();
+    qRegisterMetaType<SearchResult<SyncResult> >();
 
     // 全局抗锯齿字体 - 使用系统默认字体但强制抗锯齿
     QFont font = QFontDatabase::systemFont(QFontDatabase::GeneralFont);

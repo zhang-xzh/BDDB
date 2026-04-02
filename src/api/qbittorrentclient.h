@@ -24,6 +24,8 @@ struct TorrentSyncResult {
     int updateCount = 0;
     int total = 0;
     std::string error;
+
+    bool operator==(const TorrentSyncResult&) const = default;
 };
 
 // 进度回调

@@ -50,7 +50,9 @@ public:
     static DbResult<VolumeListResult> getVolumesWithPagination(const VolumeListParams &params);
 
     // ==================== Product Linking ====================
-    struct LinkResult { int updated=0, matched=0, skipped=0; std::vector<std::string> details; };
+    struct LinkResult { int updated=0, matched=0, skipped=0; std::vector<std::string> details;
+        bool operator==(const LinkResult&) const = default;
+    };
     using LinkProgressCallback = std::function<void(int current, int total, const std::string& message)>;
     static DbResult<LinkResult> linkVolumesToProducts(
         std::optional<LinkProgressCallback> onProgress = std::nullopt

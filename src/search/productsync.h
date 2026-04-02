@@ -13,6 +13,8 @@ struct SyncResult {
     int total = 0;
     int indexed = 0;
     int failed = 0;
+
+    bool operator==(const SyncResult&) const = default;
 };
 
 // 同步进度回调
