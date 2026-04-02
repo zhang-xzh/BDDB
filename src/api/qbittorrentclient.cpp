@@ -376,17 +376,19 @@ TorrentSyncResult QBittorrentClient::syncTorrents(
             auto existing = BddbRepository::getTorrentByHash(torrent.hash);
 
             if (existing && existing->hash == torrent.hash) {
-                Torrent updated = *existing;
-                updated.name = torrent.name;
-                updated.size = torrent.size;
-                updated.progress = torrent.progress;
-                updated.state = torrent.state;
-                updated.numSeeds = torrent.numSeeds;
-                updated.numLeechs = torrent.numLeechs;
-                updated.uploaded = torrent.uploaded;
-                updated.downloaded = torrent.downloaded;
-                updated.category = torrent.category;
-                updated.tags = torrent.tags;
+                // 保存 DB 特有字段，再用 API 数据完整覆盖
+                const auto oldId = existing->id;
+                const auto oldCreatedAt = existing->createdAt;
+                const auto oldIsDeleted = existing->isDeleted;
+                const auto oldHasVolumes = existing->hasVolumes;
+                const auto oldVolumeCount = existing->volumeCount;
+
+                Torrent updated = torrent;
+                updated.id = oldId;
+                updated.createdAt = oldCreatedAt;
+                updated.isDeleted = oldIsDeleted;
+                updated.hasVolumes = oldHasVolumes;
+                updated.volumeCount = oldVolumeCount;
                 updated.syncedAt = now;
                 updated.updatedAt = now;
 
@@ -396,11 +398,12 @@ TorrentSyncResult QBittorrentClient::syncTorrents(
                         bool found = false;
                         for (auto &existingFile: updated.files) {
                             if (existingFile.name == newFile.name) {
-                                existingFile.size = newFile.size;
-                                existingFile.progress = newFile.progress;
-                                existingFile.priority = newFile.priority;
-                                existingFile.isSeed = newFile.isSeed;
-                                existingFile.availability = newFile.availability;
+                                // 保留 DB 的 id 和 createdAt，其余用 API 数据覆盖
+                                const auto oldFileId = existingFile.id;
+                                const auto oldFileCreatedAt = existingFile.createdAt;
+                                existingFile = newFile;
+                                existingFile.id = oldFileId;
+                                existingFile.createdAt = oldFileCreatedAt;
                                 existingFile.updatedAt = now;
                                 mergedFiles.push_back(existingFile);
                                 found = true;

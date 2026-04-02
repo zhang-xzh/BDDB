@@ -15,6 +15,8 @@
 #include <chrono>
 #include <unordered_set>
 #include <ranges>
+#include <optional>
+#include <functional>
 
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_document;
@@ -611,7 +613,7 @@ static bsoncxx::builder::basic::document workToBson(const Work &w) {
 DbResult<std::vector<Torrent>> BddbRepository::loadTorrents(bool includeDeleted) {
     try {
         if (!MongoConnection::instance().isConnected()) return std::vector<Torrent>{};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_torrents"];
         mongocxx::options::find opts;
         opts.projection(make_document(kvp("files", 0)));
@@ -633,7 +635,7 @@ DbResult<std::vector<Torrent>> BddbRepository::loadTorrents(bool includeDeleted)
 DbResult<Torrent> BddbRepository::getTorrentByHash(const std::string &hash) {
     try {
         if (!MongoConnection::instance().isConnected()) return Torrent{};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_torrents"];
         auto filter = make_document(kvp("hash", hash), kvp("is_deleted", false));
         if (auto result = coll.find_one(filter.view()); result) {
@@ -648,7 +650,7 @@ DbResult<Torrent> BddbRepository::getTorrentByHash(const std::string &hash) {
 DbResult<Torrent> BddbRepository::getTorrentById(const std::string &id) {
     try {
         if (!MongoConnection::instance().isConnected()) return Torrent{};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_torrents"];
         auto filter = make_document(kvp("_id", stringToOid(id)));
         if (auto result = coll.find_one(filter.view()); result) {
@@ -663,7 +665,7 @@ DbResult<Torrent> BddbRepository::getTorrentById(const std::string &id) {
 DbResult<void> BddbRepository::upsertTorrent(const Torrent &torrent) {
     try {
         if (!MongoConnection::instance().isConnected()) return {};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_torrents"];
         auto filter = make_document(kvp("hash", torrent.hash));
         auto doc = torrentToBson(torrent);
@@ -678,7 +680,7 @@ DbResult<void> BddbRepository::upsertTorrent(const Torrent &torrent) {
 DbResult<void> BddbRepository::softDeleteTorrent(const std::string &hash) {
     try {
         if (!MongoConnection::instance().isConnected()) return {};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_torrents"];
         auto filter = make_document(kvp("hash", hash));
         auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -716,7 +718,7 @@ DbResult<std::vector<FileItem>> BddbRepository::getTorrentFilesAsFileItems(const
 DbResult<void> BddbRepository::saveTorrentFiles(const std::string &torrentId, const std::vector<TorrentFile> &files) {
     try {
         if (!MongoConnection::instance().isConnected()) return {};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_torrents"];
         auto filter = make_document(kvp("_id", stringToOid(torrentId)));
         auto existing = coll.find_one(filter.view());
@@ -769,7 +771,7 @@ DbResult<void> BddbRepository::saveTorrentFiles(const std::string &torrentId, co
 DbResult<void> BddbRepository::softDeleteTorrentFiles(const std::string &torrentId) {
     try {
         if (!MongoConnection::instance().isConnected()) return {};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_torrents"];
         auto filter = make_document(kvp("_id", stringToOid(torrentId)));
         auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -793,7 +795,7 @@ DbResult<std::vector<Volume>> BddbRepository::loadVolumes(const std::string &tor
 DbResult<std::vector<Volume>> BddbRepository::getAllVolumes(const std::string &torrentId) {
     try {
         if (!MongoConnection::instance().isConnected()) return std::vector<Volume>{};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_volumes"];
         mongocxx::options::find opts;
         opts.sort(make_document(kvp("volume_no", 1)));
@@ -815,7 +817,7 @@ DbResult<std::vector<Volume>> BddbRepository::getAllVolumes(const std::string &t
 DbResult<Volume> BddbRepository::getVolumeById(const std::string &volumeId) {
     try {
         if (!MongoConnection::instance().isConnected()) return Volume{};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_volumes"];
         auto filter = make_document(kvp("_id", stringToOid(volumeId)), kvp("is_deleted", false));
         if (auto result = coll.find_one(filter.view()); result) {
@@ -830,7 +832,7 @@ DbResult<Volume> BddbRepository::getVolumeById(const std::string &volumeId) {
 DbResult<void> BddbRepository::saveVolume(const Volume &volume) {
     try {
         if (!MongoConnection::instance().isConnected()) return {};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_volumes"];
         auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
@@ -855,7 +857,7 @@ DbResult<void> BddbRepository::saveVolume(const Volume &volume) {
 DbResult<std::map<std::string, int>> BddbRepository::getVolumeCounts() {
     try {
         if (!MongoConnection::instance().isConnected()) return std::map<std::string, int>{};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_volumes"];
         mongocxx::pipeline pipeline;
         pipeline.match(make_document(kvp("is_deleted", false)));
@@ -884,7 +886,7 @@ DbResult<std::map<std::string, int>> BddbRepository::getVolumeCounts() {
 DbResult<void> BddbRepository::deleteStaleVolumes(const std::string &torrentId, const std::vector<int> &keepVolumeNos) {
     try {
         if (!MongoConnection::instance().isConnected()) return {};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_volumes"];
         auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
@@ -938,7 +940,7 @@ DbResult<std::vector<FileItem>> BddbRepository::getVolumeFilesAsFileItems(const 
 DbResult<std::vector<Media>> BddbRepository::loadMedias(const std::string &volumeId) {
     try {
         if (!MongoConnection::instance().isConnected()) return std::vector<Media>{};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_medias"];
         mongocxx::options::find opts;
         opts.sort(make_document(kvp("media_no", 1)));
@@ -958,7 +960,7 @@ DbResult<std::vector<Media>> BddbRepository::loadMedias(const std::string &volum
 DbResult<std::map<std::string, int>> BddbRepository::getMediaCountsByVolume() {
     try {
         if (!MongoConnection::instance().isConnected()) return std::map<std::string, int>{};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_medias"];
         mongocxx::pipeline pipeline;
         pipeline.match(make_document(kvp("is_deleted", false)));
@@ -987,7 +989,7 @@ DbResult<std::map<std::string, int>> BddbRepository::getMediaCountsByVolume() {
 DbResult<void> BddbRepository::saveMedia(const Media &media) {
     try {
         if (!MongoConnection::instance().isConnected()) return {};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_medias"];
         auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
@@ -1013,7 +1015,7 @@ DbResult<void> BddbRepository::saveMedia(const Media &media) {
 DbResult<void> BddbRepository::deleteStaleMedias(const std::string &volumeId, const std::vector<std::pair<int, MediaType>> &keepMedias) {
     try {
         if (!MongoConnection::instance().isConnected()) return {};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_medias"];
         auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
@@ -1054,7 +1056,7 @@ DbResult<void> BddbRepository::deleteStaleMedias(const std::string &volumeId, co
 DbResult<std::map<std::string, int>> BddbRepository::getWorkCountsByVolume() {
     try {
         if (!MongoConnection::instance().isConnected()) return std::map<std::string, int>{};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_volumes"];
         mongocxx::pipeline pipeline;
         pipeline.match(make_document(kvp("is_deleted", false)));
@@ -1088,7 +1090,7 @@ DbResult<std::map<std::string, int>> BddbRepository::getWorkCountsByVolume() {
 DbResult<std::vector<Work>> BddbRepository::loadWorks() {
     try {
         if (!MongoConnection::instance().isConnected()) return std::vector<Work>{};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_works"];
 
         auto cursor = coll.find({});
@@ -1105,7 +1107,7 @@ DbResult<std::vector<Work>> BddbRepository::loadWorks() {
 DbResult<Work> BddbRepository::getWorkById(const std::string &id) {
     try {
         if (!MongoConnection::instance().isConnected()) return Work{};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_works"];
         auto filter = make_document(kvp("_id", stringToOid(id)));
         if (auto result = coll.find_one(filter.view()); result) {
@@ -1120,7 +1122,7 @@ DbResult<Work> BddbRepository::getWorkById(const std::string &id) {
 DbResult<Work> BddbRepository::getWorkByBangumiSubjectId(int subjectId) {
     try {
         if (!MongoConnection::instance().isConnected()) return Work{};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_works"];
         auto filter = make_document(kvp("id", subjectId));
         if (auto result = coll.find_one(filter.view()); result) {
@@ -1135,7 +1137,7 @@ DbResult<Work> BddbRepository::getWorkByBangumiSubjectId(int subjectId) {
 DbResult<void> BddbRepository::saveWork(const Work &work) {
     try {
         if (!MongoConnection::instance().isConnected()) return {};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_works"];
         auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
@@ -1165,7 +1167,7 @@ DbResult<void> BddbRepository::saveWork(const Work &work) {
 DbResult<void> BddbRepository::removeWorkFromVolume(const std::string &volumeId, const std::string &workId) {
     try {
         if (!MongoConnection::instance().isConnected()) return {};
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_volumes"];
         auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         auto filter = make_document(kvp("_id", stringToOid(volumeId)));
@@ -1190,7 +1192,7 @@ DbResult<VolumeListResult> BddbRepository::getVolumesWithPagination(const Volume
         result.pageSize = params.pageSize;
         if (!MongoConnection::instance().isConnected()) return result;
 
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto coll = db["bddb_volumes"];
         mongocxx::pipeline pipeline;
 
@@ -1285,18 +1287,29 @@ DbResult<VolumeListResult> BddbRepository::getVolumesWithPagination(const Volume
 
 // ==================== Product Linking ====================
 
-DbResult<BddbRepository::LinkResult> BddbRepository::linkVolumesToProducts() {
+DbResult<BddbRepository::LinkResult> BddbRepository::linkVolumesToProducts(
+    std::optional<LinkProgressCallback> onProgress
+) {
     try {
         LinkResult result;
         if (!MongoConnection::instance().isConnected()) return result;
 
-        auto db = MongoConnection::instance().database(resolveBddbDbName());
+        auto db = MongoConnection::instance().database("bddb_dev");
         auto volumesColl = db["bddb_volumes"];
+
+        // 先获取总数
+        auto countFilter = make_document(kvp("is_deleted", false));
+        auto totalCount = volumesColl.count_documents(countFilter.view());
+        int processed = 0;
 
         auto filter = make_document(kvp("is_deleted", false));
         auto cursor = volumesColl.find(filter.view());
 
         for (auto &&doc : cursor) {
+            ++processed;
+            if (onProgress) {
+                (*onProgress)(processed, static_cast<int>(totalCount), "Processing volume " + std::to_string(processed));
+            }
             Volume v = parseVolume(doc);
             auto catalogNo = v.catalogNo;
             auto start = catalogNo.find_first_not_of(" \t\r\n");

@@ -39,7 +39,7 @@ struct LinkVolumesResult {
 class ProductSyncService {
 public:
     // 将 MongoDB 产品转换为搜索文档
-    static ProductSearchDoc convertToSearchDoc(const Product& product);
+    static ProductSearchDoc convertToSearchDoc(const Product &product);
 
     // 全量同步所有产品
     // 从 MongoDB 读取所有产品并索引到 Meilisearch
@@ -50,27 +50,22 @@ public:
 
     // 增量同步（按 product_id 列表）
     static SearchResult<void> syncProductsByIds(
-        const std::vector<std::string>& productIds
+        const std::vector<std::string> &productIds
     );
 
     // 同步单个产品
-    static SearchResult<void> syncSingleProduct(const std::string& productId);
+    static SearchResult<void> syncSingleProduct(const std::string &productId);
 
     // 重建索引（删除并重新创建，然后全量同步）
     static SearchResult<SyncResult> rebuildIndex(
         std::optional<SyncProgressCallback> onProgress = std::nullopt
     );
 
-    // 根据 catalog_no 匹配产品并更新 volume 的 product_ids
-    // 查询 suruga_ya.products.attributes.型番 匹配 bddb_volumes.catalog_no
-    // 如果匹配到多个产品，将所有 product._id 填入 product_ids 数组（跳过已存在的）
-    static SearchResult<LinkVolumesResult> linkVolumesToProducts();
-
 private:
     // 辅助函数：处理一批产品
     static SearchResult<int> processBatch(
-        const std::vector<Product>& products,
-        int& processed,
+        const std::vector<Product> &products,
+        int &processed,
         int total,
         std::optional<SyncProgressCallback> onProgress
     );

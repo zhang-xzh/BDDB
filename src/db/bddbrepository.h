@@ -53,7 +53,10 @@ public:
 
     // ==================== Product Linking ====================
     struct LinkResult { int updated=0, matched=0, skipped=0; std::vector<std::string> details; };
-    static DbResult<LinkResult> linkVolumesToProducts();
+    using LinkProgressCallback = std::function<void(int current, int total, const std::string& message)>;
+    static DbResult<LinkResult> linkVolumesToProducts(
+        std::optional<LinkProgressCallback> onProgress = std::nullopt
+    );
 };
 
 #endif // HAVE_MONGODB

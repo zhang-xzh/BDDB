@@ -4,11 +4,20 @@
 #include "ui/productsearchwindow.h"
 #include "ui/worksearchwindow.h"
 #include "ui/progressdialog.h"
+#include "api/qbittorrentclient.h"
+#include "db/bddbrepository.h"
+#include "search/bangumisync.h"
+#include "search/productsync.h"
 #include <QApplication>
 #include <QGroupBox>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QWidget>
+#include <QListWidget>
+#include <QDateTime>
+#include <QtConcurrent>
+#include <QFutureWatcher>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent) {
@@ -26,13 +35,20 @@ void MainWindow::setupUI() {
     QFont antialiasedFont = QApplication::font();
     antialiasedFont.setStyleStrategy(QFont::PreferAntialias);
 
-    // 主内容区 - 水平排列各分组
+    // 主内容区 - 垂直布局（按钮区域 + 日志区域）
     auto *centralWidget = new QWidget(this);
     centralWidget->setFont(antialiasedFont);
-    auto *mainLayout = new QHBoxLayout(centralWidget);
+    auto *mainLayout = new QVBoxLayout(centralWidget);
     mainLayout->setSpacing(12);
     mainLayout->setContentsMargins(12, 8, 12, 8);
     setCentralWidget(centralWidget);
+
+    // 按钮区域 - 水平排列各分组
+    auto *buttonsWidget = new QWidget(this);
+    buttonsWidget->setFont(antialiasedFont);
+    auto *buttonsLayout = new QHBoxLayout(buttonsWidget);
+    buttonsLayout->setSpacing(12);
+    buttonsLayout->setContentsMargins(0, 0, 0, 0);
 
     // 管理分组 - 垂直按钮布局
     auto *groupManage = new QGroupBox("管理", this);
@@ -51,7 +67,7 @@ void MainWindow::setupUI() {
     connect(btnVolume, &QPushButton::clicked, this, &MainWindow::showVolumeManager);
     layoutManage->addWidget(btnVolume);
 
-    mainLayout->addWidget(groupManage);
+    buttonsLayout->addWidget(groupManage);
 
     // 搜索分组 - 垂直按钮布局
     auto *groupSearch = new QGroupBox("搜索", this);
@@ -70,7 +86,7 @@ void MainWindow::setupUI() {
     connect(btnWork, &QPushButton::clicked, this, &MainWindow::showWorkSearch);
     layoutSearch->addWidget(btnWork);
 
-    mainLayout->addWidget(groupSearch);
+    buttonsLayout->addWidget(groupSearch);
 
     // 数据分组 - 垂直按钮布局
     auto *groupData = new QGroupBox("数据", this);
@@ -89,7 +105,7 @@ void MainWindow::setupUI() {
     connect(btnLink, &QPushButton::clicked, this, &MainWindow::showLinkDialog);
     layoutData->addWidget(btnLink);
 
-    mainLayout->addWidget(groupData);
+    buttonsLayout->addWidget(groupData);
 
     // 索引分组 - 垂直按钮布局
     auto *groupIndex = new QGroupBox("索引", this);
@@ -108,10 +124,40 @@ void MainWindow::setupUI() {
     connect(btnRebuildSuruga, &QPushButton::clicked, this, &MainWindow::showRebuildSurugaDialog);
     layoutIndex->addWidget(btnRebuildSuruga);
 
-    mainLayout->addWidget(groupIndex);
+    buttonsLayout->addWidget(groupIndex);
+    buttonsLayout->addStretch();
+
+    mainLayout->addWidget(buttonsWidget);
+
+    // 日志显示区域
+    auto *logGroup = new QGroupBox("日志", this);
+    logGroup->setFont(antialiasedFont);
+    auto *logLayout = new QVBoxLayout(logGroup);
+    logLayout->setSpacing(4);
+    logLayout->setContentsMargins(8, 12, 8, 8);
+
+    m_logList = new QListWidget(this);
+    m_logList->setFont(antialiasedFont);
+    m_logList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    logLayout->addWidget(m_logList);
+
+    mainLayout->addWidget(logGroup, 1);
 
     // 自适应窗口大小
     setFixedSize(sizeHint());
+}
+
+void MainWindow::appendLog(const QString& message) {
+    if (m_logList) {
+        const QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
+        auto *item = new QListWidgetItem(QString("[%1] %2").arg(timestamp, message));
+        m_logList->addItem(item);
+        m_logList->scrollToBottom();
+        // 限制最大行数
+        while (m_logList->count() > 1000) {
+            delete m_logList->takeItem(0);
+        }
+    }
 }
 
 void MainWindow::showTorrentManager() {
@@ -159,11 +205,48 @@ void MainWindow::showSyncDialog() {
         m_syncDialog = new ProgressDialog("同步");
         m_syncDialog->setWindowFlag(Qt::Window);
     }
-    m_syncDialog->setStatus("正在同步种子...");
+    m_syncDialog->setStatus("准备同步...");
     m_syncDialog->setProgress(0);
     m_syncDialog->show();
     m_syncDialog->raise();
     m_syncDialog->activateWindow();
+
+    auto *watcher = new QFutureWatcher<TorrentSyncResult>(this);
+    connect(this, &MainWindow::syncProgressUpdated, this, [this](int current, int total, const QString &message) {
+        if (m_syncDialog) {
+            const int progress = total > 0 ? static_cast<int>((current * 100.0) / total) : 0;
+            m_syncDialog->setProgress(progress);
+            m_syncDialog->setStatus(message);
+        }
+        appendLog(QString("%1/%2: %3").arg(current).arg(total).arg(message));
+    });
+
+    connect(watcher, &QFutureWatcher<TorrentSyncResult>::finished, this, [this, watcher]() {
+        const auto result = watcher->result();
+        if (m_syncDialog) {
+            if (result.success) {
+                m_syncDialog->setStatus(
+                    QStringLiteral("同步完成: 新增 %1, 更新 %2, 总计 %3")
+                    .arg(result.newCount)
+                    .arg(result.updateCount)
+                    .arg(result.total));
+            } else {
+                m_syncDialog->setStatus(
+                    QStringLiteral("同步失败: %1")
+                    .arg(QString::fromStdString(result.error)));
+            }
+            m_syncDialog->setProgress(100);
+        }
+        watcher->deleteLater();
+    });
+
+    auto future = QtConcurrent::run([this]() -> TorrentSyncResult {
+        QBittorrentClient client;
+        return client.syncTorrents([this](int current, int total, const std::string &message) {
+            emit syncProgressUpdated(current, total, QString::fromStdString(message));
+        });
+    });
+    watcher->setFuture(future);
 }
 
 void MainWindow::showLinkDialog() {
@@ -171,11 +254,43 @@ void MainWindow::showLinkDialog() {
         m_linkDialog = new ProgressDialog("关联");
         m_linkDialog->setWindowFlag(Qt::Window);
     }
-    m_linkDialog->setStatus("正在关联产品...");
+    m_linkDialog->setStatus("准备关联产品...");
     m_linkDialog->setProgress(0);
     m_linkDialog->show();
     m_linkDialog->raise();
     m_linkDialog->activateWindow();
+
+    auto *watcher = new QFutureWatcher<BddbRepository::LinkResult>(this);
+    connect(this, &MainWindow::linkProgressUpdated, this, [this](int current, int total, const QString &message) {
+        if (m_linkDialog) {
+            const int progress = total > 0 ? static_cast<int>((current * 100.0) / total) : 0;
+            m_linkDialog->setProgress(progress);
+            m_linkDialog->setStatus(message);
+        }
+        appendLog(QString("%1/%2: %3").arg(current).arg(total).arg(message));
+    });
+
+    connect(watcher, &QFutureWatcher<BddbRepository::LinkResult>::finished, this, [this, watcher]() {
+        const auto result = watcher->result();
+        if (m_linkDialog) {
+            m_linkDialog->setStatus(
+                QStringLiteral("关联完成: 更新 %1, 匹配 %2, 跳过 %3")
+                .arg(result.updated)
+                .arg(result.matched)
+                .arg(result.skipped));
+            m_linkDialog->setProgress(100);
+        }
+        watcher->deleteLater();
+    });
+
+    auto future = QtConcurrent::run([this]() -> BddbRepository::LinkResult {
+        return BddbRepository::linkVolumesToProducts(
+            [this](int current, int total, const std::string &message) {
+                emit linkProgressUpdated(current, total, QString::fromStdString(message));
+            }
+        ).value_or(BddbRepository::LinkResult{});
+    });
+    watcher->setFuture(future);
 }
 
 void MainWindow::showRebuildBangumiDialog() {
@@ -183,11 +298,49 @@ void MainWindow::showRebuildBangumiDialog() {
         m_rebuildBangumiDialog = new ProgressDialog("重建 Bangumi 索引");
         m_rebuildBangumiDialog->setWindowFlag(Qt::Window);
     }
-    m_rebuildBangumiDialog->setStatus("正在重建 Bangumi 索引...");
+    m_rebuildBangumiDialog->setStatus("准备重建 Bangumi 索引...");
     m_rebuildBangumiDialog->setProgress(0);
     m_rebuildBangumiDialog->show();
     m_rebuildBangumiDialog->raise();
     m_rebuildBangumiDialog->activateWindow();
+
+    auto *watcher = new QFutureWatcher<SearchResult<BangumiSyncResult>>(this);
+    connect(this, &MainWindow::bangumiRebuildProgressUpdated, this, [this](int current, int total, const QString &message) {
+        if (m_rebuildBangumiDialog) {
+            const int progress = total > 0 ? static_cast<int>((current * 100.0) / total) : 0;
+            m_rebuildBangumiDialog->setProgress(progress);
+            m_rebuildBangumiDialog->setStatus(message);
+        }
+        appendLog(QString("%1/%2: %3").arg(current).arg(total).arg(message));
+    });
+
+    connect(watcher, &QFutureWatcher<SearchResult<BangumiSyncResult>>::finished, this, [this, watcher]() {
+        const auto result = watcher->result();
+        if (m_rebuildBangumiDialog) {
+            if (result) {
+                m_rebuildBangumiDialog->setStatus(
+                    QStringLiteral("重建完成: 总计 %1, 索引 %2, 失败 %3")
+                    .arg(result->total)
+                    .arg(result->indexed)
+                    .arg(result->failed));
+            } else {
+                m_rebuildBangumiDialog->setStatus(
+                    QStringLiteral("重建失败: %1")
+                    .arg(QString::fromStdString(result.error())));
+            }
+            m_rebuildBangumiDialog->setProgress(100);
+        }
+        watcher->deleteLater();
+    });
+
+    auto future = QtConcurrent::run([this]() -> SearchResult<BangumiSyncResult> {
+        return BangumiSyncService::rebuildIndex(
+            [this](int processed, int total) {
+                emit bangumiRebuildProgressUpdated(processed, total, QString("Processing %1/%2").arg(processed).arg(total));
+            }
+        );
+    });
+    watcher->setFuture(future);
 }
 
 void MainWindow::showRebuildSurugaDialog() {
@@ -195,9 +348,47 @@ void MainWindow::showRebuildSurugaDialog() {
         m_rebuildSurugaDialog = new ProgressDialog("重建 suruga-ya 索引");
         m_rebuildSurugaDialog->setWindowFlag(Qt::Window);
     }
-    m_rebuildSurugaDialog->setStatus("正在重建 suruga-ya 索引...");
+    m_rebuildSurugaDialog->setStatus("准备重建 suruga-ya 索引...");
     m_rebuildSurugaDialog->setProgress(0);
     m_rebuildSurugaDialog->show();
     m_rebuildSurugaDialog->raise();
     m_rebuildSurugaDialog->activateWindow();
+
+    auto *watcher = new QFutureWatcher<SearchResult<SyncResult>>(this);
+    connect(this, &MainWindow::productRebuildProgressUpdated, this, [this](int current, int total, const QString &message) {
+        if (m_rebuildSurugaDialog) {
+            const int progress = total > 0 ? static_cast<int>((current * 100.0) / total) : 0;
+            m_rebuildSurugaDialog->setProgress(progress);
+            m_rebuildSurugaDialog->setStatus(message);
+        }
+        appendLog(QString("%1/%2: %3").arg(current).arg(total).arg(message));
+    });
+
+    connect(watcher, &QFutureWatcher<SearchResult<SyncResult>>::finished, this, [this, watcher]() {
+        const auto result = watcher->result();
+        if (m_rebuildSurugaDialog) {
+            if (result) {
+                m_rebuildSurugaDialog->setStatus(
+                    QStringLiteral("重建完成: 总计 %1, 索引 %2, 失败 %3")
+                    .arg(result->total)
+                    .arg(result->indexed)
+                    .arg(result->failed));
+            } else {
+                m_rebuildSurugaDialog->setStatus(
+                    QStringLiteral("重建失败: %1")
+                    .arg(QString::fromStdString(result.error())));
+            }
+            m_rebuildSurugaDialog->setProgress(100);
+        }
+        watcher->deleteLater();
+    });
+
+    auto future = QtConcurrent::run([this]() -> SearchResult<SyncResult> {
+        return ProductSyncService::rebuildIndex(
+            [this](int processed, int total) {
+                emit productRebuildProgressUpdated(processed, total, QString("Processing %1/%2").arg(processed).arg(total));
+            }
+        );
+    });
+    watcher->setFuture(future);
 }

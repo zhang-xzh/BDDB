@@ -4,6 +4,8 @@
 #include <QMainWindow>
 #include <QPointer>
 
+class QListWidget;
+
 class TorrentManagerWindow;
 class VolumeManagerWindow;
 class VolumeEditorWindow;
@@ -20,6 +22,12 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
+signals:
+    void syncProgressUpdated(int current, int total, QString message);
+    void linkProgressUpdated(int current, int total, QString message);
+    void bangumiRebuildProgressUpdated(int current, int total, QString message);
+    void productRebuildProgressUpdated(int current, int total, QString message);
+
 private:
     void setupUI();
 
@@ -32,6 +40,8 @@ private:
     void showLinkDialog();
     void showRebuildBangumiDialog();
     void showRebuildSurugaDialog();
+
+    void appendLog(const QString& message);
 
     QPointer<TorrentManagerWindow> m_torrentManagerWindow;
     QPointer<VolumeManagerWindow> m_volumeManagerWindow;
@@ -46,6 +56,9 @@ private:
     QPointer<ProgressDialog> m_linkDialog;
     QPointer<ProgressDialog> m_rebuildBangumiDialog;
     QPointer<ProgressDialog> m_rebuildSurugaDialog;
+
+    // 日志显示区域
+    QListWidget* m_logList = nullptr;
 };
 
 #endif // MAINWINDOW_H

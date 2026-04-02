@@ -27,8 +27,6 @@ private:
     bool m_connected = false;
 };
 
-std::string resolveBddbDbName();
-
 #endif // HAVE_MONGODB
 
 #endif // CONNECTION_H

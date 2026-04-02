@@ -36,15 +36,4 @@ mongocxx::database MongoConnection::database(const std::string &name) {
     return (*m_client)[name];
 }
 
-std::string resolveBddbDbName() {
-    const char *env = std::getenv("NODE_ENV");
-    if (!env) env = "";
-    if (std::string(env) == "production") {
-        const char *prod = std::getenv("MONGO_DB_PROD");
-        return prod && prod[0] ? prod : "bddb_prod";
-    }
-    const char *dev = std::getenv("MONGO_DB_DEV");
-    return dev && dev[0] ? dev : "bddb_dev";
-}
-
 #endif // HAVE_MONGODB
