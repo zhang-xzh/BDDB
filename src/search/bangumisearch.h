@@ -2,53 +2,53 @@
 #define BANGUMISEARCH_H
 
 #include "search/meilisearchclient.h"
-#include <vector>
-#include <string>
+#include <QList>
+#include <QString>
+#include <QMap>
 #include <optional>
-#include <map>
 #include <functional>
 
 // Bangumi 搜索文档类型
 struct BangumiSearchDoc {
-    int subjectId = 0;           // 条目 ID
-    std::string name;            // 原名
-    std::string nameCn;          // 中文名
-    int type = 0;                // 条目类型 ID
-    std::string typeName;        // 条目类型名称
-    std::optional<int> platform; // 平台 ID
-    std::optional<std::string> platformName; // 平台名称
-    std::string summary;         // 简介
-    std::optional<std::string> date; // 放送/发售日期
-    std::optional<double> score; // 评分
-    std::optional<int> rank;     // 排名
-    std::string url;             // 条目页面 URL
-    std::vector<std::string> tags; // 标签
+    qint32 subjectId = 0;           // 条目 ID
+    QString name;                // 原名
+    QString nameCn;              // 中文名
+    qint32 type = 0;                // 条目类型 ID
+    QString typeName;            // 条目类型名称
+    std::optional<qint32> platform; // 平台 ID
+    std::optional<QString> platformName; // 平台名称
+    QString summary;             // 简介
+    std::optional<QString> date; // 放送/发售日期
+    std::optional<qreal> score; // 评分
+    std::optional<qint32> rank;     // 排名
+    QString url;                 // 条目页面 URL
+    QList<QString> tags;         // 标签
     bool nsfw = false;           // 是否 NSFW
     
     // 高亮字段
-    std::optional<std::string> highlightNameCn;
-    std::optional<std::string> highlightSummary;
+    std::optional<QString> highlightNameCn;
+    std::optional<QString> highlightSummary;
 
     // 转换为 JSON 用于索引
-    [[nodiscard]] std::string toJson() const;
+    [[nodiscard]] QString toJson() const;
 };
 
 // 搜索结果类型
 struct BangumiSearchResult {
-    std::vector<BangumiSearchDoc> subjects;
-    int total = 0;
-    int page = 1;
-    int totalPages = 0;
+    QList<BangumiSearchDoc> subjects;
+    qint32 total = 0;
+    qint32 page = 1;
+    qint32 totalPages = 0;
 };
 
 // 过滤选项
 struct BangumiSearchOptions {
-    int page = 1;
-    int limit = 20;
-    std::optional<int> type;           // 条目类型过滤
-    std::optional<int> platform;       // 平台过滤
-    std::optional<double> minScore;    // 最低评分
-    std::optional<double> maxScore;    // 最高评分
+    qint32 page = 1;
+    qint32 limit = 20;
+    std::optional<qint32> type;           // 条目类型过滤
+    std::optional<qint32> platform;       // 平台过滤
+    std::optional<qreal> minScore;    // 最低评分
+    std::optional<qreal> maxScore;    // 最高评分
     std::optional<bool> nsfw;          // NSFW 过滤
 };
 
@@ -72,12 +72,12 @@ public:
     
     // 批量索引 Bangumi 条目
     static SearchResult<void> bulkIndexSubjects(
-        const std::vector<BangumiSearchDoc>& subjects,
-        std::optional<std::function<void(int processed, int total)>> onProgress = std::nullopt
+        const QList<BangumiSearchDoc>& subjects,
+        std::optional<std::function<void(qint32 processed, qint32 total)>> onProgress = std::nullopt
     );
     
     // 删除单个 Bangumi 条目
-    static SearchResult<void> deleteSubject(int subjectId);
+    static SearchResult<void> deleteSubject(qint32 subjectId);
     
     // 清空所有 Bangumi 条目
     static SearchResult<void> clearAllSubjects();
@@ -86,7 +86,7 @@ public:
     
     // 搜索 Bangumi 条目
     static SearchResult<BangumiSearchResult> search(
-        const std::string& query,
+        const QString& query,
         const BangumiSearchOptions& options = {}
     );
     
@@ -94,7 +94,7 @@ public:
     static SearchResult<IndexStats> getIndexStats();
     
     // 获取类型分布统计
-    static SearchResult<std::map<int, int>> getTypeStats();
+    static SearchResult<QMap<qint32, qint32>> getTypeStats();
 
 private:
     // 更新索引设置

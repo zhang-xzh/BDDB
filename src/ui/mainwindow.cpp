@@ -202,9 +202,9 @@ void MainWindow::showSyncDialog() {
     });
 
     connect(thread, &QThread::started, worker, &SyncWorker::doWork);
-    connect(worker, &SyncWorker::progressUpdated, this, [this](int current, int total, const QString &message) {
+    connect(worker, &SyncWorker::progressUpdated, this, [this](qint32 current, qint32 total, const QString &message) {
         if (m_syncDialog) {
-            const int progress = total > 0 ? static_cast<int>((current * 100.0) / total) : 0;
+            const qint32 progress = total > 0 ? static_cast<qint32>((current * 100.0) / total) : 0;
             m_syncDialog->setProgress(progress);
             m_syncDialog->setStatus(message);
         }
@@ -221,7 +221,7 @@ void MainWindow::showSyncDialog() {
             } else {
                 m_syncDialog->setStatus(
                     QStringLiteral("同步失败: %1")
-                    .arg(QString::fromStdString(result.error)));
+                    .arg(result.error));
             }
             m_syncDialog->setProgress(100);
         }
@@ -257,9 +257,9 @@ void MainWindow::showLinkDialog() {
     });
 
     connect(thread, &QThread::started, worker, &LinkWorker::doWork);
-    connect(worker, &LinkWorker::progressUpdated, this, [this](int current, int total, const QString &message) {
+    connect(worker, &LinkWorker::progressUpdated, this, [this](qint32 current, qint32 total, const QString &message) {
         if (m_linkDialog) {
-            const int progress = total > 0 ? static_cast<int>((current * 100.0) / total) : 0;
+            const qint32 progress = total > 0 ? static_cast<qint32>((current * 100.0) / total) : 0;
             m_linkDialog->setProgress(progress);
             m_linkDialog->setStatus(message);
         }

@@ -2,7 +2,7 @@
 #define VOLUMEMODEL_H
 
 #include <QAbstractTableModel>
-#include <vector>
+#include <QList>
 #include "models/models.h"
 
 class VolumeModel : public QAbstractTableModel {
@@ -11,17 +11,17 @@ class VolumeModel : public QAbstractTableModel {
 public:
     explicit VolumeModel(QObject *parent = nullptr);
 
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
-    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
-    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
+    qint32 rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    qint32 columnCount(const QModelIndex &parent = QModelIndex()) const override;
+    QVariant data(const QModelIndex &index, qint32 role = Qt::DisplayRole) const override;
+    QVariant headerData(qint32 section, Qt::Orientation orientation, qint32 role = Qt::DisplayRole) const override;
 
-    void setVolumes(std::vector<Volume> volumes);
+    void setVolumes(QList<Volume> volumes);
     void clear();
-    const Volume* volumeAt(int row) const;
+    const Volume* volumeAt(qint32 row) const;
 
 private:
-    std::vector<Volume> m_volumes;
+    QList<Volume> m_volumes;
 };
 
 #endif // VOLUMEMODEL_H

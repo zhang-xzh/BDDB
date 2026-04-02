@@ -15,9 +15,9 @@ MongoConnection &MongoConnection::instance() {
     return conn;
 }
 
-bool MongoConnection::connect(const std::string &uri) {
+bool MongoConnection::connect(const QString &uri) {
     try {
-        m_client = std::make_unique<mongocxx::client>(mongocxx::uri(uri));
+        m_client = std::make_unique<mongocxx::client>(mongocxx::uri(uri.toStdString()));
         m_connected = true;
         return true;
     } catch (...) {
@@ -30,8 +30,8 @@ bool MongoConnection::isConnected() const {
     return m_connected;
 }
 
-mongocxx::database MongoConnection::database(const std::string &name) {
-    return (*m_client)[name];
+mongocxx::database MongoConnection::database(const QString &name) {
+    return (*m_client)[name.toStdString()];
 }
 
 

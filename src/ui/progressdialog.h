@@ -14,7 +14,7 @@ public:
     explicit ProgressDialog(const QString &title, QWidget *parent = nullptr);
 
     void setStatus(const QString &text);
-    void setProgress(int value);
+    void setProgress(qint32 value);
 
     // 检查是否已取消
     bool isCancelled() const { return m_cancelled; }

@@ -3,22 +3,22 @@
 
 #include "search/bangumisearch.h"
 #include "models/models.h"
-#include <vector>
-#include <string>
+#include <QList>
+#include <QString>
 #include <optional>
 #include <functional>
 
 // Bangumi 同步结果
 struct BangumiSyncResult {
-    int total = 0;
-    int indexed = 0;
-    int failed = 0;
+    qint32 total = 0;
+    qint32 indexed = 0;
+    qint32 failed = 0;
 
     bool operator==(const BangumiSyncResult&) const = default;
 };
 
 // 同步进度回调
-using BangumiSyncProgressCallback = std::function<void(int processed, int total)>;
+using BangumiSyncProgressCallback = std::function<void(qint32 processed, qint32 total)>;
 
 // Bangumi 同步服务
 class BangumiSyncService {
@@ -29,15 +29,15 @@ public:
     // 全量同步所有 Bangumi 条目
     static SearchResult<BangumiSyncResult> syncAllSubjects(
         std::optional<BangumiSyncProgressCallback> onProgress = std::nullopt,
-        int batchSize = 1000
+        qint32 batchSize = 1000
     );
 
     // 同步单个条目
-    static SearchResult<void> syncSingleSubject(int subjectId);
+    static SearchResult<void> syncSingleSubject(qint32 subjectId);
 
     // 同步多个条目
     static SearchResult<void> syncSubjectsByIds(
-        const std::vector<int>& subjectIds
+        const QList<qint32>& subjectIds
     );
 
     // 重建索引（删除并重新创建，然后全量同步）
@@ -50,13 +50,13 @@ public:
 
 private:
     // 获取条目类型名称
-    static std::string getSubjectTypeName(int type);
+    static QString getSubjectTypeName(qint32 type);
     
     // 辅助函数：处理一批条目
-    static SearchResult<int> processBatch(
-        const std::vector<BangumiSubjectDoc>& subjects,
-        int& processed,
-        int total,
+    static SearchResult<qint32> processBatch(
+        const QList<BangumiSubjectDoc>& subjects,
+        qint32& processed,
+        qint32 total,
         std::optional<BangumiSyncProgressCallback> onProgress
     );
 };

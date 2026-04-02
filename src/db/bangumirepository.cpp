@@ -6,86 +6,45 @@
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/basic/array.hpp>
-#include <ranges>
+
+#include "bsonutils.h"
 
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_document;
 using bsoncxx::builder::basic::make_array;
 
-static std::string bsonValueToString(const bsoncxx::document::element &elem) {
-    if (!elem) return {};
-    switch (elem.type()) {
-        case bsoncxx::type::k_string:
-            return std::string(elem.get_string().value);
-        case bsoncxx::type::k_int32:
-            return std::to_string(elem.get_int32().value);
-        case bsoncxx::type::k_int64:
-            return std::to_string(elem.get_int64().value);
-        default:
-            return {};
-    }
-}
-
-static int bsonValueToInt32(const bsoncxx::document::element &elem) {
-    if (!elem) return 0;
-    switch (elem.type()) {
-        case bsoncxx::type::k_int32:
-            return elem.get_int32().value;
-        case bsoncxx::type::k_int64:
-            return static_cast<int>(elem.get_int64().value);
-        case bsoncxx::type::k_double:
-            return static_cast<int>(elem.get_double().value);
-        default:
-            return 0;
-    }
-}
-
-static double bsonValueToDouble(const bsoncxx::document::element &elem) {
-    if (!elem) return 0.0;
-    switch (elem.type()) {
-        case bsoncxx::type::k_double:
-            return elem.get_double().value;
-        case bsoncxx::type::k_int32:
-            return static_cast<double>(elem.get_int32().value);
-        case bsoncxx::type::k_int64:
-            return static_cast<double>(elem.get_int64().value);
-        default:
-            return 0.0;
-    }
-}
-
 static BangumiSubjectDoc parseSubjectDoc(const bsoncxx::document::view &view) {
     BangumiSubjectDoc s;
-    if (view["_id"]) s.id = bsonValueToInt32(view["_id"]);
-    if (view["name"]) s.name = bsonValueToString(view["name"]);
-    if (view["name_cn"]) s.nameCn = bsonValueToString(view["name_cn"]);
-    if (view["type"]) s.type = bsonValueToInt32(view["type"]);
-    if (view["summary"]) s.summary = bsonValueToString(view["summary"]);
+    if (view["_id"]) s.id = BsonUtils::toInt32(view["_id"]);
+    if (view["name"]) s.name = BsonUtils::toQString(view["name"]);
+    if (view["name_cn"]) s.nameCn = BsonUtils::toQString(view["name_cn"]);
+    if (view["type"]) s.type = BsonUtils::toInt32(view["type"]);
+    if (view["summary"]) s.summary = BsonUtils::toQString(view["summary"]);
     if (view["nsfw"] && view["nsfw"].type() == bsoncxx::type::k_bool)
         s.nsfw = view["nsfw"].get_bool().value;
-    if (view["date"]) s.date = bsonValueToString(view["date"]);
+    if (view["date"]) s.date = BsonUtils::toQString(view["date"]);
     if (view["meta"] && view["meta"].type() == bsoncxx::type::k_document) {
-        auto meta = view["meta"].get_document().value;
-        if (meta["score"]) s.score = bsonValueToDouble(meta["score"]);
-        if (meta["rank"]) s.rank = bsonValueToInt32(meta["rank"]);
+        const auto meta = view["meta"].get_document().value;
+        if (meta["score"]) s.score = BsonUtils::toReal(meta["score"]);
+        if (meta["rank"]) s.rank = BsonUtils::toInt32(meta["rank"]);
         if (meta["score_details"] && meta["score_details"].type() == bsoncxx::type::k_document) {
-            for (auto &&kv : meta["score_details"].get_document().value) {
-                s.scoreDetails.emplace(std::string(kv.key()), bsonValueToInt32(kv));
+            for (auto &&kv: meta["score_details"].get_document().value) {
+                s.scoreDetails.insert(BsonUtils::toQString(kv.key()), BsonUtils::toInt32(kv));
             }
         }
         if (meta["favorite"] && meta["favorite"].type() == bsoncxx::type::k_document) {
             auto fav = meta["favorite"].get_document().value;
-            if (fav["wish"]) s.wish = bsonValueToInt32(fav["wish"]);
-            if (fav["done"]) s.collect = bsonValueToInt32(fav["done"]);
-            if (fav["doing"]) s.doing = bsonValueToInt32(fav["doing"]);
-            if (fav["on_hold"]) s.onHold = bsonValueToInt32(fav["on_hold"]);
-            if (fav["dropped"]) s.dropped = bsonValueToInt32(fav["dropped"]);
+            if (fav["wish"]) s.wish = BsonUtils::toInt32(fav["wish"]);
+            if (fav["done"]) s.collect = BsonUtils::toInt32(fav["done"]);
+            if (fav["doing"]) s.doing = BsonUtils::toInt32(fav["doing"]);
+            if (fav["on_hold"]) s.onHold = BsonUtils::toInt32(fav["on_hold"]);
+            if (fav["dropped"]) s.dropped = BsonUtils::toInt32(fav["dropped"]);
         }
     }
     return s;
 }
 
-DbResult<BangumiSubjectDoc> BangumiRepository::getSubjectById(int subjectId) {
+DbResult<BangumiSubjectDoc> BangumiRepository::getSubjectById(qint32 subjectId) {
     try {
         if (!MongoConnection::instance().isConnected()) return BangumiSubjectDoc{};
         auto db = MongoConnection::instance().database("bangumi");
@@ -96,13 +55,13 @@ DbResult<BangumiSubjectDoc> BangumiRepository::getSubjectById(int subjectId) {
         }
         return BangumiSubjectDoc{};
     } catch (const std::exception &e) {
-        return std::unexpected(std::string("getSubjectById failed: ") + e.what());
+        return std::unexpected(QStringLiteral("getSubjectById failed: ") + QString::fromUtf8(e.what()));
     }
 }
 
-DbResult<std::vector<BangumiStaffItem>> BangumiRepository::getSubjectStaff(int subjectId) {
+DbResult<QList<BangumiStaffItem> > BangumiRepository::getSubjectStaff(qint32 subjectId) {
     try {
-        if (!MongoConnection::instance().isConnected()) return std::vector<BangumiStaffItem>{};
+        if (!MongoConnection::instance().isConnected()) return QList<BangumiStaffItem>{};
         auto db = MongoConnection::instance().database("bangumi");
         auto coll = db["subject_persons"];
 
@@ -120,32 +79,29 @@ DbResult<std::vector<BangumiStaffItem>> BangumiRepository::getSubjectStaff(int s
             kvp("name", "$person.name"),
             kvp("name_cn", "$person.infobox.fields.简体中文名"),
             kvp("position", "$position_info.cn"),
-            kvp("url", make_document(kvp("$concat", make_array(
-                std::string("https://bgm.tv/person/"),
-                make_document(kvp("$toString", "$person._id"))
-            ))))
+            kvp("url", make_document(kvp("$concat", make_array(QStringLiteral("https://bgm.tv/person/").toStdString(), make_document(kvp("$toString", "$person._id"))))))
         ));
 
         auto cursor = coll.aggregate(pipeline);
-        std::vector<BangumiStaffItem> list;
-        for (auto &&doc : cursor) {
+        QList<BangumiStaffItem> list;
+        for (auto &&doc: cursor) {
             BangumiStaffItem item;
-            if (auto elem = doc["person_id"]; elem) item.personId = bsonValueToInt32(elem);
-            if (auto elem = doc["name"]; elem) item.name = bsonValueToString(elem);
-            if (auto elem = doc["name_cn"]; elem) item.nameCn = bsonValueToString(elem);
-            if (auto elem = doc["position"]; elem) item.position = bsonValueToString(elem);
-            if (auto elem = doc["url"]; elem) item.url = bsonValueToString(elem);
+            if (auto elem = doc["person_id"]; elem) item.personId = BsonUtils::toInt32(elem);
+            if (auto elem = doc["name"]; elem) item.name = BsonUtils::toQString(elem);
+            if (auto elem = doc["name_cn"]; elem) item.nameCn = BsonUtils::toQString(elem);
+            if (auto elem = doc["position"]; elem) item.position = BsonUtils::toQString(elem);
+            if (auto elem = doc["url"]; elem) item.url = BsonUtils::toQString(elem);
             list.push_back(item);
         }
         return list;
     } catch (const std::exception &e) {
-        return std::unexpected(std::string("getSubjectStaff failed: ") + e.what());
+        return std::unexpected(QStringLiteral("getSubjectStaff failed: ") + QString::fromUtf8(e.what()));
     }
 }
 
-DbResult<std::vector<BangumiCharacterItem>> BangumiRepository::getSubjectCharacters(int subjectId) {
+DbResult<QList<BangumiCharacterItem> > BangumiRepository::getSubjectCharacters(qint32 subjectId) {
     try {
-        if (!MongoConnection::instance().isConnected()) return std::vector<BangumiCharacterItem>{};
+        if (!MongoConnection::instance().isConnected()) return QList<BangumiCharacterItem>{};
         auto db = MongoConnection::instance().database("bangumi");
         auto coll = db["subject_characters"];
 
@@ -164,34 +120,31 @@ DbResult<std::vector<BangumiCharacterItem>> BangumiRepository::getSubjectCharact
             kvp("name_cn", "$character.infobox.fields.简体中文名"),
             kvp("role_type", "$type"),
             kvp("order", "$order"),
-            kvp("url", make_document(kvp("$concat", make_array(
-                std::string("https://bgm.tv/character/"),
-                make_document(kvp("$toString", "$character._id"))
-            ))))
+            kvp("url", make_document(kvp("$concat", make_array(QStringLiteral("https://bgm.tv/character/").toStdString(), make_document(kvp("$toString", "$character._id"))))))
         ));
         pipeline.sort(make_document(kvp("order", 1)));
 
         auto cursor = coll.aggregate(pipeline);
-        std::vector<BangumiCharacterItem> list;
-        for (auto &&doc : cursor) {
+        QList<BangumiCharacterItem> list;
+        for (auto &&doc: cursor) {
             BangumiCharacterItem item;
-            if (auto elem = doc["character_id"]; elem) item.characterId = bsonValueToInt32(elem);
-            if (auto elem = doc["name"]; elem) item.name = bsonValueToString(elem);
-            if (auto elem = doc["name_cn"]; elem) item.nameCn = bsonValueToString(elem);
-            if (auto elem = doc["role_type"]; elem) item.roleType = bsonValueToInt32(elem);
-            if (auto elem = doc["order"]; elem) item.order = bsonValueToInt32(elem);
-            if (auto elem = doc["url"]; elem) item.url = bsonValueToString(elem);
+            if (auto elem = doc["character_id"]; elem) item.characterId = BsonUtils::toInt32(elem);
+            if (auto elem = doc["name"]; elem) item.name = BsonUtils::toQString(elem);
+            if (auto elem = doc["name_cn"]; elem) item.nameCn = BsonUtils::toQString(elem);
+            if (auto elem = doc["role_type"]; elem) item.roleType = BsonUtils::toInt32(elem);
+            if (auto elem = doc["order"]; elem) item.order = BsonUtils::toInt32(elem);
+            if (auto elem = doc["url"]; elem) item.url = BsonUtils::toQString(elem);
             list.push_back(item);
         }
         return list;
     } catch (const std::exception &e) {
-        return std::unexpected(std::string("getSubjectCharacters failed: ") + e.what());
+        return std::unexpected(QStringLiteral("getSubjectCharacters failed: ") + QString::fromUtf8(e.what()));
     }
 }
 
-DbResult<std::vector<BangumiEpisodeDoc>> BangumiRepository::getSubjectEpisodes(int subjectId) {
+DbResult<QList<BangumiEpisodeDoc> > BangumiRepository::getSubjectEpisodes(qint32 subjectId) {
     try {
-        if (!MongoConnection::instance().isConnected()) return std::vector<BangumiEpisodeDoc>{};
+        if (!MongoConnection::instance().isConnected()) return QList<BangumiEpisodeDoc>{};
         auto db = MongoConnection::instance().database("bangumi");
         auto coll = db["episodes"];
 
@@ -199,30 +152,30 @@ DbResult<std::vector<BangumiEpisodeDoc>> BangumiRepository::getSubjectEpisodes(i
         opts.sort(make_document(kvp("sort", 1)));
         auto filter = make_document(kvp("subject_id", subjectId));
         auto cursor = coll.find(filter.view(), opts);
-        std::vector<BangumiEpisodeDoc> list;
-        for (auto &&doc : cursor) {
+        QList<BangumiEpisodeDoc> list;
+        for (auto &&doc: cursor) {
             BangumiEpisodeDoc e;
-            if (auto elem = doc["_id"]; elem) e.id = bsonValueToInt32(elem);
-            if (auto elem = doc["subject_id"]; elem) e.subjectId = bsonValueToInt32(elem);
-            if (auto elem = doc["type"]; elem) e.type = bsonValueToInt32(elem);
-            if (auto elem = doc["name"]; elem) e.name = bsonValueToString(elem);
-            if (auto elem = doc["name_cn"]; elem) e.nameCn = bsonValueToString(elem);
-            if (auto elem = doc["sort"]; elem) e.sort = bsonValueToInt32(elem);
-            if (auto elem = doc["airdate"]; elem) e.airdate = bsonValueToString(elem);
-            if (auto elem = doc["duration"]; elem) e.duration = bsonValueToString(elem);
-            if (auto elem = doc["description"]; elem) e.description = bsonValueToString(elem);
-            if (auto elem = doc["disc"]; elem) e.disc = bsonValueToInt32(elem);
+            if (auto elem = doc["_id"]; elem) e.id = BsonUtils::toInt32(elem);
+            if (auto elem = doc["subject_id"]; elem) e.subjectId = BsonUtils::toInt32(elem);
+            if (auto elem = doc["type"]; elem) e.type = BsonUtils::toInt32(elem);
+            if (auto elem = doc["name"]; elem) e.name = BsonUtils::toQString(elem);
+            if (auto elem = doc["name_cn"]; elem) e.nameCn = BsonUtils::toQString(elem);
+            if (auto elem = doc["sort"]; elem) e.sort = BsonUtils::toInt32(elem);
+            if (auto elem = doc["airdate"]; elem) e.airdate = BsonUtils::toQString(elem);
+            if (auto elem = doc["duration"]; elem) e.duration = BsonUtils::toQString(elem);
+            if (auto elem = doc["description"]; elem) e.description = BsonUtils::toQString(elem);
+            if (auto elem = doc["disc"]; elem) e.disc = BsonUtils::toInt32(elem);
             list.push_back(e);
         }
         return list;
     } catch (const std::exception &e) {
-        return std::unexpected(std::string("getSubjectEpisodes failed: ") + e.what());
+        return std::unexpected(QStringLiteral("getSubjectEpisodes failed: ") + QString::fromUtf8(e.what()));
     }
 }
 
-DbResult<std::vector<BangumiSubjectRelationItem>> BangumiRepository::getSubjectRelations(int subjectId) {
+DbResult<QList<BangumiSubjectRelationItem> > BangumiRepository::getSubjectRelations(qint32 subjectId) {
     try {
-        if (!MongoConnection::instance().isConnected()) return std::vector<BangumiSubjectRelationItem>{};
+        if (!MongoConnection::instance().isConnected()) return QList<BangumiSubjectRelationItem>{};
         auto db = MongoConnection::instance().database("bangumi");
         auto coll = db["subject_relations"];
 
@@ -241,35 +194,35 @@ DbResult<std::vector<BangumiSubjectRelationItem>> BangumiRepository::getSubjectR
             kvp("name_cn", "$related_subject.name_cn"),
             kvp("relation_type", "$relation_info.cn"),
             kvp("url", make_document(kvp("$concat", make_array(
-                std::string("https://bgm.tv/subject/"),
-                make_document(kvp("$toString", "$related_subject._id"))
-            ))))
+                                             QStringLiteral("https://bgm.tv/subject/").toStdString(),
+                                             make_document(kvp("$toString", "$related_subject._id"))
+                                         ))))
         ));
 
         auto cursor = coll.aggregate(pipeline);
-        std::vector<BangumiSubjectRelationItem> list;
-        for (auto &&doc : cursor) {
+        QList<BangumiSubjectRelationItem> list;
+        for (auto &&doc: cursor) {
             BangumiSubjectRelationItem item;
-            if (auto elem = doc["subject_id"]; elem) item.subjectId = bsonValueToInt32(elem);
-            if (auto elem = doc["name"]; elem) item.name = bsonValueToString(elem);
-            if (auto elem = doc["name_cn"]; elem) item.nameCn = bsonValueToString(elem);
-            if (auto elem = doc["relation_type"]; elem) item.relationType = bsonValueToString(elem);
-            if (auto elem = doc["url"]; elem) item.url = bsonValueToString(elem);
+            if (auto elem = doc["subject_id"]; elem) item.subjectId = BsonUtils::toInt32(elem);
+            if (auto elem = doc["name"]; elem) item.name = BsonUtils::toQString(elem);
+            if (auto elem = doc["name_cn"]; elem) item.nameCn = BsonUtils::toQString(elem);
+            if (auto elem = doc["relation_type"]; elem) item.relationType = BsonUtils::toQString(elem);
+            if (auto elem = doc["url"]; elem) item.url = BsonUtils::toQString(elem);
             list.push_back(item);
         }
         return list;
     } catch (const std::exception &e) {
-        return std::unexpected(std::string("getSubjectRelations failed: ") + e.what());
+        return std::unexpected(QStringLiteral("getSubjectRelations failed: ") + QString::fromUtf8(e.what()));
     }
 }
 
-DbResult<BangumiSubjectDetail> BangumiRepository::getSubjectDetail(int subjectId) {
+DbResult<BangumiSubjectDetail> BangumiRepository::getSubjectDetail(qint32 subjectId) {
     try {
         BangumiSubjectDetail detail;
         auto subject = getSubjectById(subjectId);
         if (!subject) return std::unexpected(subject.error());
         if (subject->id == 0) return detail;
-        static_cast<BangumiSubjectDoc&>(detail) = *subject;
+        static_cast<BangumiSubjectDoc &>(detail) = *subject;
 
         auto staff = getSubjectStaff(subjectId);
         if (!staff) return std::unexpected(staff.error());
@@ -289,13 +242,13 @@ DbResult<BangumiSubjectDetail> BangumiRepository::getSubjectDetail(int subjectId
 
         return detail;
     } catch (const std::exception &e) {
-        return std::unexpected(std::string("getSubjectDetail failed: ") + e.what());
+        return std::unexpected(QStringLiteral("getSubjectDetail failed: ") + QString::fromUtf8(e.what()));
     }
 }
 
-DbResult<std::vector<BangumiSubjectDoc>> BangumiRepository::getAllSubjects(int batchSize, int skip) {
+DbResult<QList<BangumiSubjectDoc> > BangumiRepository::getAllSubjects(qint32 batchSize, qint32 skip) {
     try {
-        if (!MongoConnection::instance().isConnected()) return std::vector<BangumiSubjectDoc>{};
+        if (!MongoConnection::instance().isConnected()) return QList<BangumiSubjectDoc>{};
         auto db = MongoConnection::instance().database("bangumi");
         auto coll = db["subjects"];
 
@@ -303,25 +256,23 @@ DbResult<std::vector<BangumiSubjectDoc>> BangumiRepository::getAllSubjects(int b
         opts.skip(skip);
         opts.limit(batchSize);
         auto cursor = coll.find({}, opts);
-        std::vector<BangumiSubjectDoc> results;
-        for (auto&& doc : cursor) {
+        QList<BangumiSubjectDoc> results;
+        for (auto &&doc: cursor) {
             results.push_back(parseSubjectDoc(doc));
         }
         return results;
     } catch (const std::exception &e) {
-        return std::unexpected(std::string("getAllSubjects failed: ") + e.what());
+        return std::unexpected(QStringLiteral("getAllSubjects failed: ") + QString::fromUtf8(e.what()));
     }
 }
 
-DbResult<int> BangumiRepository::getTotalSubjectsCount() {
+DbResult<qint32> BangumiRepository::getTotalSubjectsCount() {
     try {
         if (!MongoConnection::instance().isConnected()) return 0;
         auto db = MongoConnection::instance().database("bangumi");
         auto coll = db["subjects"];
-        return static_cast<int>(coll.count_documents({}));
+        return static_cast<qint32>(coll.count_documents({}));
     } catch (const std::exception &e) {
-        return std::unexpected(std::string("getTotalSubjectsCount failed: ") + e.what());
+        return std::unexpected(QStringLiteral("getTotalSubjectsCount failed: ") + QString::fromUtf8(e.what()));
     }
 }
-
-

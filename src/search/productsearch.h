@@ -3,30 +3,31 @@
 
 #include "search/meilisearchclient.h"
 #include "models/models.h"
-#include <vector>
-#include <string>
+#include <QList>
+#include <QString>
 #include <optional>
+#include <functional>
 
 // 产品搜索文档（用于索引和搜索结果）
 struct ProductSearchDoc {
-    std::string productId;
-    std::string title;
-    std::optional<std::string> manufacturer;
-    std::vector<std::string> voiceActors;
-    std::vector<std::string> artists;
-    std::optional<std::string> scenario;
-    std::optional<std::string> modelNumber;
-    std::optional<std::string> releaseDate;
-    std::optional<std::string> price;
-    std::optional<std::string> url;
-    std::vector<std::string> images;
-    std::optional<std::string> noteRaw;
+    QString productId;
+    QString title;
+    std::optional<QString> manufacturer;
+    QList<QString> voiceActors;
+    QList<QString> artists;
+    std::optional<QString> scenario;
+    std::optional<QString> modelNumber;
+    std::optional<QString> releaseDate;
+    std::optional<QString> price;
+    std::optional<QString> url;
+    QList<QString> images;
+    std::optional<QString> noteRaw;
     
     // 可选的高亮字段
-    std::optional<std::string> highlightTitle;
+    std::optional<QString> highlightTitle;
 
     // 转换为 JSON 用于索引
-    [[nodiscard]] std::string toJson() const;
+    [[nodiscard]] QString toJson() const;
     
     // 从 Product 模型转换
     static ProductSearchDoc fromProduct(const Product& product);
@@ -34,17 +35,17 @@ struct ProductSearchDoc {
 
 // 产品搜索结果
 struct ProductSearchResult {
-    std::vector<ProductSearchDoc> products;
-    int total = 0;
-    int page = 1;
-    int totalPages = 0;
+    QList<ProductSearchDoc> products;
+    qint32 total = 0;
+    qint32 page = 1;
+    qint32 totalPages = 0;
 };
 
 // 搜索选项
 struct ProductSearchOptions {
-    int page = 1;
-    int limit = 20;
-    std::optional<std::string> filter;
+    qint32 page = 1;
+    qint32 limit = 20;
+    std::optional<QString> filter;
     bool enableHighlight = true;
 };
 
@@ -64,18 +65,18 @@ public:
     
     // 批量索引产品
     static SearchResult<void> bulkIndexProducts(
-        const std::vector<ProductSearchDoc>& products,
-        std::optional<std::function<void(int processed, int total)>> onProgress = std::nullopt
+        const QList<ProductSearchDoc>& products,
+        std::optional<std::function<void(qint32 processed, qint32 total)>> onProgress = std::nullopt
     );
     
     // 搜索产品
     static SearchResult<ProductSearchResult> searchProducts(
-        const std::string& query,
+        const QString& query,
         const ProductSearchOptions& options = {}
     );
     
     // 删除产品索引
-    static SearchResult<void> deleteProductIndex(const std::string& productId);
+    static SearchResult<void> deleteProductIndex(const QString& productId);
     
     // 清空所有产品
     static SearchResult<void> clearAllProducts();

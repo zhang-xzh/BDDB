@@ -9,7 +9,7 @@
 
 void SurugaRebuildWorker::doWork() {
     auto result = ProductSyncService::rebuildIndex(
-        [this](int processed, int total) {
+        [this](qint32 processed, qint32 total) {
             emit progressUpdated(processed, total, QString("Processing %1/%2").arg(processed).arg(total));
         }
     );
@@ -80,9 +80,9 @@ void ProductSearchWindow::showRebuildSurugaDialog() {
     });
 
     connect(thread, &QThread::started, worker, &SurugaRebuildWorker::doWork);
-    connect(worker, &SurugaRebuildWorker::progressUpdated, this, [this](int current, int total, const QString &message) {
+    connect(worker, &SurugaRebuildWorker::progressUpdated, this, [this](qint32 current, qint32 total, const QString &message) {
         if (m_rebuildSurugaDialog) {
-            const int progress = total > 0 ? static_cast<int>((current * 100.0) / total) : 0;
+            const qint32 progress = total > 0 ? static_cast<qint32>((current * 100.0) / total) : 0;
             m_rebuildSurugaDialog->setProgress(progress);
             m_rebuildSurugaDialog->setStatus(message);
         }
@@ -98,7 +98,7 @@ void ProductSearchWindow::showRebuildSurugaDialog() {
             } else {
                 m_rebuildSurugaDialog->setStatus(
                     QStringLiteral("重建失败: %1")
-                    .arg(QString::fromStdString(result.error())));
+                    .arg(result.error()));
             }
             m_rebuildSurugaDialog->setProgress(100);
         }

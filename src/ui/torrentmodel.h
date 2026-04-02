@@ -2,7 +2,7 @@
 #define TORRENTMODEL_H
 
 #include <QAbstractTableModel>
-#include <vector>
+#include <QList>
 #include "models/models.h"
 
 class TorrentModel : public QAbstractTableModel {
@@ -12,23 +12,23 @@ public:
     explicit TorrentModel(QObject *parent = nullptr);
 
     // QAbstractTableModel 接口
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    qint32 rowCount(const QModelIndex &parent = QModelIndex()) const override;
 
-    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
+    qint32 columnCount(const QModelIndex &parent = QModelIndex()) const override;
 
-    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
+    QVariant data(const QModelIndex &index, qint32 role = Qt::DisplayRole) const override;
 
-    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
+    QVariant headerData(qint32 section, Qt::Orientation orientation, qint32 role = Qt::DisplayRole) const override;
 
     // 数据操作
-    void setTorrents(std::vector<Torrent> torrents);
+    void setTorrents(QList<Torrent> torrents);
 
     void clear();
 
-    const Torrent *torrentAt(int row) const;
+    const Torrent *torrentAt(qint32 row) const;
 
 private:
-    std::vector<Torrent> m_torrents;
+    QList<Torrent> m_torrents;
 };
 
 #endif // TORRENTMODEL_H

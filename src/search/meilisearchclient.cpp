@@ -19,29 +19,28 @@ public:
     explicit Impl() : networkManager(std::make_unique<QNetworkAccessManager>()) {}
 
     [[nodiscard]] QString buildUrl(const QString& path) const {
-        return QString::fromStdString(config.host) + path;
+        return config.host + path;
     }
 
     [[nodiscard]] QNetworkRequest createRequest(const QString& path) const {
         QNetworkRequest request{QUrl(buildUrl(path))};
         request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-        if (!config.apiKey.empty()) {
-            request.setRawHeader("Authorization", "Bearer " + QByteArray::fromStdString(config.apiKey));
+        if (!config.apiKey.isEmpty()) {
+            request.setRawHeader("Authorization", "Bearer " + config.apiKey.toUtf8());
         }
         return request;
     }
 
-    // 同步 POST 请求
-    std::expected<QByteArray, std::string> post(const QString& path, const QByteArray& data) const {
+    std::expected<QByteArray, QString> post(const QString& path, const QByteArray& data) const {
         QNetworkReply* reply = networkManager->post(createRequest(path), data);
         
         QEventLoop loop;
         QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-        QTimer::singleShot(30000, &loop, &QEventLoop::quit); // 30s timeout
+        QTimer::singleShot(30000, &loop, &QEventLoop::quit);
         loop.exec();
 
         if (reply->error() != QNetworkReply::NoError) {
-            std::string error = reply->errorString().toStdString();
+            QString error = reply->errorString();
             reply->deleteLater();
             return std::unexpected(error);
         }
@@ -51,8 +50,7 @@ public:
         return result;
     }
 
-    // 同步 GET 请求
-    std::expected<QByteArray, std::string> get(const QString& path) const {
+    std::expected<QByteArray, QString> get(const QString& path) const {
         QNetworkReply* reply = networkManager->get(createRequest(path));
         
         QEventLoop loop;
@@ -61,7 +59,7 @@ public:
         loop.exec();
 
         if (reply->error() != QNetworkReply::NoError) {
-            std::string error = reply->errorString().toStdString();
+            QString error = reply->errorString();
             reply->deleteLater();
             return std::unexpected(error);
         }
@@ -71,8 +69,7 @@ public:
         return result;
     }
 
-    // 同步 DELETE 请求
-    std::expected<QByteArray, std::string> del(const QString& path) const {
+    std::expected<QByteArray, QString> del(const QString& path) const {
         QNetworkReply* reply = networkManager->deleteResource(createRequest(path));
         
         QEventLoop loop;
@@ -81,7 +78,7 @@ public:
         loop.exec();
 
         if (reply->error() != QNetworkReply::NoError) {
-            std::string error = reply->errorString().toStdString();
+            QString error = reply->errorString();
             reply->deleteLater();
             return std::unexpected(error);
         }
@@ -113,56 +110,55 @@ bool MeiliSearchClient::isConnected() const {
 }
 
 SearchResult<void> MeiliSearchClient::health() const {
-    if (!m_impl) return std::unexpected("Client not initialized");
+    if (!m_impl) return std::unexpected(QStringLiteral("Client not initialized"));
     
-    auto result = m_impl->get("/health");
+    auto result = m_impl->get(QStringLiteral("/health"));
     if (!result) return std::unexpected(result.error());
     
     QJsonDocument doc = QJsonDocument::fromJson(*result);
-    if (!doc.isObject()) return std::unexpected("Invalid health response");
+    if (!doc.isObject()) return std::unexpected(QStringLiteral("Invalid health response"));
     
     QJsonObject obj = doc.object();
     QString status = obj["status"].toString();
-    if (status != "available") {
-        return std::unexpected("Meilisearch not available: " + status.toStdString());
+    if (status != QStringLiteral("available")) {
+        return std::unexpected(QStringLiteral("Meilisearch not available: ") + status);
     }
     
     return {};
 }
 
-SearchResult<void> MeiliSearchClient::createIndex(const std::string& indexName, const std::string& primaryKey) {
-    if (!m_impl) return std::unexpected("Client not initialized");
+SearchResult<void> MeiliSearchClient::createIndex(const QString& indexName, const QString& primaryKey) {
+    if (!m_impl) return std::unexpected(QStringLiteral("Client not initialized"));
     
     QJsonObject obj;
-    obj["uid"] = QString::fromStdString(indexName);
-    obj["primaryKey"] = QString::fromStdString(primaryKey);
+    obj["uid"] = indexName;
+    obj["primaryKey"] = primaryKey;
     
     QJsonDocument doc(obj);
-    auto result = m_impl->post("/indexes", doc.toJson());
+    auto result = m_impl->post(QStringLiteral("/indexes"), doc.toJson());
     
     if (!result) return std::unexpected(result.error());
     return {};
 }
 
-SearchResult<void> MeiliSearchClient::deleteIndex(const std::string& indexName) {
-    if (!m_impl) return std::unexpected("Client not initialized");
+SearchResult<void> MeiliSearchClient::deleteIndex(const QString& indexName) {
+    if (!m_impl) return std::unexpected(QStringLiteral("Client not initialized"));
     
-    QString path = QString("/indexes/%1").arg(QString::fromStdString(indexName));
+    QString path = QStringLiteral("/indexes/%1").arg(indexName);
     auto result = m_impl->del(path);
     
     if (!result) return std::unexpected(result.error());
     return {};
 }
 
-SearchResult<bool> MeiliSearchClient::indexExists(const std::string& indexName) const {
-    if (!m_impl) return std::unexpected("Client not initialized");
+SearchResult<bool> MeiliSearchClient::indexExists(const QString& indexName) const {
+    if (!m_impl) return std::unexpected(QStringLiteral("Client not initialized"));
     
-    QString path = QString("/indexes/%1").arg(QString::fromStdString(indexName));
+    QString path = QStringLiteral("/indexes/%1").arg(indexName);
     auto result = m_impl->get(path);
     
     if (!result) {
-        // 404 means index doesn't exist
-        if (result.error().find("404") != std::string::npos) {
+        if (result.error().contains(QStringLiteral("404"))) {
             return false;
         }
         return std::unexpected(result.error());
@@ -170,16 +166,16 @@ SearchResult<bool> MeiliSearchClient::indexExists(const std::string& indexName) 
     return true;
 }
 
-SearchResult<IndexStats> MeiliSearchClient::getIndexStats(const std::string& indexName) const {
-    if (!m_impl) return std::unexpected("Client not initialized");
+SearchResult<IndexStats> MeiliSearchClient::getIndexStats(const QString& indexName) const {
+    if (!m_impl) return std::unexpected(QStringLiteral("Client not initialized"));
     
-    QString path = QString("/indexes/%1/stats").arg(QString::fromStdString(indexName));
+    QString path = QStringLiteral("/indexes/%1/stats").arg(indexName);
     auto result = m_impl->get(path);
     
     if (!result) return std::unexpected(result.error());
     
     QJsonDocument doc = QJsonDocument::fromJson(*result);
-    if (!doc.isObject()) return std::unexpected("Invalid stats response");
+    if (!doc.isObject()) return std::unexpected(QStringLiteral("Invalid stats response"));
     
     QJsonObject obj = doc.object();
     IndexStats stats;
@@ -189,73 +185,71 @@ SearchResult<IndexStats> MeiliSearchClient::getIndexStats(const std::string& ind
     return stats;
 }
 
-SearchResult<void> MeiliSearchClient::addDocuments(const std::string& indexName, const std::string& jsonDocuments) {
-    if (!m_impl) return std::unexpected("Client not initialized");
+SearchResult<void> MeiliSearchClient::addDocuments(const QString& indexName, const QString& jsonDocuments) {
+    if (!m_impl) return std::unexpected(QStringLiteral("Client not initialized"));
     
-    QString path = QString("/indexes/%1/documents").arg(QString::fromStdString(indexName));
-    auto result = m_impl->post(path, QByteArray::fromStdString(jsonDocuments));
+    QString path = QStringLiteral("/indexes/%1/documents").arg(indexName);
+    auto result = m_impl->post(path, jsonDocuments.toUtf8());
     
     if (!result) return std::unexpected(result.error());
     return {};
 }
 
-SearchResult<void> MeiliSearchClient::deleteDocument(const std::string& indexName, const std::string& documentId) {
-    if (!m_impl) return std::unexpected("Client not initialized");
+SearchResult<void> MeiliSearchClient::deleteDocument(const QString& indexName, const QString& documentId) {
+    if (!m_impl) return std::unexpected(QStringLiteral("Client not initialized"));
     
-    QString path = QString("/indexes/%1/documents/%2")
-        .arg(QString::fromStdString(indexName))
-        .arg(QString::fromStdString(documentId));
+    QString path = QStringLiteral("/indexes/%1/documents/%2").arg(indexName).arg(documentId);
     auto result = m_impl->del(path);
     
     if (!result) return std::unexpected(result.error());
     return {};
 }
 
-SearchResult<void> MeiliSearchClient::deleteAllDocuments(const std::string& indexName) {
-    if (!m_impl) return std::unexpected("Client not initialized");
+SearchResult<void> MeiliSearchClient::deleteAllDocuments(const QString& indexName) {
+    if (!m_impl) return std::unexpected(QStringLiteral("Client not initialized"));
     
-    QString path = QString("/indexes/%1/documents").arg(QString::fromStdString(indexName));
+    QString path = QStringLiteral("/indexes/%1/documents").arg(indexName);
     auto result = m_impl->del(path);
     
     if (!result) return std::unexpected(result.error());
     return {};
 }
 
-SearchResult<std::string> MeiliSearchClient::searchRaw(
-    const std::string& indexName,
-    const std::string& query,
-    int offset,
-    int limit,
-    const std::vector<std::string>& filter,
-    const std::vector<std::string>& sort
+SearchResult<QString> MeiliSearchClient::searchRaw(
+    const QString& indexName,
+    const QString& query,
+    qint32 offset,
+    qint32 limit,
+    const QList<QString>& filter,
+    const QList<QString>& sort
 ) const {
-    if (!m_impl) return std::unexpected("Client not initialized");
+    if (!m_impl) return std::unexpected(QStringLiteral("Client not initialized"));
     
     QJsonObject obj;
-    obj["q"] = QString::fromStdString(query);
+    obj["q"] = query;
     obj["offset"] = offset;
     obj["limit"] = limit;
     
-    if (!filter.empty()) {
+    if (!filter.isEmpty()) {
         QJsonArray filterArray;
         for (const auto& f : filter) {
-            filterArray.append(QString::fromStdString(f));
+            filterArray.append(f);
         }
         obj["filter"] = filterArray;
     }
     
-    if (!sort.empty()) {
+    if (!sort.isEmpty()) {
         QJsonArray sortArray;
         for (const auto& s : sort) {
-            sortArray.append(QString::fromStdString(s));
+            sortArray.append(s);
         }
         obj["sort"] = sortArray;
     }
     
-    QString path = QString("/indexes/%1/search").arg(QString::fromStdString(indexName));
+    QString path = QStringLiteral("/indexes/%1/search").arg(indexName);
     QJsonDocument doc(obj);
     auto result = m_impl->post(path, doc.toJson());
     
     if (!result) return std::unexpected(result.error());
-    return std::string(result->constData(), result->size());
+    return QString::fromUtf8(*result);
 }

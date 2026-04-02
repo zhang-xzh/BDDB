@@ -1,33 +1,33 @@
 #ifndef MEILISEARCHCLIENT_H
 #define MEILISEARCHCLIENT_H
 
-#include <string>
+#include <QString>
+#include <QList>
 #include <memory>
 #include <expected>
-#include <vector>
 
-template<typename T> using SearchResult = std::expected<T, std::string>;
+template<typename T> using SearchResult = std::expected<T, QString>;
 
 // Meilisearch 客户端配置
 struct MeiliConfig {
-    std::string host = "http://localhost:17700";
-    std::string apiKey;
+    QString host = QStringLiteral("http://localhost:17700");
+    QString apiKey;
 };
 
 // 索引统计信息
 struct IndexStats {
-    int totalDocuments = 0;
+    qint32 totalDocuments = 0;
     bool isIndexing = false;
 };
 
 // 搜索响应基类
 template<typename T>
 struct SearchResponse {
-    std::vector<T> hits;
-    int total = 0;
-    int page = 1;
-    int pageSize = 20;
-    int totalPages = 0;
+    QList<T> hits;
+    qint32 total = 0;
+    qint32 page = 1;
+    qint32 pageSize = 20;
+    qint32 totalPages = 0;
 };
 
 // Meilisearch 客户端
@@ -41,24 +41,24 @@ public:
     SearchResult<void> health() const;
 
     // 索引管理
-    SearchResult<void> createIndex(const std::string& indexName, const std::string& primaryKey);
-    SearchResult<void> deleteIndex(const std::string& indexName);
-    SearchResult<bool> indexExists(const std::string& indexName) const;
-    SearchResult<IndexStats> getIndexStats(const std::string& indexName) const;
+    SearchResult<void> createIndex(const QString& indexName, const QString& primaryKey);
+    SearchResult<void> deleteIndex(const QString& indexName);
+    SearchResult<bool> indexExists(const QString& indexName) const;
+    SearchResult<IndexStats> getIndexStats(const QString& indexName) const;
 
     // 文档操作
-    SearchResult<void> addDocuments(const std::string& indexName, const std::string& jsonDocuments);
-    SearchResult<void> deleteDocument(const std::string& indexName, const std::string& documentId);
-    SearchResult<void> deleteAllDocuments(const std::string& indexName);
+    SearchResult<void> addDocuments(const QString& indexName, const QString& jsonDocuments);
+    SearchResult<void> deleteDocument(const QString& indexName, const QString& documentId);
+    SearchResult<void> deleteAllDocuments(const QString& indexName);
 
     // 搜索
-    SearchResult<std::string> searchRaw(
-        const std::string& indexName,
-        const std::string& query,
-        int offset = 0,
-        int limit = 20,
-        const std::vector<std::string>& filter = {},
-        const std::vector<std::string>& sort = {}
+    SearchResult<QString> searchRaw(
+        const QString& indexName,
+        const QString& query,
+        qint32 offset = 0,
+        qint32 limit = 20,
+        const QList<QString>& filter = {},
+        const QList<QString>& sort = {}
     ) const;
 
 private:

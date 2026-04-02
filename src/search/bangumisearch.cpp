@@ -8,33 +8,33 @@
 
 // BangumiSearchDoc 实现
 
-std::string BangumiSearchDoc::toJson() const {
+QString BangumiSearchDoc::toJson() const {
     QJsonObject obj;
     obj["subject_id"] = subjectId;
-    obj["name"] = QString::fromStdString(name);
-    obj["name_cn"] = QString::fromStdString(nameCn);
+    obj["name"] = name;
+    obj["name_cn"] = nameCn;
     obj["type"] = type;
-    obj["type_name"] = QString::fromStdString(typeName);
-    obj["summary"] = QString::fromStdString(summary);
-    obj["url"] = QString::fromStdString(url);
+    obj["type_name"] = typeName;
+    obj["summary"] = summary;
+    obj["url"] = url;
     obj["nsfw"] = nsfw;
     
     if (platform) obj["platform"] = *platform;
-    if (platformName) obj["platform_name"] = QString::fromStdString(*platformName);
-    if (date) obj["date"] = QString::fromStdString(*date);
+    if (platformName) obj["platform_name"] = *platformName;
+    if (date) obj["date"] = *date;
     if (score) obj["score"] = *score;
     if (rank) obj["rank"] = *rank;
     
     QJsonArray tagsArray;
     for (const auto& tag : tags) {
-        tagsArray.append(QString::fromStdString(tag));
+        tagsArray.append(tag);
     }
     if (!tagsArray.isEmpty()) {
         obj["tags"] = tagsArray;
     }
     
     QJsonDocument doc(obj);
-    return doc.toJson(QJsonDocument::Compact).toStdString();
+    return QString::fromUtf8(doc.toJson(QJsonDocument::Compact));
 }
 
 // BangumiSearchService 实现
@@ -58,13 +58,13 @@ SearchResult<void> BangumiSearchService::deleteIndex() {
 }
 
 SearchResult<void> BangumiSearchService::indexSubject(const BangumiSearchDoc& subject) {
-    std::vector<BangumiSearchDoc> subjects{subject};
+    QList<BangumiSearchDoc> subjects{subject};
     return bulkIndexSubjects(subjects);
 }
 
 SearchResult<void> BangumiSearchService::bulkIndexSubjects(
-    const std::vector<BangumiSearchDoc>& subjects,
-    std::optional<std::function<void(int processed, int total)>> onProgress
+    const QList<BangumiSearchDoc>& subjects,
+    std::optional<std::function<void(qint32 processed, qint32 total)>> onProgress
 ) {
     if (subjects.empty()) return {};
     
@@ -73,27 +73,25 @@ SearchResult<void> BangumiSearchService::bulkIndexSubjects(
     // 构建 JSON 数组
     QJsonArray array;
     for (const auto& subject : subjects) {
-        QJsonDocument doc = QJsonDocument::fromJson(
-            QByteArray::fromStdString(subject.toJson())
-        );
+        QJsonDocument doc = QJsonDocument::fromJson(subject.toJson().toUtf8());
         array.append(doc.object());
     }
     
     QJsonDocument doc(array);
-    std::string json = doc.toJson(QJsonDocument::Compact).toStdString();
+    QString json = QString::fromUtf8(doc.toJson(QJsonDocument::Compact));
     
     auto result = client.addDocuments(kIndexName, json);
     if (!result) return result;
     
     if (onProgress) {
-        (*onProgress)(static_cast<int>(subjects.size()), static_cast<int>(subjects.size()));
+        (*onProgress)(static_cast<qint32>(subjects.size()), static_cast<qint32>(subjects.size()));
     }
     
     return {};
 }
 
-SearchResult<void> BangumiSearchService::deleteSubject(int subjectId) {
-    return MeiliSearchClient::instance().deleteDocument(kIndexName, std::to_string(subjectId));
+SearchResult<void> BangumiSearchService::deleteSubject(qint32 subjectId) {
+    return MeiliSearchClient::instance().deleteDocument(kIndexName, QString::number(subjectId));
 }
 
 SearchResult<void> BangumiSearchService::clearAllSubjects() {
@@ -101,50 +99,50 @@ SearchResult<void> BangumiSearchService::clearAllSubjects() {
 }
 
 SearchResult<BangumiSearchResult> BangumiSearchService::search(
-    const std::string& query,
+    const QString& query,
     const BangumiSearchOptions& options
 ) {
     auto& client = MeiliSearchClient::instance();
     
-    int offset = (options.page - 1) * options.limit;
+    qint32 offset = (options.page - 1) * options.limit;
     
     // 构建过滤条件
-    std::vector<std::string> filters;
+    QList<QString> filters;
     
     if (options.type) {
-        filters.push_back("type = " + std::to_string(*options.type));
+        filters.push_back("type = " + QString::number(*options.type));
     }
     
     if (options.platform) {
-        filters.push_back("platform = " + std::to_string(*options.platform));
+        filters.push_back("platform = " + QString::number(*options.platform));
     }
     
     if (options.minScore || options.maxScore) {
-        double min = options.minScore.value_or(0.0);
-        double max = options.maxScore.value_or(10.0);
-        filters.push_back("score " + std::to_string(min) + " TO " + std::to_string(max));
+        qreal min = options.minScore.value_or(0.0);
+        qreal max = options.maxScore.value_or(10.0);
+        filters.push_back("score " + QString::number(min) + " TO " + QString::number(max));
     }
     
     if (options.nsfw) {
-        filters.push_back("nsfw = " + std::string(*options.nsfw ? "true" : "false"));
+        filters.push_back("nsfw = " + QString(*options.nsfw ? "true" : "false"));
     }
     
-    std::vector<std::string> sort = {"rank:asc"};
+    QList<QString> sort = {QStringLiteral("rank:asc")};
     
     auto result = client.searchRaw(kIndexName, query, offset, options.limit, filters, sort);
     if (!result) return std::unexpected(result.error());
     
     // 解析响应
-    QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(*result));
+    QJsonDocument doc = QJsonDocument::fromJson(result->toUtf8());
     if (!doc.isObject()) {
-        return std::unexpected("Invalid search response");
+        return std::unexpected(QStringLiteral("Invalid search response"));
     }
     
     QJsonObject obj = doc.object();
     BangumiSearchResult searchResult;
     
     // 解析总数
-    searchResult.total = obj["estimatedTotalHits"].toInt();
+    searchResult.total = static_cast<qint32>(obj["estimatedTotalHits"].toInt());
     searchResult.page = options.page;
     searchResult.totalPages = (searchResult.total + options.limit - 1) / options.limit;
     
@@ -156,44 +154,44 @@ SearchResult<BangumiSearchResult> BangumiSearchService::search(
         QJsonObject hitObj = hit.toObject();
         BangumiSearchDoc subject;
         
-        subject.subjectId = hitObj["subject_id"].toInt();
-        subject.name = hitObj["name"].toString().toStdString();
-        subject.nameCn = hitObj["name_cn"].toString().toStdString();
-        subject.type = hitObj["type"].toInt();
-        subject.typeName = hitObj["type_name"].toString().toStdString();
-        subject.summary = hitObj["summary"].toString().toStdString();
-        subject.url = hitObj["url"].toString().toStdString();
+        subject.subjectId = static_cast<qint32>(hitObj["subject_id"].toInt());
+        subject.name = hitObj["name"].toString();
+        subject.nameCn = hitObj["name_cn"].toString();
+        subject.type = static_cast<qint32>(hitObj["type"].toInt());
+        subject.typeName = hitObj["type_name"].toString();
+        subject.summary = hitObj["summary"].toString();
+        subject.url = hitObj["url"].toString();
         subject.nsfw = hitObj["nsfw"].toBool();
         
         if (hitObj.contains("platform")) {
-            subject.platform = hitObj["platform"].toInt();
+            subject.platform = static_cast<qint32>(hitObj["platform"].toInt());
         }
         if (hitObj.contains("platform_name")) {
-            subject.platformName = hitObj["platform_name"].toString().toStdString();
+            subject.platformName = hitObj["platform_name"].toString();
         }
         if (hitObj.contains("date")) {
-            subject.date = hitObj["date"].toString().toStdString();
+            subject.date = hitObj["date"].toString();
         }
         if (hitObj.contains("score")) {
             subject.score = hitObj["score"].toDouble();
         }
         if (hitObj.contains("rank")) {
-            subject.rank = hitObj["rank"].toInt();
+            subject.rank = static_cast<qint32>(hitObj["rank"].toInt());
         }
         
         QJsonArray tags = hitObj["tags"].toArray();
         for (const auto& tag : tags) {
-            subject.tags.push_back(tag.toString().toStdString());
+            subject.tags.push_back(tag.toString());
         }
         
         // 高亮结果
         if (hitObj.contains("_formatted")) {
             QJsonObject formatted = hitObj["_formatted"].toObject();
             if (formatted.contains("name_cn")) {
-                subject.highlightNameCn = formatted["name_cn"].toString().toStdString();
+                subject.highlightNameCn = formatted["name_cn"].toString();
             }
             if (formatted.contains("summary")) {
-                subject.highlightSummary = formatted["summary"].toString().toStdString();
+                subject.highlightSummary = formatted["summary"].toString();
             }
         }
         
@@ -207,7 +205,7 @@ SearchResult<IndexStats> BangumiSearchService::getIndexStats() {
     return MeiliSearchClient::instance().getIndexStats(kIndexName);
 }
 
-SearchResult<std::map<int, int>> BangumiSearchService::getTypeStats() {
+SearchResult<QMap<qint32, qint32>> BangumiSearchService::getTypeStats() {
     auto& client = MeiliSearchClient::instance();
     
     // 使用 facet search 获取类型分布
@@ -216,20 +214,20 @@ SearchResult<std::map<int, int>> BangumiSearchService::getTypeStats() {
     if (!result) return std::unexpected(result.error());
     
     // 解析 facetDistribution
-    QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(*result));
+    QJsonDocument doc = QJsonDocument::fromJson(result->toUtf8());
     if (!doc.isObject()) {
-        return std::unexpected("Invalid stats response");
+        return std::unexpected(QStringLiteral("Invalid stats response"));
     }
     
     QJsonObject obj = doc.object();
-    std::map<int, int> typeStats;
+    QMap<qint32, qint32> typeStats;
     
     QJsonObject facetDistribution = obj["facetDistribution"].toObject();
     QJsonObject typeDistribution = facetDistribution["type"].toObject();
     
     for (const QString& key : typeDistribution.keys()) {
-        int type = key.toInt();
-        int count = typeDistribution[key].toInt();
+        qint32 type = key.toInt();
+        qint32 count = static_cast<qint32>(typeDistribution[key].toInt());
         typeStats[type] = count;
     }
     

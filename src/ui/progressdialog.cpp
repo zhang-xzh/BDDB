@@ -20,7 +20,7 @@ void ProgressDialog::setStatus(const QString &text) {
     m_statusLabel->setText(text);
 }
 
-void ProgressDialog::setProgress(int value) {
+void ProgressDialog::setProgress(qint32 value) {
     m_progressBar->setValue(value);
 }
 

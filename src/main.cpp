@@ -9,7 +9,7 @@
 #include "search/bangumisync.h"
 #include "search/productsync.h"
 
-int main(int argc, char *argv[]) {
+qint32 main(qint32 argc, char *argv[]) {
     // Windows 高 DPI 支持 - 必须在 QApplication 之前设置
 #ifdef Q_OS_WIN
     qputenv("QT_SCALE_FACTOR_ROUNDING_POLICY", "PassThrough");

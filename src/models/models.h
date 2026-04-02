@@ -1,171 +1,169 @@
 #ifndef MODELS_H
 #define MODELS_H
 
-#include <string>
-#include <vector>
-#include <map>
-#include <cstdint>
+#include <QList>
+#include <QMap>
 #include <QString>
 
 // ==================== Bangumi 子类型 ====================
 
 struct BangumiImages {
-    std::string large;
-    std::string common;
-    std::string medium;
-    std::string small;
-    std::string grid;
+    QString large;
+    QString common;
+    QString medium;
+    QString small;
+    QString grid;
 };
 
 struct BangumiRating {
-    double score = 0.0;
-    int total = 0;
-    std::map<std::string, int> count;
+    qreal score = 0.0;
+    qint32 total = 0;
+    QMap<QString, qint32> count;
 };
 
 struct BangumiCollection {
-    int wish = 0;
-    int collect = 0;
-    int doing = 0;
-    int on_hold = 0;
-    int dropped = 0;
+    qint32 wish = 0;
+    qint32 collect = 0;
+    qint32 doing = 0;
+    qint32 on_hold = 0;
+    qint32 dropped = 0;
 };
 
 struct BangumiCharacter {
-    int id = 0;
-    std::string url;
-    std::string name;
-    std::string nameCn;
-    std::string roleName;
+    qint32 id = 0;
+    QString url;
+    QString name;
+    QString nameCn;
+    QString roleName;
     BangumiImages images;
 };
 
 struct BangumiStaff {
-    int id = 0;
-    std::string url;
-    std::string name;
-    std::string nameCn;
-    std::vector<std::string> jobs;
+    qint32 id = 0;
+    QString url;
+    QString name;
+    QString nameCn;
+    QList<QString> jobs;
     BangumiImages images;
 };
 
 // ==================== Product 子类型 ====================
 
 struct TrackList {
-    std::string disc;
-    std::vector<std::string> tracks;
+    QString disc;
+    QList<QString> tracks;
 };
 
 struct ProductAttributes {
-    std::string catalogNo; // 型番
-    std::string manufacturer; // メーカー
-    std::string releaseDate; // 発売日
-    std::string price; // 定価
-    std::string scenario; // シナリオ
-    std::string characterDesign; // キャラクターデザイン
-    std::string music; // 音楽
-    std::vector<std::string> illustrators; // 原画
-    std::vector<std::string> voiceActors; // 声優
-    std::map<std::string, std::string> extra; // 其他未知属性
+    QString catalogNo; // 型番
+    QString manufacturer; // メーカー
+    QString releaseDate; // 発売日
+    QString price; // 定価
+    QString scenario; // シナリオ
+    QString characterDesign; // キャラクターデザイン
+    QString music; // 音楽
+    QList<QString> illustrators; // 原画
+    QList<QString> voiceActors; // 声優
+    QMap<QString, QString> extra; // 其他未知属性
 };
 
 // ==================== 核心模型 ====================
 
 struct TorrentFile {
-    std::string id;
-    std::string name;
-    std::string path;
-    std::int64_t size = 0;
-    double progress = 0.0;
-    int index = 0;
-    int priority = 0;
+    QString id;
+    QString name;
+    QString path;
+    qint64 size = 0;
+    qreal progress = 0.0;
+    qint32 index = 0;
+    qint32 priority = 0;
     bool isSeed = false;
-    std::vector<int> pieceRange;
-    double availability = 0.0;
-    std::int64_t createdAt = 0;
-    std::int64_t updatedAt = 0;
+    QList<qint32> pieceRange;
+    qreal availability = 0.0;
+    qint64 createdAt = 0;
+    qint64 updatedAt = 0;
 };
 
 struct Torrent {
-    std::string id;
-    std::string hash;
-    std::string name;
-    std::int64_t size = 0;
-    double progress = 0.0;
-    std::string state;
-    std::int64_t addedOn = 0;
-    int numSeeds = 0;
-    int numLeechs = 0;
-    std::int64_t completionOn = 0;
-    std::string savePath;
-    std::int64_t uploaded = 0;
-    std::int64_t downloaded = 0;
-    std::string category;
-    std::string tags;
-    std::string contentPath;
-    std::string downloadPath;
-    std::string infohashV1;
-    std::string infohashV2;
-    std::string comment;
+    QString id;
+    QString hash;
+    QString name;
+    qint64 size = 0;
+    qreal progress = 0.0;
+    QString state;
+    qint64 addedOn = 0;
+    qint32 numSeeds = 0;
+    qint32 numLeechs = 0;
+    qint64 completionOn = 0;
+    QString savePath;
+    qint64 uploaded = 0;
+    qint64 downloaded = 0;
+    QString category;
+    QString tags;
+    QString contentPath;
+    QString downloadPath;
+    QString infohashV1;
+    QString infohashV2;
+    QString comment;
     bool hasMetadata = false;
-    int inactiveSeedingTimeLimit = 0;
-    int maxInactiveSeedingTime = 0;
-    double popularity = 0.0;
+    qint32 inactiveSeedingTimeLimit = 0;
+    qint32 maxInactiveSeedingTime = 0;
+    qreal popularity = 0.0;
     bool isPrivate = false;
-    std::string rootPath;
+    QString rootPath;
     bool isDeleted = false;
-    std::int64_t syncedAt = 0;
-    std::int64_t createdAt = 0;
-    std::int64_t updatedAt = 0;
-    std::vector<TorrentFile> files;
+    qint64 syncedAt = 0;
+    qint64 createdAt = 0;
+    qint64 updatedAt = 0;
+    QList<TorrentFile> files;
     bool hasVolumes = false;
-    int volumeCount = 0;
-    std::int64_t amountLeft = 0;
+    qint32 volumeCount = 0;
+    qint64 amountLeft = 0;
     bool autoTmm = false;
-    double availability = 0.0;
-    std::int64_t completed = 0;
-    int dlLimit = 0;
-    std::int64_t dlSpeed = 0;
-    std::int64_t downloadedSession = 0;
-    std::int64_t eta = 0;
+    qreal availability = 0.0;
+    qint64 completed = 0;
+    qint32 dlLimit = 0;
+    qint64 dlSpeed = 0;
+    qint64 downloadedSession = 0;
+    qint64 eta = 0;
     bool fLPiecePrio = false;
     bool forceStart = false;
-    std::int64_t lastActivity = 0;
-    std::string magnetUri;
-    double maxRatio = 0.0;
-    int maxSeedingTime = 0;
-    int numComplete = 0;
-    int numIncomplete = 0;
-    int priority = 0;
-    double ratio = 0.0;
-    double ratioLimit = 0.0;
-    int reannounce = 0;
-    std::int64_t seedingTime = 0;
-    int seedingTimeLimit = 0;
-    std::int64_t seenComplete = 0;
+    qint64 lastActivity = 0;
+    QString magnetUri;
+    qreal maxRatio = 0.0;
+    qint32 maxSeedingTime = 0;
+    qint32 numComplete = 0;
+    qint32 numIncomplete = 0;
+    qint32 priority = 0;
+    qreal ratio = 0.0;
+    qreal ratioLimit = 0.0;
+    qint32 reannounce = 0;
+    qint64 seedingTime = 0;
+    qint32 seedingTimeLimit = 0;
+    qint64 seenComplete = 0;
     bool seqDl = false;
     bool superSeeding = false;
-    std::int64_t timeActive = 0;
-    std::int64_t totalSize = 0;
-    std::string tracker;
-    int trackersCount = 0;
-    int upLimit = 0;
-    std::int64_t uploadedSession = 0;
-    std::int64_t upSpeed = 0;
+    qint64 timeActive = 0;
+    qint64 totalSize = 0;
+    QString tracker;
+    qint32 trackersCount = 0;
+    qint32 upLimit = 0;
+    qint64 uploadedSession = 0;
+    qint64 upSpeed = 0;
 };
 
 struct Volume {
-    std::string id;
-    std::string torrentId;
-    int volumeNo = 1;
-    std::string catalogNo;
-    std::string volumeName;
+    QString id;
+    QString torrentId;
+    qint32 volumeNo = 1;
+    QString catalogNo;
+    QString volumeName;
     bool isDeleted = false;
-    std::int64_t createdAt = 0;
-    std::int64_t updatedAt = 0;
-    std::vector<std::string> productIds;
-    std::vector<std::string> fileIds;
-    std::vector<std::string> workIds;
+    qint64 createdAt = 0;
+    qint64 updatedAt = 0;
+    QList<QString> productIds;
+    QList<QString> fileIds;
+    QList<QString> workIds;
 };
 
 enum class MediaType {
@@ -176,119 +174,111 @@ enum class MediaType {
     Unknown
 };
 
-inline std::string mediaTypeToString(MediaType type) {
+inline QString mediaTypeToString(MediaType type) {
     switch (type) {
-        case MediaType::BD: return "bd";
-        case MediaType::DVD: return "dvd";
-        case MediaType::CD: return "cd";
-        case MediaType::Scan: return "scan";
-        default: return "bd";
+        case MediaType::BD: return QStringLiteral("bd");
+        case MediaType::DVD: return QStringLiteral("dvd");
+        case MediaType::CD: return QStringLiteral("cd");
+        case MediaType::Scan: return QStringLiteral("scan");
+        default: return QStringLiteral("bd");
     }
 }
 
-inline MediaType mediaTypeFromString(const std::string &str) {
-    if (str == "bd" || str == "BD" || str == "Bd") return MediaType::BD;
-    if (str == "dvd" || str == "DVD" || str == "Dvd") return MediaType::DVD;
-    if (str == "cd" || str == "CD" || str == "Cd") return MediaType::CD;
-    if (str == "scan" || str == "SCAN" || str == "Scan") return MediaType::Scan;
+inline MediaType mediaTypeFromString(const QString &str) {
+    if (str == QLatin1String("bd") || str == QLatin1String("BD") || str == QLatin1String("Bd")) return MediaType::BD;
+    if (str == QLatin1String("dvd") || str == QLatin1String("DVD") || str == QLatin1String("Dvd")) return MediaType::DVD;
+    if (str == QLatin1String("cd") || str == QLatin1String("CD") || str == QLatin1String("Cd")) return MediaType::CD;
+    if (str == QLatin1String("scan") || str == QLatin1String("SCAN") || str == QLatin1String("Scan")) return MediaType::Scan;
     return MediaType::Unknown;
 }
 
-inline QString toQString(const std::string &s) {
-    return QString::fromUtf8(s.data(), static_cast<qsizetype>(s.size()));
-}
-
-inline std::string fromQString(const QString &s) {
-    return s.toStdString();
-}
-
 struct Media {
-    std::string id;
-    std::string volumeId;
-    int mediaNo = 1;
+    QString id;
+    QString volumeId;
+    qint32 mediaNo = 1;
     MediaType mediaType = MediaType::BD;
-    int volumeNo = 0;
-    std::string catalogNo;
-    std::string contentTitle;
-    std::string description;
+    qint32 volumeNo = 0;
+    QString catalogNo;
+    QString contentTitle;
+    QString description;
     bool isDeleted = false;
-    std::int64_t createdAt = 0;
-    std::int64_t updatedAt = 0;
-    std::vector<std::string> fileIds;
+    qint64 createdAt = 0;
+    qint64 updatedAt = 0;
+    QList<QString> fileIds;
 };
 
 struct Work {
-    std::string id;
+    QString id;
 
     // Bangumi API 原始字段 (bangumi.ts 中 BddbWork)
-    int bangumiSubjectId = 0; // Bangumi subject ID (TS中的 id)
-    std::string url;
-    int type = 2; // 条目类型 (1=书籍, 2=动画, 3=音乐, 4=游戏, 6=三次元)
-    std::string name;
-    std::string nameCn;
-    std::string summary;
-    int eps = 0;
-    std::string airDate;
-    int airWeekday = 0;
+    qint32 bangumiSubjectId = 0; // Bangumi subject ID (TS中的 id)
+    QString url;
+    qint32 type = 2; // 条目类型 (1=书籍, 2=动画, 3=音乐, 4=游戏, 6=三次元)
+    QString name;
+    QString nameCn;
+    QString summary;
+    qint32 eps = 0;
+    QString airDate;
+    qint32 airWeekday = 0;
 
     BangumiImages images;
     BangumiRating rating;
-    int rank = 0;
+    qint32 rank = 0;
     BangumiCollection collection;
-    std::vector<BangumiCharacter> characters;
-    std::vector<BangumiStaff> staff;
+    QList<BangumiCharacter> characters;
+    QList<BangumiStaff> staff;
 
-    std::int64_t createdAt = 0;
-    std::int64_t updatedAt = 0;
+    qint64 createdAt = 0;
+    qint64 updatedAt = 0;
 };
 
 struct Product {
-    std::string id;
-    std::string productId; // 商品ID (如 "109001543001")
-    std::string title;
-    std::string url;
-    std::vector<std::string> images;
-    std::string noteRaw; // 描述 (HTML格式)
-    std::vector<TrackList> tracklist;
+    QString id;
+    QString productId; // 商品ID (如 "109001543001")
+    QString title;
+    QString url;
+    QList<QString> images;
+    QString noteRaw; // 描述 (HTML格式)
+    QList<TrackList> tracklist;
     ProductAttributes attributes;
 
     // Search doc 简化字段
-    std::string manufacturer;
-    std::vector<std::string> voiceActors;
-    std::vector<std::string> artists;
-    std::string scenario;
-    std::string modelNumber;
-    std::string releaseDate;
-    std::string price;
+    QString manufacturer;
+    QList<QString> voiceActors;
+    QList<QString> artists;
+    QString scenario;
+    QString modelNumber;
+    QString releaseDate;
+    QString price;
 };
 
 // ==================== 表单/辅助类型 ====================
 
 struct VolumeForm {
-    std::string catalogNo;
-    std::string volumeName;
-    std::string type; // "volume" | "box"
-    std::string mediaType; // "BD" | "DVD"
+    QString catalogNo;
+    QString volumeName;
+    QString type; // "volume" | "box"
+    QString mediaType; // "BD" | "DVD"
 };
 
 struct MediaForm {
     MediaType mediaType = MediaType::BD;
-    std::string contentTitle;
-    std::string description;
+    QString contentTitle;
+    QString description;
 };
 
 struct FileItem {
-    std::string id;
-    std::string name;
-    std::int64_t size = 0;
-    double progress = 0.0;
+    QString id;
+    QString name;
+    qint64 size = 0;
+    qreal progress = 0.0;
 };
 
 struct VolumeListParams {
-    int page = 1;
-    int pageSize = 20;
-    std::string searchCatalogNo;
-    std::string searchTitle;
+    qint32 page = 1;
+    qint32 pageSize = 20;
+    QString searchCatalogNo;
+    QString searchTitle;
     bool filterHasWork = false;
     bool filterHasMedia = false;
     bool useFilterHasWork = false; // 是否启用 filterHasWork
@@ -296,85 +286,85 @@ struct VolumeListParams {
 };
 
 struct VolumeListResult {
-    std::vector<Volume> data;
-    int total = 0;
-    int page = 1;
-    int pageSize = 20;
+    QList<Volume> data;
+    qint32 total = 0;
+    qint32 page = 1;
+    qint32 pageSize = 20;
 };
 
 struct NodeData {
-    int volumeNo = 0;
-    std::vector<int> sharedVolumeNos;
-    std::vector<std::string> files;
+    qint32 volumeNo = 0;
+    QList<qint32> sharedVolumeNos;
+    QList<QString> files;
 
-    int mediaNo = 0;
+    qint32 mediaNo = 0;
     MediaType mediaType = MediaType::BD;
-    std::vector<int> sharedMedias;
+    QList<qint32> sharedMedias;
 };
 
 // ==================== Bangumi 离线数据库文档类型 ====================
 
 struct BangumiSubjectDoc {
-    int id = 0;
-    std::string name;
-    std::string nameCn;
-    int type = 0;
-    std::string summary;
+    qint32 id = 0;
+    QString name;
+    QString nameCn;
+    qint32 type = 0;
+    QString summary;
     bool nsfw = false;
-    std::string date;
-    double score = 0.0;
-    int rank = 0;
-    std::map<std::string, int> scoreDetails;
-    int wish = 0;
-    int collect = 0;
-    int doing = 0;
-    int onHold = 0;
-    int dropped = 0;
+    QString date;
+    qreal score = 0.0;
+    qint32 rank = 0;
+    QMap<QString, qint32> scoreDetails;
+    qint32 wish = 0;
+    qint32 collect = 0;
+    qint32 doing = 0;
+    qint32 onHold = 0;
+    qint32 dropped = 0;
 };
 
 struct BangumiStaffItem {
-    int personId = 0;
-    std::string name;
-    std::string nameCn;
-    std::string position;
-    std::string url;
+    qint32 personId = 0;
+    QString name;
+    QString nameCn;
+    QString position;
+    QString url;
 };
 
 struct BangumiCharacterItem {
-    int characterId = 0;
-    std::string name;
-    std::string nameCn;
-    int roleType = 0;
-    int order = 0;
-    std::string url;
+    qint32 characterId = 0;
+    QString name;
+    QString nameCn;
+    qint32 roleType = 0;
+    qint32 order = 0;
+    QString url;
 };
 
 struct BangumiSubjectRelationItem {
-    int subjectId = 0;
-    std::string name;
-    std::string nameCn;
-    std::string relationType;
-    std::string url;
+    qint32 subjectId = 0;
+    QString name;
+    QString nameCn;
+    QString relationType;
+    QString url;
 };
 
 struct BangumiEpisodeDoc {
-    int id = 0;
-    int subjectId = 0;
-    int type = 0;
-    std::string name;
-    std::string nameCn;
-    int sort = 0;
-    std::string airdate;
-    std::string duration;
-    std::string description;
-    int disc = 0;
+    qint32 id = 0;
+    qint32 subjectId = 0;
+    qint32 type = 0;
+    QString name;
+    QString nameCn;
+    qint32 sort = 0;
+    QString airdate;
+    QString duration;
+    QString description;
+    qint32 disc = 0;
 };
 
 struct BangumiSubjectDetail : BangumiSubjectDoc {
-    std::vector<BangumiStaffItem> staff;
-    std::vector<BangumiCharacterItem> characters;
-    std::vector<BangumiEpisodeDoc> episodes;
-    std::vector<BangumiSubjectRelationItem> relations;
+    QList<BangumiStaffItem> staff;
+    QList<BangumiCharacterItem> characters;
+    QList<BangumiEpisodeDoc> episodes;
+    QList<BangumiSubjectRelationItem> relations;
 };
 
 #endif // MODELS_H

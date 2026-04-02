@@ -8,22 +8,22 @@
 
 // ProductSearchDoc 实现
 
-std::string ProductSearchDoc::toJson() const {
+QString ProductSearchDoc::toJson() const {
     QJsonObject obj;
-    obj["product_id"] = QString::fromStdString(productId);
-    obj["title"] = QString::fromStdString(title);
+    obj["product_id"] = productId;
+    obj["title"] = title;
     
-    if (manufacturer) obj["manufacturer"] = QString::fromStdString(*manufacturer);
-    if (scenario) obj["scenario"] = QString::fromStdString(*scenario);
-    if (modelNumber) obj["model_number"] = QString::fromStdString(*modelNumber);
-    if (releaseDate) obj["release_date"] = QString::fromStdString(*releaseDate);
-    if (price) obj["price"] = QString::fromStdString(*price);
-    if (url) obj["url"] = QString::fromStdString(*url);
-    if (noteRaw) obj["note_raw"] = QString::fromStdString(*noteRaw);
+    if (manufacturer) obj["manufacturer"] = *manufacturer;
+    if (scenario) obj["scenario"] = *scenario;
+    if (modelNumber) obj["model_number"] = *modelNumber;
+    if (releaseDate) obj["release_date"] = *releaseDate;
+    if (price) obj["price"] = *price;
+    if (url) obj["url"] = *url;
+    if (noteRaw) obj["note_raw"] = *noteRaw;
     
     QJsonArray voiceActorsArray;
     for (const auto& va : voiceActors) {
-        voiceActorsArray.append(QString::fromStdString(va));
+        voiceActorsArray.append(va);
     }
     if (!voiceActorsArray.isEmpty()) {
         obj["voice_actors"] = voiceActorsArray;
@@ -31,7 +31,7 @@ std::string ProductSearchDoc::toJson() const {
     
     QJsonArray artistsArray;
     for (const auto& artist : artists) {
-        artistsArray.append(QString::fromStdString(artist));
+        artistsArray.append(artist);
     }
     if (!artistsArray.isEmpty()) {
         obj["artists"] = artistsArray;
@@ -39,14 +39,14 @@ std::string ProductSearchDoc::toJson() const {
     
     QJsonArray imagesArray;
     for (const auto& img : images) {
-        imagesArray.append(QString::fromStdString(img));
+        imagesArray.append(img);
     }
     if (!imagesArray.isEmpty()) {
         obj["images"] = imagesArray;
     }
     
     QJsonDocument doc(obj);
-    return doc.toJson(QJsonDocument::Compact).toStdString();
+    return QString::fromUtf8(doc.toJson(QJsonDocument::Compact));
 }
 
 ProductSearchDoc ProductSearchDoc::fromProduct(const Product& product) {
@@ -87,13 +87,13 @@ SearchResult<void> ProductSearchService::deleteIndex() {
 }
 
 SearchResult<void> ProductSearchService::indexProduct(const ProductSearchDoc& product) {
-    std::vector<ProductSearchDoc> products{product};
+    QList<ProductSearchDoc> products{product};
     return bulkIndexProducts(products);
 }
 
 SearchResult<void> ProductSearchService::bulkIndexProducts(
-    const std::vector<ProductSearchDoc>& products,
-    std::optional<std::function<void(int processed, int total)>> onProgress
+    const QList<ProductSearchDoc>& products,
+    std::optional<std::function<void(qint32 processed, qint32 total)>> onProgress
 ) {
     if (products.empty()) return {};
     
@@ -102,54 +102,52 @@ SearchResult<void> ProductSearchService::bulkIndexProducts(
     // 构建 JSON 数组
     QJsonArray array;
     for (const auto& product : products) {
-        QJsonDocument doc = QJsonDocument::fromJson(
-            QByteArray::fromStdString(product.toJson())
-        );
+        QJsonDocument doc = QJsonDocument::fromJson(product.toJson().toUtf8());
         array.append(doc.object());
     }
     
     QJsonDocument doc(array);
-    std::string json = doc.toJson(QJsonDocument::Compact).toStdString();
+    QString json = QString::fromUtf8(doc.toJson(QJsonDocument::Compact));
     
     auto result = client.addDocuments(kIndexName, json);
     if (!result) return result;
     
     if (onProgress) {
-        (*onProgress)(static_cast<int>(products.size()), static_cast<int>(products.size()));
+        (*onProgress)(static_cast<qint32>(products.size()), static_cast<qint32>(products.size()));
     }
     
     return {};
 }
 
 SearchResult<ProductSearchResult> ProductSearchService::searchProducts(
-    const std::string& query,
+    const QString& query,
     const ProductSearchOptions& options
 ) {
     auto& client = MeiliSearchClient::instance();
     
-    int offset = (options.page - 1) * options.limit;
+    qint32 offset = (options.page - 1) * options.limit;
     
-    std::vector<std::string> filter;
+    QList<QString> filter;
     if (options.filter) {
         filter.push_back(*options.filter);
     }
     
-    std::vector<std::string> sort = {"product_id:asc"};
+    QList<QString> sort = {QStringLiteral("product_id:asc")};
     
     auto result = client.searchRaw(kIndexName, query, offset, options.limit, filter, sort);
     if (!result) return std::unexpected(result.error());
     
     // 解析响应
-    QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(*result));
+    QJsonDocument doc = QJsonDocument::fromJson(result->toUtf8());
     if (!doc.isObject()) {
-        return std::unexpected("Invalid search response");
+        return std::unexpected(QStringLiteral("Invalid search response"));
     }
     
     QJsonObject obj = doc.object();
     ProductSearchResult searchResult;
     
     // 解析总数
-    searchResult.total = obj["estimatedTotalHits"].toInt();
+    searchResult.total = static_cast<qint32>(obj["estimatedTotalHits"].toInt());
     searchResult.page = options.page;
     searchResult.totalPages = (searchResult.total + options.limit - 1) / options.limit;
     
@@ -161,51 +159,51 @@ SearchResult<ProductSearchResult> ProductSearchService::searchProducts(
         QJsonObject hitObj = hit.toObject();
         ProductSearchDoc product;
         
-        product.productId = hitObj["product_id"].toString().toStdString();
-        product.title = hitObj["title"].toString().toStdString();
+        product.productId = hitObj["product_id"].toString();
+        product.title = hitObj["title"].toString();
         
         if (hitObj.contains("manufacturer")) {
-            product.manufacturer = hitObj["manufacturer"].toString().toStdString();
+            product.manufacturer = hitObj["manufacturer"].toString();
         }
         if (hitObj.contains("scenario")) {
-            product.scenario = hitObj["scenario"].toString().toStdString();
+            product.scenario = hitObj["scenario"].toString();
         }
         if (hitObj.contains("model_number")) {
-            product.modelNumber = hitObj["model_number"].toString().toStdString();
+            product.modelNumber = hitObj["model_number"].toString();
         }
         if (hitObj.contains("release_date")) {
-            product.releaseDate = hitObj["release_date"].toString().toStdString();
+            product.releaseDate = hitObj["release_date"].toString();
         }
         if (hitObj.contains("price")) {
-            product.price = hitObj["price"].toString().toStdString();
+            product.price = hitObj["price"].toString();
         }
         if (hitObj.contains("url")) {
-            product.url = hitObj["url"].toString().toStdString();
+            product.url = hitObj["url"].toString();
         }
         if (hitObj.contains("note_raw")) {
-            product.noteRaw = hitObj["note_raw"].toString().toStdString();
+            product.noteRaw = hitObj["note_raw"].toString();
         }
         
         QJsonArray voiceActors = hitObj["voice_actors"].toArray();
         for (const auto& va : voiceActors) {
-            product.voiceActors.push_back(va.toString().toStdString());
+            product.voiceActors.push_back(va.toString());
         }
         
         QJsonArray artists = hitObj["artists"].toArray();
         for (const auto& artist : artists) {
-            product.artists.push_back(artist.toString().toStdString());
+            product.artists.push_back(artist.toString());
         }
         
         QJsonArray images = hitObj["images"].toArray();
         for (const auto& img : images) {
-            product.images.push_back(img.toString().toStdString());
+            product.images.push_back(img.toString());
         }
         
         // 高亮结果
         if (hitObj.contains("_formatted")) {
             QJsonObject formatted = hitObj["_formatted"].toObject();
             if (formatted.contains("title")) {
-                product.highlightTitle = formatted["title"].toString().toStdString();
+                product.highlightTitle = formatted["title"].toString();
             }
         }
         
@@ -215,7 +213,7 @@ SearchResult<ProductSearchResult> ProductSearchService::searchProducts(
     return searchResult;
 }
 
-SearchResult<void> ProductSearchService::deleteProductIndex(const std::string& productId) {
+SearchResult<void> ProductSearchService::deleteProductIndex(const QString& productId) {
     return MeiliSearchClient::instance().deleteDocument(kIndexName, productId);
 }
 

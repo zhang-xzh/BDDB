@@ -7,11 +7,12 @@ Always respond in Chinese unless the user asks for another language.
 # 环境说明
 
 1. 没有跨平台,一切单机
-2. 别TMD动命令之外的任何东西
-3. 别自作聪明动到周围, 哪怕多看一眼也不行
-4. 如果我同时做了修改,永远听我的
-5. 别TMD你把我删掉的东西,反复加回去
-6. 当我问你问题时,回答问题别TMD写代码
+2. 我说的就是绝对的, 不需要你扩散理解
+3. 别TMD动命令之外的任何东西
+4. 别自作聪明动到周围, 哪怕多看一眼也不行
+5. 如果我同时做了修改,永远听我的
+6. 别TMD你把我删掉的东西,反复加回去
+7. 当我问你问题时,回答问题别TMD写代码
 
 # Qt 现代 C++ 编码规范（AI 指令文档）
 
@@ -123,7 +124,7 @@ User* findById(const QString& id); // 调用方必须检查 null，极易遗漏
 
 ```cpp
 // ✅ 正确：内部类型全部 Qt 化
-using BsonScalar = std::variant<QString, qint32, qint64, double, bool, std::monostate>;
+using BsonScalar = std::variant<QString, qint32, qint64, qreal, bool, std::monostate>;
 
 std::visit(overloaded{
     [](const QString& s) { /* ... */ },
@@ -132,7 +133,7 @@ std::visit(overloaded{
 }, value);
 
 // ❌ 禁止：variant 内部使用 std::string
-using BsonScalar = std::variant<std::string, int32_t, int64_t, double, bool, std::monostate>;
+using BsonScalar = std::variant<std::string, int32_t, int64_t, qreal, bool, std::monostate>;
 ```
 
 ### C++20 特性
@@ -243,8 +244,8 @@ void MyWidget::initialize() {
 class UserModel : public QAbstractListModel {
     Q_OBJECT
 public:
-    int rowCount(const QModelIndex& = {}) const override;
-    QVariant data(const QModelIndex& index, int role) const override;
+    qint32 rowCount(const QModelIndex& = {}) const override;
+    QVariant data(const QModelIndex& index, qint32 role) const override;
 private:
     QList<User> m_users; // ❌ 禁止用 std::vector<User>
 };

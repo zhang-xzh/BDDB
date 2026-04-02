@@ -75,7 +75,7 @@ QbResult<void> QBittorrentClient::authenticate() {
     if (reply->error() != QNetworkReply::NoError) {
         QString error = reply->errorString();
         reply->deleteLater();
-        return std::unexpected(error.toStdString());
+        return std::unexpected(error);
     }
 
     QByteArray result = reply->readAll();
@@ -115,7 +115,7 @@ QbResult<QByteArray> QBittorrentClient::get(const QString &path) {
     if (reply->error() != QNetworkReply::NoError) {
         QString error = reply->errorString();
         reply->deleteLater();
-        return std::unexpected(error.toStdString());
+        return std::unexpected(error);
     }
 
     QByteArray result = reply->readAll();
@@ -145,7 +145,7 @@ QbResult<QByteArray> QBittorrentClient::post(const QString &path, const QByteArr
     if (reply->error() != QNetworkReply::NoError) {
         QString error = reply->errorString();
         reply->deleteLater();
-        return std::unexpected(error.toStdString());
+        return std::unexpected(error);
     }
 
     QByteArray result = reply->readAll();
@@ -160,34 +160,33 @@ QbResult<void> QBittorrentClient::testConnection() {
 Torrent QBittorrentClient::parseTorrent(const QJsonObject &obj) {
     Torrent t;
 
-    auto toStdString = [](const QString &s) { return s.toStdString(); };
-    auto toInt64 = [](qint64 v) { return static_cast<std::int64_t>(v); };
+    auto toInt64 = [](qint64 v) { return static_cast<qint64>(v); };
 
-    if (obj.contains("hash")) t.hash = toStdString(obj["hash"].toString());
-    if (obj.contains("name")) t.name = toStdString(obj["name"].toString());
+    if (obj.contains("hash")) t.hash = obj["hash"].toString();
+    if (obj.contains("name")) t.name = obj["name"].toString();
     if (obj.contains("size")) t.size = toInt64(obj["size"].toDouble());
     if (obj.contains("progress")) t.progress = obj["progress"].toDouble();
-    if (obj.contains("state")) t.state = toStdString(obj["state"].toString());
+    if (obj.contains("state")) t.state = obj["state"].toString();
     if (obj.contains("added_on")) t.addedOn = toInt64(obj["added_on"].toDouble());
     if (obj.contains("num_seeds")) t.numSeeds = obj["num_seeds"].toInt();
     if (obj.contains("num_leechs")) t.numLeechs = obj["num_leechs"].toInt();
     if (obj.contains("completion_on")) t.completionOn = toInt64(obj["completion_on"].toDouble());
-    if (obj.contains("save_path")) t.savePath = toStdString(obj["save_path"].toString());
+    if (obj.contains("save_path")) t.savePath = obj["save_path"].toString();
     if (obj.contains("uploaded")) t.uploaded = toInt64(obj["uploaded"].toDouble());
     if (obj.contains("downloaded")) t.downloaded = toInt64(obj["downloaded"].toDouble());
-    if (obj.contains("category")) t.category = toStdString(obj["category"].toString());
-    if (obj.contains("tags")) t.tags = toStdString(obj["tags"].toString());
-    if (obj.contains("content_path")) t.contentPath = toStdString(obj["content_path"].toString());
-    if (obj.contains("download_path")) t.downloadPath = toStdString(obj["download_path"].toString());
-    if (obj.contains("infohash_v1")) t.infohashV1 = toStdString(obj["infohash_v1"].toString());
-    if (obj.contains("infohash_v2")) t.infohashV2 = toStdString(obj["infohash_v2"].toString());
-    if (obj.contains("comment")) t.comment = toStdString(obj["comment"].toString());
+    if (obj.contains("category")) t.category = obj["category"].toString();
+    if (obj.contains("tags")) t.tags = obj["tags"].toString();
+    if (obj.contains("content_path")) t.contentPath = obj["content_path"].toString();
+    if (obj.contains("download_path")) t.downloadPath = obj["download_path"].toString();
+    if (obj.contains("infohash_v1")) t.infohashV1 = obj["infohash_v1"].toString();
+    if (obj.contains("infohash_v2")) t.infohashV2 = obj["infohash_v2"].toString();
+    if (obj.contains("comment")) t.comment = obj["comment"].toString();
     if (obj.contains("has_metadata")) t.hasMetadata = obj["has_metadata"].toBool();
     if (obj.contains("inactive_seeding_time_limit")) t.inactiveSeedingTimeLimit = obj["inactive_seeding_time_limit"].toInt();
     if (obj.contains("max_inactive_seeding_time")) t.maxInactiveSeedingTime = obj["max_inactive_seeding_time"].toInt();
     if (obj.contains("popularity")) t.popularity = obj["popularity"].toDouble();
     if (obj.contains("private")) t.isPrivate = obj["private"].toBool();
-    if (obj.contains("root_path")) t.rootPath = toStdString(obj["root_path"].toString());
+    if (obj.contains("root_path")) t.rootPath = obj["root_path"].toString();
     if (obj.contains("amount_left")) t.amountLeft = toInt64(obj["amount_left"].toDouble());
     if (obj.contains("auto_tmm")) t.autoTmm = obj["auto_tmm"].toBool();
     if (obj.contains("availability")) t.availability = obj["availability"].toDouble();
@@ -199,7 +198,7 @@ Torrent QBittorrentClient::parseTorrent(const QJsonObject &obj) {
     if (obj.contains("f_l_piece_prio")) t.fLPiecePrio = obj["f_l_piece_prio"].toBool();
     if (obj.contains("force_start")) t.forceStart = obj["force_start"].toBool();
     if (obj.contains("last_activity")) t.lastActivity = toInt64(obj["last_activity"].toDouble());
-    if (obj.contains("magnet_uri")) t.magnetUri = toStdString(obj["magnet_uri"].toString());
+    if (obj.contains("magnet_uri")) t.magnetUri = obj["magnet_uri"].toString();
     if (obj.contains("max_ratio")) t.maxRatio = obj["max_ratio"].toDouble();
     if (obj.contains("max_seeding_time")) t.maxSeedingTime = obj["max_seeding_time"].toInt();
     if (obj.contains("num_complete")) t.numComplete = obj["num_complete"].toInt();
@@ -215,7 +214,7 @@ Torrent QBittorrentClient::parseTorrent(const QJsonObject &obj) {
     if (obj.contains("super_seeding")) t.superSeeding = obj["super_seeding"].toBool();
     if (obj.contains("time_active")) t.timeActive = toInt64(obj["time_active"].toDouble());
     if (obj.contains("total_size")) t.totalSize = toInt64(obj["total_size"].toDouble());
-    if (obj.contains("tracker")) t.tracker = toStdString(obj["tracker"].toString());
+    if (obj.contains("tracker")) t.tracker = obj["tracker"].toString();
     if (obj.contains("trackers_count")) t.trackersCount = obj["trackers_count"].toInt();
     if (obj.contains("up_limit")) t.upLimit = obj["up_limit"].toInt();
     if (obj.contains("uploaded_session")) t.uploadedSession = toInt64(obj["uploaded_session"].toDouble());
@@ -227,22 +226,21 @@ Torrent QBittorrentClient::parseTorrent(const QJsonObject &obj) {
 TorrentFile QBittorrentClient::parseTorrentFile(const QJsonObject &obj) {
     TorrentFile f;
 
-    auto toStdString = [](const QString &s) { return s.toStdString(); };
-    auto toInt64 = [](qint64 v) { return static_cast<std::int64_t>(v); };
+    auto toInt64 = [](qint64 v) { return static_cast<qint64>(v); };
 
     if (obj.contains("index")) f.index = obj["index"].toInt();
-    if (obj.contains("name")) f.name = toStdString(obj["name"].toString());
+    if (obj.contains("name")) f.name = obj["name"].toString();
     if (obj.contains("size")) f.size = toInt64(obj["size"].toDouble());
     if (obj.contains("progress")) f.progress = obj["progress"].toDouble();
     if (obj.contains("priority")) f.priority = obj["priority"].toInt();
     if (obj.contains("is_seed")) f.isSeed = obj["is_seed"].toBool();
     if (obj.contains("availability")) f.availability = obj["availability"].toDouble();
-    if (obj.contains("path")) f.path = toStdString(obj["path"].toString());
+    if (obj.contains("path")) f.path = obj["path"].toString();
 
     return f;
 }
 
-QbResult<std::vector<Torrent> > QBittorrentClient::listTorrents() {
+QbResult<QList<Torrent> > QBittorrentClient::listTorrents() {
     auto result = get("api/v2/torrents/info");
     if (!result) return std::unexpected(result.error());
 
@@ -251,7 +249,7 @@ QbResult<std::vector<Torrent> > QBittorrentClient::listTorrents() {
         return std::unexpected("Invalid response format: expected array");
     }
 
-    std::vector<Torrent> torrents;
+    QList<Torrent> torrents;
     QJsonArray array = doc.array();
     for (const auto &val: array) {
         if (val.isObject()) {
@@ -275,7 +273,7 @@ QbResult<Torrent> QBittorrentClient::getTorrent(const QString &hash) {
     return parseTorrent(doc.array().first().toObject());
 }
 
-QbResult<std::vector<TorrentFile> > QBittorrentClient::getTorrentFiles(const QString &hash) {
+QbResult<QList<TorrentFile> > QBittorrentClient::getTorrentFiles(const QString &hash) {
     QString path = QString("api/v2/torrents/files?hash=%1").arg(hash);
     auto result = get(path);
     if (!result) return std::unexpected(result.error());
@@ -285,7 +283,7 @@ QbResult<std::vector<TorrentFile> > QBittorrentClient::getTorrentFiles(const QSt
         return std::unexpected("Invalid response format: expected array");
     }
 
-    std::vector<TorrentFile> files;
+    QList<TorrentFile> files;
     QJsonArray array = doc.array();
     for (const auto &val: array) {
         if (val.isObject()) {
@@ -296,18 +294,18 @@ QbResult<std::vector<TorrentFile> > QBittorrentClient::getTorrentFiles(const QSt
     return files;
 }
 
-QbResult<std::map<QString, std::vector<TorrentFile> > > QBittorrentClient::getMultipleTorrentFiles(
-    const std::vector<QString> &hashes,
+QbResult<QMap<QString, QList<TorrentFile> > > QBittorrentClient::getMultipleTorrentFiles(
+    const QList<QString> &hashes,
     std::optional<TorrentSyncProgressCallback> onProgress
 ) {
-    std::map<QString, std::vector<TorrentFile> > result;
+    QMap<QString, QList<TorrentFile> > result;
 
-    for (size_t i = 0; i < hashes.size(); ++i) {
+    for (qsizetype i = 0; i < hashes.size(); ++i) {
         const QString &hash = hashes[i];
 
         if (onProgress) {
-            (*onProgress)(static_cast<int>(i + 1), static_cast<int>(hashes.size()),
-                          QString("Fetching files for %1").arg(hash).toStdString());
+            (*onProgress)(static_cast<qint32>(i + 1), static_cast<qint32>(hashes.size()),
+                          QStringLiteral("Fetching files for %1").arg(hash));
         }
 
         auto files = getTorrentFiles(hash);
@@ -345,28 +343,28 @@ TorrentSyncResult QBittorrentClient::syncTorrents(
             return result;
         }
 
-        result.total = static_cast<int>(torrents->size());
+        result.total = static_cast<qint32>(torrents->size());
 
-        std::vector<QString> hashes;
+        QList<QString> hashes;
         for (const auto &t: *torrents) {
-            hashes.push_back(QString::fromStdString(t.hash));
+            hashes.push_back(t.hash);
         }
 
         auto fileMap = getMultipleTorrentFiles(hashes, onProgress);
 
         auto now = std::chrono::system_clock::now().time_since_epoch().count() / 1000000000;
 
-        for (size_t i = 0; i < torrents->size(); ++i) {
+        for (qsizetype i = 0; i < torrents->size(); ++i) {
             const auto &torrent = (*torrents)[i];
-            const QString hash = QString::fromStdString(torrent.hash);
+            const QString hash = torrent.hash;
 
             if (onProgress) {
-                (*onProgress)(static_cast<int>(i + 1), result.total,
-                              QString("Processing %1").arg(hash).toStdString());
+                (*onProgress)(static_cast<qint32>(i + 1), result.total,
+                              QStringLiteral("Processing %1").arg(hash));
             }
 
-            std::vector<TorrentFile> files;
-            if (fileMap && fileMap->count(hash)) {
+            QList<TorrentFile> files;
+            if (fileMap && fileMap->contains(hash)) {
                 files = (*fileMap)[hash];
             }
 
@@ -390,7 +388,7 @@ TorrentSyncResult QBittorrentClient::syncTorrents(
                 updated.updatedAt = now;
 
                 if (!files.empty()) {
-                    std::vector<TorrentFile> mergedFiles;
+                    QList<TorrentFile> mergedFiles;
                     for (const auto &newFile: files) {
                         bool found = false;
                         for (auto &existingFile: updated.files) {
@@ -409,7 +407,7 @@ TorrentSyncResult QBittorrentClient::syncTorrents(
                         }
                         if (!found) {
                             TorrentFile newF = newFile;
-                            newF.id = bsoncxx::oid().to_string();
+                            newF.id = QString::fromStdString(bsoncxx::oid().to_string());
                             newF.createdAt = now;
                             newF.updatedAt = now;
                             mergedFiles.push_back(newF);
@@ -424,14 +422,14 @@ TorrentSyncResult QBittorrentClient::syncTorrents(
                 }
             } else {
                 Torrent newTorrent = torrent;
-                newTorrent.id = bsoncxx::oid().to_string();
+                newTorrent.id = QString::fromStdString(bsoncxx::oid().to_string());
                 newTorrent.isDeleted = false;
                 newTorrent.syncedAt = now;
                 newTorrent.createdAt = now;
                 newTorrent.updatedAt = now;
 
                 for (auto &file: files) {
-                    file.id = bsoncxx::oid().to_string();
+                    file.id = QString::fromStdString(bsoncxx::oid().to_string());
                     file.createdAt = now;
                     file.updatedAt = now;
                 }
@@ -446,7 +444,7 @@ TorrentSyncResult QBittorrentClient::syncTorrents(
 
         result.success = true;
     } catch (const std::exception &e) {
-        result.error = e.what();
+        result.error = QString::fromUtf8(e.what());
     }
 
     return result;
@@ -466,7 +464,7 @@ QbResult<bool> QBittorrentClient::syncSingleTorrent(const QString &hash) {
 
         if (files) {
             for (auto &file: *files) {
-                file.id = bsoncxx::oid().to_string();
+                file.id = QString::fromStdString(bsoncxx::oid().to_string());
                 file.createdAt = now;
                 file.updatedAt = now;
             }
@@ -478,6 +476,6 @@ QbResult<bool> QBittorrentClient::syncSingleTorrent(const QString &hash) {
 
         return true;
     } catch (const std::exception &e) {
-        return std::unexpected(std::string("Sync failed: ") + e.what());
+        return std::unexpected(QStringLiteral("Sync failed: ") + QString::fromUtf8(e.what()));
     }
 }

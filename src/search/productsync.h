@@ -3,38 +3,38 @@
 
 #include "search/productsearch.h"
 #include "models/models.h"
-#include <vector>
-#include <string>
+#include <QList>
+#include <QString>
 #include <optional>
 #include <functional>
 
 // 同步结果
 struct SyncResult {
-    int total = 0;
-    int indexed = 0;
-    int failed = 0;
+    qint32 total = 0;
+    qint32 indexed = 0;
+    qint32 failed = 0;
 
     bool operator==(const SyncResult&) const = default;
 };
 
 // 同步进度回调
-using SyncProgressCallback = std::function<void(int processed, int total)>;
+using SyncProgressCallback = std::function<void(qint32 processed, qint32 total)>;
 
 // 详细同步信息
 struct SyncDetail {
-    std::string volumeId;
-    std::string catalogNo;
-    std::vector<std::string> productIds;
-    std::vector<std::string> newIds;
-    int count = 0;
+    QString volumeId;
+    QString catalogNo;
+    QList<QString> productIds;
+    QList<QString> newIds;
+    qint32 count = 0;
 };
 
 // 卷-产品关联结果
 struct LinkVolumesResult {
-    int updated = 0;
-    int matched = 0;
-    int skipped = 0;
-    std::vector<SyncDetail> details;
+    qint32 updated = 0;
+    qint32 matched = 0;
+    qint32 skipped = 0;
+    QList<SyncDetail> details;
 };
 
 // 产品同步服务
@@ -47,16 +47,16 @@ public:
     // 从 MongoDB 读取所有产品并索引到 Meilisearch
     static SearchResult<SyncResult> syncAllProducts(
         std::optional<SyncProgressCallback> onProgress = std::nullopt,
-        int batchSize = 1000
+        qint32 batchSize = 1000
     );
 
     // 增量同步（按 product_id 列表）
     static SearchResult<void> syncProductsByIds(
-        const std::vector<std::string> &productIds
+        const QList<QString> &productIds
     );
 
     // 同步单个产品
-    static SearchResult<void> syncSingleProduct(const std::string &productId);
+    static SearchResult<void> syncSingleProduct(const QString &productId);
 
     // 重建索引（删除并重新创建，然后全量同步）
     static SearchResult<SyncResult> rebuildIndex(
@@ -65,10 +65,10 @@ public:
 
 private:
     // 辅助函数：处理一批产品
-    static SearchResult<int> processBatch(
-        const std::vector<Product> &products,
-        int &processed,
-        int total,
+    static SearchResult<qint32> processBatch(
+        const QList<Product> &products,
+        qint32 &processed,
+        qint32 total,
         std::optional<SyncProgressCallback> onProgress
     );
 };

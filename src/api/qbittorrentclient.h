@@ -5,7 +5,8 @@
 #include <QObject>
 #include <QString>
 #include <QUrl>
-#include <vector>
+#include <QList>
+#include <QMap>
 #include <expected>
 #include <optional>
 #include <functional>
@@ -15,21 +16,21 @@ class QNetworkReply;
 
 // qBittorrent API 响应结果
 template<typename T>
-using QbResult = std::expected<T, std::string>;
+using QbResult = std::expected<T, QString>;
 
 // 同步结果
 struct TorrentSyncResult {
     bool success = false;
-    int newCount = 0;
-    int updateCount = 0;
-    int total = 0;
-    std::string error;
+    qint32 newCount = 0;
+    qint32 updateCount = 0;
+    qint32 total = 0;
+    QString error;
 
     bool operator==(const TorrentSyncResult&) const = default;
 };
 
 // 进度回调
-using TorrentSyncProgressCallback = std::function<void(int current, int total, const std::string& message)>;
+using TorrentSyncProgressCallback = std::function<void(qint32 current, qint32 total, const QString& message)>;
 
 class QBittorrentClient : public QObject {
     Q_OBJECT
@@ -48,17 +49,17 @@ public:
     // ========== Torrent API ==========
     
     // 获取所有种子列表
-    QbResult<std::vector<Torrent>> listTorrents();
+    QbResult<QList<Torrent>> listTorrents();
     
     // 根据 hash 获取单个种子详情
     QbResult<Torrent> getTorrent(const QString &hash);
     
     // 获取种子文件列表
-    QbResult<std::vector<TorrentFile>> getTorrentFiles(const QString &hash);
+    QbResult<QList<TorrentFile>> getTorrentFiles(const QString &hash);
     
     // 获取多个种子的文件列表
-    QbResult<std::map<QString, std::vector<TorrentFile>>> getMultipleTorrentFiles(
-        const std::vector<QString> &hashes,
+    QbResult<QMap<QString, QList<TorrentFile>>> getMultipleTorrentFiles(
+        const QList<QString> &hashes,
         std::optional<TorrentSyncProgressCallback> onProgress = std::nullopt
     );
 

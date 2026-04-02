@@ -73,11 +73,11 @@ void WorkSearchWindow::showRebuildBangumiDialog() {
     });
 
     auto future = QtConcurrent::run([this]() {
-        BangumiSyncService::rebuildIndex([this](int processed, int total) {
+        BangumiSyncService::rebuildIndex([this](qint32 processed, qint32 total) {
             if (m_dialog) {
                 QMetaObject::invokeMethod(this, [this, processed, total]() {
                     if (m_dialog) {
-                        int progress = total > 0 ? (processed * 100 / total) : 0;
+                        qint32 progress = total > 0 ? (processed * 100 / total) : 0;
                         m_dialog->setProgress(progress);
                         m_dialog->setStatus(QString("%1/%2").arg(processed).arg(total));
                     }

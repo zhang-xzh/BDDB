@@ -52,8 +52,8 @@ void VolumeManagerWindow::setupUI() {
 }
 
 void VolumeManagerWindow::loadData() {
-    auto *watcher = new QFutureWatcher<DbResult<std::vector<Volume> > >(this);
-    connect(watcher, &QFutureWatcher<DbResult<std::vector<Volume> > >::finished, this, [this, watcher]() {
+    auto *watcher = new QFutureWatcher<DbResult<QList<Volume> > >(this);
+    connect(watcher, &QFutureWatcher<DbResult<QList<Volume> > >::finished, this, [this, watcher]() {
         auto result = watcher->result();
         if (result) {
             m_model->setVolumes(std::move(*result));
@@ -61,7 +61,7 @@ void VolumeManagerWindow::loadData() {
         watcher->deleteLater();
     });
 
-    auto future = QtConcurrent::run([]() -> DbResult<std::vector<Volume> > {
+    auto future = QtConcurrent::run([]() -> DbResult<QList<Volume> > {
         return BddbRepository::getAllVolumes();
     });
     watcher->setFuture(future);

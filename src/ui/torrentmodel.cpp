@@ -4,23 +4,23 @@ TorrentModel::TorrentModel(QObject *parent)
     : QAbstractTableModel(parent) {
 }
 
-int TorrentModel::rowCount(const QModelIndex &parent) const {
-    return parent.isValid() ? 0 : static_cast<int>(m_torrents.size());
+qint32 TorrentModel::rowCount(const QModelIndex &parent) const {
+    return parent.isValid() ? 0 : static_cast<qint32>(m_torrents.size());
 }
 
-int TorrentModel::columnCount(const QModelIndex &parent) const {
+qint32 TorrentModel::columnCount(const QModelIndex &parent) const {
     return parent.isValid() ? 0 : 1; // 状态, 种子名
 }
 
-QVariant TorrentModel::data(const QModelIndex &index, int role) const {
-    if (!index.isValid() || index.row() >= static_cast<int>(m_torrents.size()))
+QVariant TorrentModel::data(const QModelIndex &index, qint32 role) const {
+    if (!index.isValid() || index.row() >= static_cast<qint32>(m_torrents.size()))
         return QVariant();
 
     const auto &torrent = m_torrents.at(index.row());
 
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
-            case 0: return QString::fromStdString(torrent.name);
+            case 0: return torrent.name;
             default: return QVariant();
         }
     }
@@ -28,7 +28,7 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const {
     return QVariant();
 }
 
-QVariant TorrentModel::headerData(int section, Qt::Orientation orientation, int role) const {
+QVariant TorrentModel::headerData(qint32 section, Qt::Orientation orientation, qint32 role) const {
     if (role != Qt::DisplayRole || orientation != Qt::Horizontal)
         return QVariant();
 
@@ -38,7 +38,7 @@ QVariant TorrentModel::headerData(int section, Qt::Orientation orientation, int 
     }
 }
 
-void TorrentModel::setTorrents(std::vector<Torrent> torrents) {
+void TorrentModel::setTorrents(QList<Torrent> torrents) {
     beginResetModel();
     m_torrents = std::move(torrents);
     endResetModel();
@@ -50,8 +50,8 @@ void TorrentModel::clear() {
     endResetModel();
 }
 
-const Torrent *TorrentModel::torrentAt(int row) const {
-    if (row < 0 || row >= static_cast<int>(m_torrents.size()))
+const Torrent *TorrentModel::torrentAt(qint32 row) const {
+    if (row < 0 || row >= static_cast<qint32>(m_torrents.size()))
         return nullptr;
     return &m_torrents.at(row);
 }
