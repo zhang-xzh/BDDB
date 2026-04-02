@@ -17,6 +17,7 @@
 #include <functional>
 #include <QHash>
 #include <QSet>
+#include <QtConcurrent>
 
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_document;
@@ -1148,29 +1149,27 @@ DbResult<VolumeListResult> BddbRepository::getVolumesWithPagination(const Volume
 
 // ==================== Product Linking ====================
 
-DbResult<BddbRepository::LinkResult> BddbRepository::linkVolumesToProducts(
-    std::optional<LinkProgressCallback> onProgress
-) {
+QFuture<BddbRepository::LinkResult> BddbRepository::linkVolumesToProducts() {
+    return QtConcurrent::run([]() -> LinkResult {
+        return linkVolumesToProductsSync();
+    });
+}
+
+BddbRepository::LinkResult BddbRepository::linkVolumesToProductsSync() {
+    LinkResult result;
     try {
-        LinkResult result;
         if (!MongoConnection::instance().isConnected()) return result;
 
         auto db = MongoConnection::instance().database("bddb_dev");
         auto volumesColl = db["bddb_volumes"];
 
-        // 先获取总数
         auto countFilter = make_document(kvp("is_deleted", false));
         auto totalCount = volumesColl.count_documents(countFilter.view());
-        qint32 processed = 0;
 
         auto filter = make_document(kvp("is_deleted", false));
         auto cursor = volumesColl.find(filter.view());
 
         for (auto &&doc: cursor) {
-            ++processed;
-            if (onProgress) {
-                (*onProgress)(processed, static_cast<qint32>(totalCount), QStringLiteral("Processing volume ") + QString::number(processed));
-            }
             Volume v = parseVolume(doc);
             auto catalogNo = v.catalogNo.trimmed();
             if (catalogNo.isEmpty()) continue;
@@ -1207,6 +1206,6 @@ DbResult<BddbRepository::LinkResult> BddbRepository::linkVolumesToProducts(
 
         return result;
     } catch (const std::exception &e) {
-        return std::unexpected(QStringLiteral("linkVolumesToProducts failed: ") + QString::fromUtf8(e.what()));
+        return LinkResult{};
     }
 }

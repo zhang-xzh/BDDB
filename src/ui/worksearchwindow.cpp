@@ -7,8 +7,6 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QWidget>
-#include <QtConcurrent>
-#include <QFutureWatcher>
 
 WorkSearchWindow::WorkSearchWindow(QWidget *parent)
     : QMainWindow(parent) {
@@ -49,43 +47,21 @@ void WorkSearchWindow::setupUI() {
 }
 
 void WorkSearchWindow::showRebuildBangumiDialog() {
-    if (m_dialog) {
-        m_dialog->raise();
-        m_dialog->activateWindow();
-        return;
-    }
-
-    m_dialog = new ProgressDialog("重建 Bangumi 索引", this);
-    m_dialog->setAttribute(Qt::WA_DeleteOnClose);
-    connect(m_dialog, &QObject::destroyed, this, [this]() { m_dialog = nullptr; });
-
-    auto *watcher = new QFutureWatcher<void>(this);
-    connect(watcher, &QFutureWatcher<void>::finished, this, [this, watcher]() {
-        watcher->deleteLater();
-        if (m_dialog) {
-            m_dialog->setStatus("完成");
-            m_dialog->setProgress(100);
-        }
-    });
-
-    connect(m_dialog, &ProgressDialog::cancelled, this, [watcher]() {
-        watcher->cancel();
-    });
-
-    auto future = QtConcurrent::run([this]() {
-        BangumiSyncService::rebuildIndex([this](qint32 processed, qint32 total) {
-            if (m_dialog) {
-                QMetaObject::invokeMethod(this, [this, processed, total]() {
-                    if (m_dialog) {
-                        qint32 progress = total > 0 ? (processed * 100 / total) : 0;
-                        m_dialog->setProgress(progress);
-                        m_dialog->setStatus(QString("%1/%2").arg(processed).arg(total));
-                    }
-                }, Qt::QueuedConnection);
-            }
+    auto *dialog = new ProgressDialog("重建 Bangumi 索引", nullptr);
+    dialog->setWindowFlag(Qt::Window);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    
+    dialog->setTask([](ProgressDialog *d) {
+        BangumiSyncService::rebuildIndexSync([d](int processed, int total) {
+            QMetaObject::invokeMethod(d, [d, processed, total]() {
+                if (d) {
+                    int progress = total > 0 ? (processed * 100 / total) : 0;
+                    d->setProgress(progress);
+                    d->setStatus(QString("%1/%2").arg(processed).arg(total));
+                }
+            }, Qt::QueuedConnection);
         });
     });
-
-    watcher->setFuture(future);
-    m_dialog->show();
+    
+    dialog->run();
 }

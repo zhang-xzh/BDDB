@@ -11,7 +11,7 @@
 #include <QEventLoop>
 #include <QTimer>
 #include <QThread>
-#include <QDebug>
+#include <QtConcurrent>
 
 #include "db/connection.h"
 #include "db/bddbrepository.h"
@@ -295,18 +295,12 @@ QbResult<QList<TorrentFile> > QBittorrentClient::getTorrentFiles(const QString &
 }
 
 QbResult<QMap<QString, QList<TorrentFile> > > QBittorrentClient::getMultipleTorrentFiles(
-    const QList<QString> &hashes,
-    std::optional<TorrentSyncProgressCallback> onProgress
+    const QList<QString> &hashes
 ) {
     QMap<QString, QList<TorrentFile> > result;
 
     for (qsizetype i = 0; i < hashes.size(); ++i) {
         const QString &hash = hashes[i];
-
-        if (onProgress) {
-            (*onProgress)(static_cast<qint32>(i + 1), static_cast<qint32>(hashes.size()),
-                          QStringLiteral("Fetching files for %1").arg(hash));
-        }
 
         auto files = getTorrentFiles(hash);
         if (files) {
@@ -321,9 +315,13 @@ QbResult<QMap<QString, QList<TorrentFile> > > QBittorrentClient::getMultipleTorr
     return result;
 }
 
-TorrentSyncResult QBittorrentClient::syncTorrents(
-    std::optional<TorrentSyncProgressCallback> onProgress
-) {
+QFuture<TorrentSyncResult> QBittorrentClient::syncTorrents() {
+    return QtConcurrent::run([this]() -> TorrentSyncResult {
+        return syncTorrentsSync();
+    });
+}
+
+TorrentSyncResult QBittorrentClient::syncTorrentsSync() {
     TorrentSyncResult result;
     result.success = false;
 
@@ -331,10 +329,6 @@ TorrentSyncResult QBittorrentClient::syncTorrents(
         if (!MongoConnection::instance().isConnected()) {
             result.error = "MongoDB not connected";
             return result;
-        }
-
-        if (onProgress) {
-            (*onProgress)(0, 1, "Fetching torrent list from qBittorrent...");
         }
 
         auto torrents = listTorrents();
@@ -350,18 +344,13 @@ TorrentSyncResult QBittorrentClient::syncTorrents(
             hashes.push_back(t.hash);
         }
 
-        auto fileMap = getMultipleTorrentFiles(hashes, onProgress);
+        auto fileMap = getMultipleTorrentFiles(hashes);
 
         auto now = std::chrono::system_clock::now().time_since_epoch().count() / 1000000000;
 
         for (qsizetype i = 0; i < torrents->size(); ++i) {
             const auto &torrent = (*torrents)[i];
             const QString hash = torrent.hash;
-
-            if (onProgress) {
-                (*onProgress)(static_cast<qint32>(i + 1), result.total,
-                              QStringLiteral("Processing %1").arg(hash));
-            }
 
             QList<TorrentFile> files;
             if (fileMap && fileMap->contains(hash)) {
@@ -371,7 +360,6 @@ TorrentSyncResult QBittorrentClient::syncTorrents(
             auto existing = BddbRepository::getTorrentByHash(torrent.hash);
 
             if (existing && existing->hash == torrent.hash) {
-                // 保存 DB 特有字段，再用 API 数据完整覆盖
                 const auto oldId = existing->id;
                 const auto oldCreatedAt = existing->createdAt;
                 const auto oldIsDeleted = existing->isDeleted;
@@ -393,7 +381,6 @@ TorrentSyncResult QBittorrentClient::syncTorrents(
                         bool found = false;
                         for (auto &existingFile: updated.files) {
                             if (existingFile.name == newFile.name) {
-                                // 保留 DB 的 id 和 createdAt，其余用 API 数据覆盖
                                 const auto oldFileId = existingFile.id;
                                 const auto oldFileCreatedAt = existingFile.createdAt;
                                 existingFile = newFile;

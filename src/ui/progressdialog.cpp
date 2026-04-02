@@ -4,6 +4,7 @@
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QHBoxLayout>
+#include <QCloseEvent>
 
 ProgressDialog::ProgressDialog(const QString &title, QWidget *parent)
     : QDialog(parent) {
@@ -12,26 +13,49 @@ ProgressDialog::ProgressDialog(const QString &title, QWidget *parent)
     resize(400, 120);
     setMinimumSize(300, 100);
     setAttribute(Qt::WA_DeleteOnClose);
-    // 移除关闭按钮，只能通过取消按钮关闭
     setWindowFlags(windowFlags() & ~Qt::WindowCloseButtonHint);
+}
+
+ProgressDialog::~ProgressDialog() {
+    m_cancelled.store(true);
+    if (m_thread.joinable()) {
+        m_thread.detach();
+    }
+}
+
+void ProgressDialog::setTask(TaskFunc task) {
+    m_task = std::move(task);
 }
 
 void ProgressDialog::setStatus(const QString &text) {
     m_statusLabel->setText(text);
 }
 
-void ProgressDialog::setProgress(qint32 value) {
+void ProgressDialog::setProgress(int value) {
     m_progressBar->setValue(value);
 }
 
-void ProgressDialog::onCancelClicked() {
-    if (!m_cancelled) {
-        m_cancelled = true;
-        m_cancelBtn->setEnabled(false);
-        m_cancelBtn->setText("正在取消...");
-        m_statusLabel->setText("正在取消操作...");
-        emit cancelled();
+bool ProgressDialog::isCancelled() const {
+    return m_cancelled.load();
+}
+
+void ProgressDialog::run() {
+    show();
+    
+    if (m_task) {
+        m_thread = std::thread([this]() {
+            m_task(this);
+            QMetaObject::invokeMethod(this, [this]() {
+                emit taskFinished();
+                close();
+            }, Qt::QueuedConnection);
+        });
     }
+}
+
+void ProgressDialog::closeEvent(QCloseEvent *event) {
+    m_cancelled.store(true);
+    event->accept();
 }
 
 void ProgressDialog::setupUI() {
@@ -48,8 +72,10 @@ void ProgressDialog::setupUI() {
     auto *btnLayout = new QHBoxLayout();
     btnLayout->addStretch();
     m_cancelBtn = new QPushButton("取消", this);
+    connect(m_cancelBtn, &QPushButton::clicked, this, [this]() {
+        emit cancelled();
+        close();
+    });
     btnLayout->addWidget(m_cancelBtn);
     layout->addLayout(btnLayout);
-
-    connect(m_cancelBtn, &QPushButton::clicked, this, &ProgressDialog::onCancelClicked);
 }

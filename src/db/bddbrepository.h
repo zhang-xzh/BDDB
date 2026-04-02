@@ -5,6 +5,7 @@
 #include <QString>
 #include <QList>
 #include <QMap>
+#include <QFuture>
 #include <expected>
 
 template<typename T> using DbResult = std::expected<T, QString>;
@@ -53,10 +54,8 @@ public:
     struct LinkResult { qint32 updated=0, matched=0, skipped=0; QList<QString> details;
         bool operator==(const LinkResult&) const = default;
     };
-    using LinkProgressCallback = std::function<void(qint32 current, qint32 total, const QString& message)>;
-    static DbResult<LinkResult> linkVolumesToProducts(
-        std::optional<LinkProgressCallback> onProgress = std::nullopt
-    );
+    static QFuture<LinkResult> linkVolumesToProducts();
+    static LinkResult linkVolumesToProductsSync();
 };
 
 #endif // BDDBREPOSITORY_H

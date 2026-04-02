@@ -16,6 +16,7 @@
 #include <QListWidget>
 #include <QDateTime>
 #include <QThread>
+#include <QFutureWatcher>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent) {
@@ -180,105 +181,96 @@ void MainWindow::showWorkSearch() {
 }
 
 void MainWindow::showSyncDialog() {
-    if (!m_syncDialog) {
-        m_syncDialog = new ProgressDialog("同步");
-        m_syncDialog->setWindowFlag(Qt::Window);
+    if (m_syncDialog) {
+        m_syncDialog->raise();
+        m_syncDialog->activateWindow();
+        return;
     }
-    m_syncDialog->setStatus("准备同步...");
-    m_syncDialog->setProgress(0);
-    m_syncDialog->show();
-    m_syncDialog->raise();
-    m_syncDialog->activateWindow();
 
-    // 使用 QThread 确保有事件循环
-    auto *thread = new QThread(this);
-    auto *worker = new SyncWorker();
-    worker->moveToThread(thread);
+    m_syncDialog = new ProgressDialog("同步", nullptr);
+    m_syncDialog->setAttribute(Qt::WA_DeleteOnClose);
+    m_syncDialog->setWindowFlag(Qt::Window);
+    connect(m_syncDialog, &QObject::destroyed, this, [this]() { m_syncDialog = nullptr; });
 
-    // 连接取消信号 - 强制终止线程
-    connect(m_syncDialog, &ProgressDialog::cancelled, this, [thread, worker]() {
-        thread->terminate();
-        thread->wait();
-    });
-
-    connect(thread, &QThread::started, worker, &SyncWorker::doWork);
-    connect(worker, &SyncWorker::progressUpdated, this, [this](qint32 current, qint32 total, const QString &message) {
+    auto *watcher = new QFutureWatcher<TorrentSyncResult>();
+    connect(watcher, &QFutureWatcher<TorrentSyncResult>::finished, watcher, [this, watcher]() {
         if (m_syncDialog) {
-            const qint32 progress = total > 0 ? static_cast<qint32>((current * 100.0) / total) : 0;
-            m_syncDialog->setProgress(progress);
-            m_syncDialog->setStatus(message);
-        }
-        appendLog(QString("%1/%2: %3").arg(current).arg(total).arg(message));
-    });
-    connect(worker, &SyncWorker::finished, this, [this, thread, worker](const TorrentSyncResult &result) {
-        if (m_syncDialog) {
-            if (result.success) {
-                m_syncDialog->setStatus(
-                    QStringLiteral("同步完成: 新增 %1, 更新 %2, 总计 %3")
-                    .arg(result.newCount)
-                    .arg(result.updateCount)
-                    .arg(result.total));
+            if (!watcher->isCanceled()) {
+                auto result = watcher->result();
+                if (result.success) {
+                    m_syncDialog->setStatus(
+                        QStringLiteral("同步完成: 新增 %1, 更新 %2, 总计 %3")
+                        .arg(result.newCount)
+                        .arg(result.updateCount)
+                        .arg(result.total));
+                } else {
+                    m_syncDialog->setStatus(
+                        QStringLiteral("同步失败: %1")
+                        .arg(result.error));
+                }
+                m_syncDialog->setProgress(100);
             } else {
-                m_syncDialog->setStatus(
-                    QStringLiteral("同步失败: %1")
-                    .arg(result.error));
+                m_syncDialog->setStatus("已取消");
+                m_syncDialog->setProgress(0);
             }
-            m_syncDialog->setProgress(100);
         }
-        thread->quit();
-        thread->wait();
-        thread->deleteLater();
-        worker->deleteLater();
+        watcher->deleteLater();
     });
 
-    thread->start();
+    connect(m_syncDialog, &ProgressDialog::cancelled, watcher, [watcher]() {
+        watcher->cancel();
+    });
+    
+    connect(m_syncDialog, &QObject::destroyed, watcher, [watcher]() {
+        watcher->cancel();
+    });
+
+    QBittorrentClient client;
+    auto future = client.syncTorrents();
+    watcher->setFuture(future);
+    m_syncDialog->show();
 }
 
 void MainWindow::showLinkDialog() {
-    if (!m_linkDialog) {
-        m_linkDialog = new ProgressDialog("关联");
-        m_linkDialog->setWindowFlag(Qt::Window);
+    if (m_linkDialog) {
+        m_linkDialog->raise();
+        m_linkDialog->activateWindow();
+        return;
     }
-    m_linkDialog->setStatus("准备关联产品...");
-    m_linkDialog->setProgress(0);
+
+    m_linkDialog = new ProgressDialog("关联", nullptr);
+    m_linkDialog->setAttribute(Qt::WA_DeleteOnClose);
+    m_linkDialog->setWindowFlag(Qt::Window);
+    connect(m_linkDialog, &QObject::destroyed, this, [this]() { m_linkDialog = nullptr; });
+
+    auto *watcher = new QFutureWatcher<BddbRepository::LinkResult>();
+    connect(watcher, &QFutureWatcher<BddbRepository::LinkResult>::finished, watcher, [this, watcher]() {
+        if (m_linkDialog) {
+            if (!watcher->isCanceled()) {
+                auto result = watcher->result();
+                m_linkDialog->setStatus(
+                    QStringLiteral("关联完成: 更新 %1, 匹配 %2, 跳过 %3")
+                    .arg(result.updated)
+                    .arg(result.matched)
+                    .arg(result.skipped));
+                m_linkDialog->setProgress(100);
+            } else {
+                m_linkDialog->setStatus("已取消");
+                m_linkDialog->setProgress(0);
+            }
+        }
+        watcher->deleteLater();
+    });
+
+    connect(m_linkDialog, &ProgressDialog::cancelled, watcher, [watcher]() {
+        watcher->cancel();
+    });
+    
+    connect(m_linkDialog, &QObject::destroyed, watcher, [watcher]() {
+        watcher->cancel();
+    });
+
+    auto future = BddbRepository::linkVolumesToProducts();
+    watcher->setFuture(future);
     m_linkDialog->show();
-    m_linkDialog->raise();
-    m_linkDialog->activateWindow();
-
-    // 使用 QThread 确保有事件循环
-    auto *thread = new QThread(this);
-    auto *worker = new LinkWorker();
-    worker->moveToThread(thread);
-
-    // 连接取消信号 - 强制终止线程
-    connect(m_linkDialog, &ProgressDialog::cancelled, this, [thread, worker]() {
-        thread->terminate();
-        thread->wait();
-    });
-
-    connect(thread, &QThread::started, worker, &LinkWorker::doWork);
-    connect(worker, &LinkWorker::progressUpdated, this, [this](qint32 current, qint32 total, const QString &message) {
-        if (m_linkDialog) {
-            const qint32 progress = total > 0 ? static_cast<qint32>((current * 100.0) / total) : 0;
-            m_linkDialog->setProgress(progress);
-            m_linkDialog->setStatus(message);
-        }
-        appendLog(QString("%1/%2: %3").arg(current).arg(total).arg(message));
-    });
-    connect(worker, &LinkWorker::finished, this, [this, thread, worker](const BddbRepository::LinkResult &result) {
-        if (m_linkDialog) {
-            m_linkDialog->setStatus(
-                QStringLiteral("关联完成: 更新 %1, 匹配 %2, 跳过 %3")
-                .arg(result.updated)
-                .arg(result.matched)
-                .arg(result.skipped));
-            m_linkDialog->setProgress(100);
-        }
-        thread->quit();
-        thread->wait();
-        thread->deleteLater();
-        worker->deleteLater();
-    });
-
-    thread->start();
 }

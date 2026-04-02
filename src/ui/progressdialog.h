@@ -2,6 +2,12 @@
 #define PROGRESSDIALOG_H
 
 #include <QDialog>
+#include <QFuture>
+#include <QFutureWatcher>
+#include <QEventLoop>
+#include <functional>
+#include <atomic>
+#include <thread>
 
 class QProgressBar;
 class QLabel;
@@ -11,25 +17,52 @@ class ProgressDialog : public QDialog {
     Q_OBJECT
 
 public:
+    using TaskFunc = std::function<void(ProgressDialog *dialog)>;
+
     explicit ProgressDialog(const QString &title, QWidget *parent = nullptr);
+    ~ProgressDialog();
 
+    void setTask(TaskFunc task);
     void setStatus(const QString &text);
-    void setProgress(qint32 value);
+    void setProgress(int value);
+    bool isCancelled() const;
 
-    // 检查是否已取消
-    bool isCancelled() const { return m_cancelled; }
+    void run();
+
+    template<typename T>
+    void execTask(QFuture<T> future) {
+        QFutureWatcher<T> watcher;
+        QEventLoop loop;
+
+        connect(&watcher, &QFutureWatcher<T>::progressValueChanged, 
+                this, &ProgressDialog::setProgress);
+        connect(&watcher, &QFutureWatcher<T>::finished, 
+                this, [this, &watcher]() {
+            if (!isCancelled()) {
+                setProgress(100);
+            }
+            this->accept();
+        });
+        connect(this, &ProgressDialog::cancelled, &watcher, &QFutureWatcher<T>::cancel);
+
+        watcher.setFuture(future);
+        exec();
+    }
 
 signals:
+    void taskFinished();
     void cancelled();
 
 private:
     void setupUI();
-    void onCancelClicked();
+    void closeEvent(QCloseEvent *event) override;
 
     QProgressBar *m_progressBar = nullptr;
     QLabel *m_statusLabel = nullptr;
     QPushButton *m_cancelBtn = nullptr;
-    bool m_cancelled = false;
+    TaskFunc m_task;
+    std::thread m_thread;
+    std::atomic<bool> m_cancelled{false};
 };
 
 #endif // PROGRESSDIALOG_H

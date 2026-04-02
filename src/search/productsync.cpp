@@ -1,13 +1,11 @@
 #include "search/productsync.h"
 #include "search/productsearch.h"
-#include "db/surugayarepository.h"
 #include "db/connection.h"
-
+#include <QtConcurrent>
 #include <mongocxx/collection.hpp>
 #include <mongocxx/database.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
-#include <QSet>
 
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_document;
@@ -16,15 +14,12 @@ ProductSearchDoc ProductSyncService::convertToSearchDoc(const Product &product) 
     return ProductSearchDoc::fromProduct(product);
 }
 
-SearchResult<SyncResult> ProductSyncService::syncAllProducts(
-    std::optional<SyncProgressCallback> onProgress,
-    qint32 batchSize
-) {
-    SyncResult result;
+QFuture<SyncResult> ProductSyncService::syncAllProducts(qint32 batchSize) {
+    return QtConcurrent::run([batchSize]() -> SyncResult {
+        SyncResult result;
 
-    try {
         if (!MongoConnection::instance().isConnected()) {
-            return std::unexpected(QStringLiteral("MongoDB not connected"));
+            return result;
         }
 
         auto db = MongoConnection::instance().database(QStringLiteral("suruga_ya"));
@@ -39,10 +34,7 @@ SearchResult<SyncResult> ProductSyncService::syncAllProducts(
         }
 
         // 清空现有索引
-        auto clear = ProductSearchService::clearAllProducts();
-        if (!clear) {
-            return std::unexpected(QStringLiteral("Failed to clear index: ") + clear.error());
-        }
+        ProductSearchService::clearAllProducts();
 
         // 批量处理
         qint32 processed = 0;
@@ -61,7 +53,6 @@ SearchResult<SyncResult> ProductSyncService::syncAllProducts(
 
             QList<Product> products;
             for (auto &&doc: cursor) {
-                // 解析产品
                 Product product;
                 if (doc["product_id"]) {
                     product.productId = QString::fromUtf8(doc["product_id"].get_string().value.data(), 
@@ -103,7 +94,7 @@ SearchResult<SyncResult> ProductSyncService::syncAllProducts(
                     }
                     if (attr["定価"]) {
                         product.attributes.price = QString::fromUtf8(attr["定価"].get_string().value.data(), 
-                                                                       static_cast<qsizetype>(attr["定価"].get_string().value.size()));
+                                                                        static_cast<qsizetype>(attr["定価"].get_string().value.size()));
                     }
                     if (attr["シナリオ"]) {
                         product.attributes.scenario = QString::fromUtf8(attr["シナリオ"].get_string().value.data(), 
@@ -148,30 +139,21 @@ SearchResult<SyncResult> ProductSyncService::syncAllProducts(
 
             processed += static_cast<qint32>(products.size());
             lastId = products.back().productId;
-
-            if (onProgress) {
-                (*onProgress)(processed, result.total);
-            }
         }
-    } catch (const std::exception &e) {
-        return std::unexpected(QStringLiteral("Sync failed: ") + QString::fromUtf8(e.what()));
-    }
 
-    return result;
+        return result;
+    });
 }
 
-SearchResult<void> ProductSyncService::syncProductsByIds(
-    const QList<QString> &productIds
-) {
-    try {
+QFuture<void> ProductSyncService::syncProductsByIds(const QList<QString> &productIds) {
+    return QtConcurrent::run([productIds]() {
         if (!MongoConnection::instance().isConnected()) {
-            return std::unexpected(QStringLiteral("MongoDB not connected"));
+            return;
         }
 
         auto db = MongoConnection::instance().database(QStringLiteral("suruga_ya"));
         auto collection = db["products"];
 
-        // 构建 $in 查询
         bsoncxx::builder::basic::array idsArray;
         for (const auto &id: productIds) {
             idsArray.append(id.toStdString());
@@ -191,25 +173,19 @@ SearchResult<void> ProductSyncService::syncProductsByIds(
                 product.title = QString::fromUtf8(doc["title"].get_string().value.data(), 
                                                   static_cast<qsizetype>(doc["title"].get_string().value.size()));
             }
-            // ... 其他字段解析（简化处理）
-
             docs.push_back(convertToSearchDoc(product));
         }
 
         if (!docs.empty()) {
-            return ProductSearchService::bulkIndexProducts(docs);
+            ProductSearchService::bulkIndexProducts(docs);
         }
-    } catch (const std::exception &e) {
-        return std::unexpected(QStringLiteral("Sync by IDs failed: ") + QString::fromUtf8(e.what()));
-    }
-
-    return {};
+    });
 }
 
-SearchResult<void> ProductSyncService::syncSingleProduct(const QString &productId) {
-    try {
+QFuture<void> ProductSyncService::syncSingleProduct(const QString &productId) {
+    return QtConcurrent::run([productId]() {
         if (!MongoConnection::instance().isConnected()) {
-            return std::unexpected(QStringLiteral("MongoDB not connected"));
+            return;
         }
 
         auto db = MongoConnection::instance().database(QStringLiteral("suruga_ya"));
@@ -219,7 +195,7 @@ SearchResult<void> ProductSyncService::syncSingleProduct(const QString &productI
         auto doc = collection.find_one(filter.view());
 
         if (!doc) {
-            return std::unexpected(QStringLiteral("Product not found: ") + productId);
+            return;
         }
 
         Product product;
@@ -236,30 +212,118 @@ SearchResult<void> ProductSyncService::syncSingleProduct(const QString &productI
             product.url = QString::fromUtf8(view["url"].get_string().value.data(), 
                                             static_cast<qsizetype>(view["url"].get_string().value.size()));
         }
-        // ... 其他字段解析
 
         auto searchDoc = convertToSearchDoc(product);
-        return ProductSearchService::indexProduct(searchDoc);
-    } catch (const std::exception &e) {
-        return std::unexpected(QStringLiteral("Sync single product failed: ") + QString::fromUtf8(e.what()));
-    }
+        ProductSearchService::indexProduct(searchDoc);
+    });
 }
 
-SearchResult<SyncResult> ProductSyncService::rebuildIndex(
-    std::optional<SyncProgressCallback> onProgress
-) {
+QFuture<SyncResult> ProductSyncService::rebuildIndex() {
+    return QtConcurrent::run([]() -> SyncResult {
+        return rebuildIndexSync();
+    });
+}
+
+SyncResult ProductSyncService::rebuildIndexSync(std::function<void(int processed, int total)> onProgress) {
+    SyncResult result;
+    
     // 删除索引
-    auto deleteResult = ProductSearchService::deleteIndex();
-    if (!deleteResult) {
-        return std::unexpected(QStringLiteral("Failed to delete index: ") + deleteResult.error());
-    }
+    ProductSearchService::deleteIndex();
 
     // 重新创建索引
     auto setupResult = ProductSearchService::setupIndex();
     if (!setupResult) {
-        return std::unexpected(QStringLiteral("Failed to setup index: ") + setupResult.error());
+        return result;
     }
 
-    // 全量同步
-    return syncAllProducts(onProgress);
+    if (!MongoConnection::instance().isConnected()) {
+        return result;
+    }
+
+    auto db = MongoConnection::instance().database(QStringLiteral("suruga_ya"));
+    auto collection = db["products"];
+
+    // 获取总数
+    auto totalDoc = collection.count_documents({});
+    result.total = static_cast<qint32>(totalDoc);
+
+    if (result.total == 0) {
+        return result;
+    }
+
+    // 清空现有索引
+    ProductSearchService::clearAllProducts();
+
+    // 批量处理
+    qint32 processed = 0;
+    QString lastId;
+    qint32 batchSize = 1000;
+
+    while (processed < result.total) {
+        auto filter = make_document();
+        if (!lastId.isEmpty()) {
+            filter = make_document(kvp("product_id", make_document(kvp("$gt", lastId.toStdString()))));
+        }
+
+        mongocxx::options::find opts;
+        opts.sort(make_document(kvp("product_id", 1)));
+        opts.limit(batchSize);
+        auto cursor = collection.find(filter.view(), opts);
+
+        QList<Product> products;
+        for (auto &&doc: cursor) {
+            Product product;
+            if (doc["product_id"]) {
+                product.productId = QString::fromUtf8(doc["product_id"].get_string().value.data(), 
+                                                       static_cast<qsizetype>(doc["product_id"].get_string().value.size()));
+            }
+            if (doc["title"]) {
+                product.title = QString::fromUtf8(doc["title"].get_string().value.data(), 
+                                                  static_cast<qsizetype>(doc["title"].get_string().value.size()));
+            }
+            products.push_back(std::move(product));
+        }
+
+        if (products.empty()) break;
+
+        // 转换为搜索文档并索引
+        QList<ProductSearchDoc> docs;
+        docs.reserve(products.size());
+        for (const auto &p: products) {
+            docs.push_back(convertToSearchDoc(p));
+        }
+
+        auto indexResult = ProductSearchService::bulkIndexProducts(docs);
+        if (!indexResult) {
+            result.failed += static_cast<qint32>(products.size());
+        } else {
+            result.indexed += static_cast<qint32>(products.size());
+        }
+
+        processed += static_cast<qint32>(products.size());
+        lastId = products.back().productId;
+
+        if (onProgress) {
+            onProgress(processed, result.total);
+        }
+    }
+
+    return result;
+}
+
+qint32 ProductSyncService::processBatch(
+    const QList<Product> &products,
+    qint32 &processed,
+    qint32 total) {
+    
+    QList<ProductSearchDoc> docs;
+    docs.reserve(products.size());
+    for (const auto &p: products) {
+        docs.push_back(convertToSearchDoc(p));
+    }
+
+    auto result = ProductSearchService::bulkIndexProducts(docs);
+    processed += static_cast<qint32>(products.size());
+
+    return result ? static_cast<qint32>(products.size()) : 0;
 }

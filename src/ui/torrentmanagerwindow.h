@@ -7,6 +7,7 @@
 class TorrentModel;
 class QTableView;
 class QLineEdit;
+class QPushButton;
 
 class TorrentManagerWindow : public QMainWindow {
     Q_OBJECT
@@ -20,10 +21,12 @@ private:
     void loadData();
 
     void onSearchTextChanged(const QString &text);
+    void onSyncTorrents();
 
     TorrentModel *m_model = nullptr;
     QTableView *m_tableView = nullptr;
     QLineEdit *m_searchEdit = nullptr;
+    QPushButton *m_syncBtn = nullptr;
 };
 
 #endif // TORRENTMANAGERWINDOW_H

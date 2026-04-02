@@ -3,10 +3,7 @@
 
 #include "search/productsearch.h"
 #include "models/models.h"
-#include <QList>
-#include <QString>
-#include <optional>
-#include <functional>
+#include <QFuture>
 
 // 同步结果
 struct SyncResult {
@@ -16,9 +13,6 @@ struct SyncResult {
 
     bool operator==(const SyncResult&) const = default;
 };
-
-// 同步进度回调
-using SyncProgressCallback = std::function<void(qint32 processed, qint32 total)>;
 
 // 详细同步信息
 struct SyncDetail {
@@ -44,33 +38,26 @@ public:
     static ProductSearchDoc convertToSearchDoc(const Product &product);
 
     // 全量同步所有产品
-    // 从 MongoDB 读取所有产品并索引到 Meilisearch
-    static SearchResult<SyncResult> syncAllProducts(
-        std::optional<SyncProgressCallback> onProgress = std::nullopt,
-        qint32 batchSize = 1000
-    );
+    static QFuture<SyncResult> syncAllProducts(qint32 batchSize = 1000);
 
     // 增量同步（按 product_id 列表）
-    static SearchResult<void> syncProductsByIds(
-        const QList<QString> &productIds
-    );
+    static QFuture<void> syncProductsByIds(const QList<QString> &productIds);
 
     // 同步单个产品
-    static SearchResult<void> syncSingleProduct(const QString &productId);
+    static QFuture<void> syncSingleProduct(const QString &productId);
 
-    // 重建索引（删除并重新创建，然后全量同步）
-    static SearchResult<SyncResult> rebuildIndex(
-        std::optional<SyncProgressCallback> onProgress = std::nullopt
-    );
+    // 重建索引（删除并重新创建，然后全量同步）- 异步
+    static QFuture<SyncResult> rebuildIndex();
+    
+    // 重建索引 - 同步带回调
+    static SyncResult rebuildIndexSync(std::function<void(int processed, int total)> onProgress = nullptr);
 
 private:
     // 辅助函数：处理一批产品
-    static SearchResult<qint32> processBatch(
+    static qint32 processBatch(
         const QList<Product> &products,
         qint32 &processed,
-        qint32 total,
-        std::optional<SyncProgressCallback> onProgress
-    );
+        qint32 total);
 };
 
 #endif // PRODUCTSYNC_H

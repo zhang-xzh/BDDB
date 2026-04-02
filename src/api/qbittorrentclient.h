@@ -7,9 +7,8 @@
 #include <QUrl>
 #include <QList>
 #include <QMap>
+#include <QFuture>
 #include <expected>
-#include <optional>
-#include <functional>
 
 class QNetworkAccessManager;
 class QNetworkReply;
@@ -28,9 +27,6 @@ struct TorrentSyncResult {
 
     bool operator==(const TorrentSyncResult&) const = default;
 };
-
-// 进度回调
-using TorrentSyncProgressCallback = std::function<void(qint32 current, qint32 total, const QString& message)>;
 
 class QBittorrentClient : public QObject {
     Q_OBJECT
@@ -59,16 +55,16 @@ public:
     
     // 获取多个种子的文件列表
     QbResult<QMap<QString, QList<TorrentFile>>> getMultipleTorrentFiles(
-        const QList<QString> &hashes,
-        std::optional<TorrentSyncProgressCallback> onProgress = std::nullopt
+        const QList<QString> &hashes
     );
 
     // ========== 同步功能 ==========
     
-    // 同步所有种子到 MongoDB
-    TorrentSyncResult syncTorrents(
-        std::optional<TorrentSyncProgressCallback> onProgress = std::nullopt
-    );
+    // 同步所有种子到 MongoDB - 异步
+    QFuture<TorrentSyncResult> syncTorrents();
+    
+    // 同步所有种子 - 同步
+    TorrentSyncResult syncTorrentsSync();
 
     // 同步单个种子
     QbResult<bool> syncSingleTorrent(const QString &hash);

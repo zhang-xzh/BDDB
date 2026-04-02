@@ -1,11 +1,7 @@
 #include "search/bangumisync.h"
 #include "search/bangumisearch.h"
 #include "db/bangumirepository.h"
-
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonArray>
-#include <ranges>
+#include <QtConcurrent>
 
 // 条目类型名称映射
 static const QString SUBJECT_TYPE_NAMES[] = {
@@ -54,16 +50,113 @@ BangumiSearchDoc BangumiSyncService::convertToSearchDoc(const BangumiSubjectDoc&
     return doc;
 }
 
-SearchResult<BangumiSyncResult> BangumiSyncService::syncAllSubjects(
-    std::optional<BangumiSyncProgressCallback> onProgress,
-    qint32 batchSize
-) {
+QFuture<BangumiSyncResult> BangumiSyncService::syncAllSubjects(qint32 batchSize) {
+    return QtConcurrent::run([batchSize]() -> BangumiSyncResult {
+        BangumiSyncResult result;
+        
+        // 获取总数
+        auto totalResult = BangumiRepository::getTotalSubjectsCount();
+        if (!totalResult) {
+            return result;
+        }
+        result.total = *totalResult;
+        
+        if (result.total == 0) {
+            return result;
+        }
+        
+        // 确保索引存在
+        auto setup = BangumiSearchService::setupIndex();
+        if (!setup) {
+            return result;
+        }
+        
+        // 批量处理
+        qint32 processed = 0;
+        qint32 skip = 0;
+        
+        while (processed < result.total) {
+            auto subjects = BangumiRepository::getAllSubjects(batchSize, skip);
+            if (!subjects || subjects->empty()) {
+                result.failed += (result.total - processed);
+                break;
+            }
+            
+            // 转换为搜索文档
+            QList<BangumiSearchDoc> docs;
+            docs.reserve(subjects->size());
+            for (const auto& subject : *subjects) {
+                docs.push_back(convertToSearchDoc(subject));
+            }
+            
+            // 批量索引
+            auto indexResult = BangumiSearchService::bulkIndexSubjects(docs);
+            if (!indexResult) {
+                result.failed += static_cast<qint32>(subjects->size());
+            } else {
+                result.indexed += static_cast<qint32>(subjects->size());
+            }
+            
+            processed += static_cast<qint32>(subjects->size());
+            skip += batchSize;
+        }
+        
+        return result;
+    });
+}
+
+QFuture<void> BangumiSyncService::syncSingleSubject(qint32 subjectId) {
+    return QtConcurrent::run([subjectId]() {
+        auto subject = BangumiRepository::getSubjectById(subjectId);
+        if (!subject || subject->id == 0) {
+            return;
+        }
+        
+        auto doc = convertToSearchDoc(*subject);
+        BangumiSearchService::indexSubject(doc);
+    });
+}
+
+QFuture<void> BangumiSyncService::syncSubjectsByIds(const QList<qint32>& subjectIds) {
+    return QtConcurrent::run([subjectIds]() {
+        QList<BangumiSearchDoc> docs;
+        docs.reserve(subjectIds.size());
+        
+        for (qint32 subjectId : subjectIds) {
+            auto subject = BangumiRepository::getSubjectById(subjectId);
+            if (subject && subject->id != 0) {
+                docs.push_back(convertToSearchDoc(*subject));
+            }
+        }
+        
+        if (!docs.empty()) {
+            BangumiSearchService::bulkIndexSubjects(docs);
+        }
+    });
+}
+
+QFuture<BangumiSyncResult> BangumiSyncService::rebuildIndex() {
+    return QtConcurrent::run([]() -> BangumiSyncResult {
+        return rebuildIndexSync();
+    });
+}
+
+BangumiSyncResult BangumiSyncService::rebuildIndexSync(std::function<void(int processed, int total)> onProgress) {
     BangumiSyncResult result;
+    
+    // 删除索引
+    BangumiSearchService::deleteIndex();
+    
+    // 重新创建索引
+    auto setupResult = BangumiSearchService::setupIndex();
+    if (!setupResult) {
+        return result;
+    }
     
     // 获取总数
     auto totalResult = BangumiRepository::getTotalSubjectsCount();
     if (!totalResult) {
-        return std::unexpected(QStringLiteral("Failed to get total count: ") + totalResult.error());
+        return result;
     }
     result.total = *totalResult;
     
@@ -71,24 +164,17 @@ SearchResult<BangumiSyncResult> BangumiSyncService::syncAllSubjects(
         return result;
     }
     
-    // 确保索引存在
-    auto setup = BangumiSearchService::setupIndex();
-    if (!setup) {
-        return std::unexpected(QStringLiteral("Failed to setup index: ") + setup.error());
-    }
-    
     // 批量处理
     qint32 processed = 0;
     qint32 skip = 0;
+    qint32 batchSize = 1000;
     
     while (processed < result.total) {
         auto subjects = BangumiRepository::getAllSubjects(batchSize, skip);
-        if (!subjects) {
+        if (!subjects || subjects->empty()) {
             result.failed += (result.total - processed);
             break;
         }
-        
-        if (subjects->empty()) break;
         
         // 转换为搜索文档
         QList<BangumiSearchDoc> docs;
@@ -109,80 +195,29 @@ SearchResult<BangumiSyncResult> BangumiSyncService::syncAllSubjects(
         skip += batchSize;
         
         if (onProgress) {
-            (*onProgress)(processed, result.total);
+            onProgress(processed, result.total);
         }
     }
     
     return result;
 }
 
-SearchResult<void> BangumiSyncService::syncSingleSubject(qint32 subjectId) {
-    auto subject = BangumiRepository::getSubjectById(subjectId);
-    if (!subject) {
-        return std::unexpected(QStringLiteral("Failed to get subject: ") + subject.error());
-    }
-    
-    if (subject->id == 0) {
-        return std::unexpected(QStringLiteral("Subject not found: ") + QString::number(subjectId));
-    }
-    
-    auto doc = convertToSearchDoc(*subject);
-    return BangumiSearchService::indexSubject(doc);
-}
-
-SearchResult<void> BangumiSyncService::syncSubjectsByIds(
-    const QList<qint32>& subjectIds
-) {
-    QList<BangumiSearchDoc> docs;
-    docs.reserve(subjectIds.size());
-    
-    for (qint32 subjectId : subjectIds) {
-        auto subject = BangumiRepository::getSubjectById(subjectId);
-        if (subject && subject->id != 0) {
-            docs.push_back(convertToSearchDoc(*subject));
-        }
-    }
-    
-    if (!docs.empty()) {
-        return BangumiSearchService::bulkIndexSubjects(docs);
-    }
-    
-    return {};
-}
-
-SearchResult<BangumiSyncResult> BangumiSyncService::rebuildIndex(
-    std::optional<BangumiSyncProgressCallback> onProgress
-) {
-    // 删除索引
-    auto deleteResult = BangumiSearchService::deleteIndex();
-    if (!deleteResult) {
-        return std::unexpected(QStringLiteral("Failed to delete index: ") + deleteResult.error());
-    }
-    
-    // 重新创建索引
-    auto setupResult = BangumiSearchService::setupIndex();
-    if (!setupResult) {
-        return std::unexpected(QStringLiteral("Failed to setup index: ") + setupResult.error());
-    }
-    
-    // 全量同步
-    return syncAllSubjects(onProgress);
-}
-
-SearchResult<void> BangumiSyncService::clearIndex() {
-    return BangumiSearchService::clearAllSubjects();
+QFuture<void> BangumiSyncService::clearIndex() {
+    return QtConcurrent::run([]() {
+        BangumiSearchService::clearAllSubjects();
+    });
 }
 
 QString BangumiSyncService::getSubjectTypeName(qint32 type) {
     return ::getSubjectTypeName(type);
 }
 
-SearchResult<qint32> BangumiSyncService::processBatch(
+qint32 BangumiSyncService::processBatch(
     const QList<BangumiSubjectDoc>& subjects,
     qint32& processed,
     qint32 total,
-    std::optional<BangumiSyncProgressCallback> onProgress
-) {
+    QFutureInterface<BangumiSyncResult>& futureInterface) {
+    
     // 转换为搜索文档
     QList<BangumiSearchDoc> docs;
     docs.reserve(subjects.size());
@@ -192,15 +227,9 @@ SearchResult<qint32> BangumiSyncService::processBatch(
     
     // 批量索引
     auto result = BangumiSearchService::bulkIndexSubjects(docs);
-    if (!result) {
-        return std::unexpected(result.error());
-    }
     
     processed += static_cast<qint32>(subjects.size());
+    futureInterface.setProgressValue(processed);
     
-    if (onProgress) {
-        (*onProgress)(processed, total);
-    }
-    
-    return static_cast<qint32>(subjects.size());
+    return result ? static_cast<qint32>(subjects.size()) : 0;
 }
