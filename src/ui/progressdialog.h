@@ -5,6 +5,7 @@
 
 class QProgressBar;
 class QLabel;
+class QPushButton;
 
 class ProgressDialog : public QDialog {
     Q_OBJECT
@@ -15,11 +16,20 @@ public:
     void setStatus(const QString &text);
     void setProgress(int value);
 
+    // 检查是否已取消
+    bool isCancelled() const { return m_cancelled; }
+
+signals:
+    void cancelled();
+
 private:
     void setupUI();
+    void onCancelClicked();
 
     QProgressBar *m_progressBar = nullptr;
     QLabel *m_statusLabel = nullptr;
+    QPushButton *m_cancelBtn = nullptr;
+    bool m_cancelled = false;
 };
 
 #endif // PROGRESSDIALOG_H

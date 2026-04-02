@@ -2,6 +2,9 @@
 #define WORKSEARCHWINDOW_H
 
 #include <QMainWindow>
+#include <QPointer>
+
+class ProgressDialog;
 
 class WorkSearchWindow : public QMainWindow {
     Q_OBJECT
@@ -12,6 +15,9 @@ public:
 
 private:
     void setupUI();
+    void showRebuildBangumiDialog();
+
+    QPointer<ProgressDialog> m_dialog;
 };
 
 #endif // WORKSEARCHWINDOW_H

@@ -2,6 +2,9 @@
 #define PRODUCTSEARCHWINDOW_H
 
 #include <QMainWindow>
+#include <QPointer>
+
+class ProgressDialog;
 
 class ProductSearchWindow : public QMainWindow {
     Q_OBJECT
@@ -12,6 +15,9 @@ public:
 
 private:
     void setupUI();
+    void showRebuildSurugaDialog();
+
+    QPointer<ProgressDialog> m_dialog;
 };
 
 #endif // PRODUCTSEARCHWINDOW_H

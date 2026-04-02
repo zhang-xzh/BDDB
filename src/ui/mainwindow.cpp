@@ -104,25 +104,6 @@ void MainWindow::setupUI() {
     layoutData->addWidget(btnLink);
 
     buttonsLayout->addWidget(groupData);
-
-    // 索引分组 - 垂直按钮布局
-    auto *groupIndex = new QGroupBox("索引", this);
-    groupIndex->setFont(antialiasedFont);
-    auto *layoutIndex = new QVBoxLayout(groupIndex);
-    layoutIndex->setSpacing(8);
-    layoutIndex->setContentsMargins(8, 12, 8, 8);
-
-    auto *btnRebuildBangumi = new QPushButton("重建Bangumi", this);
-    btnRebuildBangumi->setFont(antialiasedFont);
-    connect(btnRebuildBangumi, &QPushButton::clicked, this, &MainWindow::showRebuildBangumiDialog);
-    layoutIndex->addWidget(btnRebuildBangumi);
-
-    auto *btnRebuildSuruga = new QPushButton("重建suruga-ya", this);
-    btnRebuildSuruga->setFont(antialiasedFont);
-    connect(btnRebuildSuruga, &QPushButton::clicked, this, &MainWindow::showRebuildSurugaDialog);
-    layoutIndex->addWidget(btnRebuildSuruga);
-
-    buttonsLayout->addWidget(groupIndex);
     buttonsLayout->addStretch();
 
     mainLayout->addWidget(buttonsWidget);
@@ -214,6 +195,12 @@ void MainWindow::showSyncDialog() {
     auto *worker = new SyncWorker();
     worker->moveToThread(thread);
 
+    // 连接取消信号 - 强制终止线程
+    connect(m_syncDialog, &ProgressDialog::cancelled, this, [thread, worker]() {
+        thread->terminate();
+        thread->wait();
+    });
+
     connect(thread, &QThread::started, worker, &SyncWorker::doWork);
     connect(worker, &SyncWorker::progressUpdated, this, [this](int current, int total, const QString &message) {
         if (m_syncDialog) {
@@ -263,6 +250,12 @@ void MainWindow::showLinkDialog() {
     auto *worker = new LinkWorker();
     worker->moveToThread(thread);
 
+    // 连接取消信号 - 强制终止线程
+    connect(m_linkDialog, &ProgressDialog::cancelled, this, [thread, worker]() {
+        thread->terminate();
+        thread->wait();
+    });
+
     connect(thread, &QThread::started, worker, &LinkWorker::doWork);
     connect(worker, &LinkWorker::progressUpdated, this, [this](int current, int total, const QString &message) {
         if (m_linkDialog) {
@@ -280,104 +273,6 @@ void MainWindow::showLinkDialog() {
                 .arg(result.matched)
                 .arg(result.skipped));
             m_linkDialog->setProgress(100);
-        }
-        thread->quit();
-        thread->wait();
-        thread->deleteLater();
-        worker->deleteLater();
-    });
-
-    thread->start();
-}
-
-void MainWindow::showRebuildBangumiDialog() {
-    if (!m_rebuildBangumiDialog) {
-        m_rebuildBangumiDialog = new ProgressDialog("重建 Bangumi 索引");
-        m_rebuildBangumiDialog->setWindowFlag(Qt::Window);
-    }
-    m_rebuildBangumiDialog->setStatus("准备重建 Bangumi 索引...");
-    m_rebuildBangumiDialog->setProgress(0);
-    m_rebuildBangumiDialog->show();
-    m_rebuildBangumiDialog->raise();
-    m_rebuildBangumiDialog->activateWindow();
-
-    // 使用 QThread 确保有事件循环
-    auto *thread = new QThread(this);
-    auto *worker = new BangumiRebuildWorker();
-    worker->moveToThread(thread);
-
-    connect(thread, &QThread::started, worker, &BangumiRebuildWorker::doWork);
-    connect(worker, &BangumiRebuildWorker::progressUpdated, this, [this](int current, int total, const QString &message) {
-        if (m_rebuildBangumiDialog) {
-            const int progress = total > 0 ? static_cast<int>((current * 100.0) / total) : 0;
-            m_rebuildBangumiDialog->setProgress(progress);
-            m_rebuildBangumiDialog->setStatus(message);
-        }
-        appendLog(QString("%1/%2: %3").arg(current).arg(total).arg(message));
-    });
-    connect(worker, &BangumiRebuildWorker::finished, this, [this, thread, worker](const SearchResult<BangumiSyncResult> &result) {
-        if (m_rebuildBangumiDialog) {
-            if (result) {
-                m_rebuildBangumiDialog->setStatus(
-                    QStringLiteral("重建完成: 总计 %1, 索引 %2, 失败 %3")
-                    .arg(result->total)
-                    .arg(result->indexed)
-                    .arg(result->failed));
-            } else {
-                m_rebuildBangumiDialog->setStatus(
-                    QStringLiteral("重建失败: %1")
-                    .arg(QString::fromStdString(result.error())));
-            }
-            m_rebuildBangumiDialog->setProgress(100);
-        }
-        thread->quit();
-        thread->wait();
-        thread->deleteLater();
-        worker->deleteLater();
-    });
-
-    thread->start();
-}
-
-void MainWindow::showRebuildSurugaDialog() {
-    if (!m_rebuildSurugaDialog) {
-        m_rebuildSurugaDialog = new ProgressDialog("重建 suruga-ya 索引");
-        m_rebuildSurugaDialog->setWindowFlag(Qt::Window);
-    }
-    m_rebuildSurugaDialog->setStatus("准备重建 suruga-ya 索引...");
-    m_rebuildSurugaDialog->setProgress(0);
-    m_rebuildSurugaDialog->show();
-    m_rebuildSurugaDialog->raise();
-    m_rebuildSurugaDialog->activateWindow();
-
-    // 使用 QThread 确保有事件循环
-    auto *thread = new QThread(this);
-    auto *worker = new SurugaRebuildWorker();
-    worker->moveToThread(thread);
-
-    connect(thread, &QThread::started, worker, &SurugaRebuildWorker::doWork);
-    connect(worker, &SurugaRebuildWorker::progressUpdated, this, [this](int current, int total, const QString &message) {
-        if (m_rebuildSurugaDialog) {
-            const int progress = total > 0 ? static_cast<int>((current * 100.0) / total) : 0;
-            m_rebuildSurugaDialog->setProgress(progress);
-            m_rebuildSurugaDialog->setStatus(message);
-        }
-        appendLog(QString("%1/%2: %3").arg(current).arg(total).arg(message));
-    });
-    connect(worker, &SurugaRebuildWorker::finished, this, [this, thread, worker](const SearchResult<SyncResult> &result) {
-        if (m_rebuildSurugaDialog) {
-            if (result) {
-                m_rebuildSurugaDialog->setStatus(
-                    QStringLiteral("重建完成: 总计 %1, 索引 %2, 失败 %3")
-                    .arg(result->total)
-                    .arg(result->indexed)
-                    .arg(result->failed));
-            } else {
-                m_rebuildSurugaDialog->setStatus(
-                    QStringLiteral("重建失败: %1")
-                    .arg(QString::fromStdString(result.error())));
-            }
-            m_rebuildSurugaDialog->setProgress(100);
         }
         thread->quit();
         thread->wait();

@@ -1,10 +1,14 @@
 #include "worksearchwindow.h"
-#include <QHBoxLayout>
+#include "ui/progressdialog.h"
+#include "search/bangumisync.h"
 #include <QLineEdit>
 #include <QPushButton>
 #include <QTableWidget>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QWidget>
+#include <QtConcurrent>
+#include <QFutureWatcher>
 
 WorkSearchWindow::WorkSearchWindow(QWidget *parent)
     : QMainWindow(parent) {
@@ -23,7 +27,6 @@ void WorkSearchWindow::setupUI() {
 
     auto *layout = new QVBoxLayout(centralWidget);
 
-    // 搜索栏
     auto *searchLayout = new QHBoxLayout();
     auto *searchEdit = new QLineEdit(this);
     searchEdit->setPlaceholderText("搜索作品...");
@@ -32,18 +35,57 @@ void WorkSearchWindow::setupUI() {
     searchLayout->addWidget(searchBtn);
     layout->addLayout(searchLayout);
 
-    // 结果列表
     auto *table = new QTableWidget(this);
     table->setColumnCount(4);
     table->setHorizontalHeaderLabels(QStringList{"作品名", "原名", "年份", "类型"});
     layout->addWidget(table, 1);
 
-    // 底部按钮
     auto *bottomLayout = new QHBoxLayout();
     bottomLayout->addStretch();
-    auto *selectBtn = new QPushButton("选择", this);
-    auto *closeBtn = new QPushButton("关闭", this);
-    bottomLayout->addWidget(selectBtn);
-    bottomLayout->addWidget(closeBtn);
+    auto *rebuildBtn = new QPushButton("重建Bangumi", this);
+    connect(rebuildBtn, &QPushButton::clicked, this, &WorkSearchWindow::showRebuildBangumiDialog);
+    bottomLayout->addWidget(rebuildBtn);
     layout->addLayout(bottomLayout);
+}
+
+void WorkSearchWindow::showRebuildBangumiDialog() {
+    if (m_dialog) {
+        m_dialog->raise();
+        m_dialog->activateWindow();
+        return;
+    }
+
+    m_dialog = new ProgressDialog("重建 Bangumi 索引", this);
+    m_dialog->setAttribute(Qt::WA_DeleteOnClose);
+    connect(m_dialog, &QObject::destroyed, this, [this]() { m_dialog = nullptr; });
+
+    auto *watcher = new QFutureWatcher<void>(this);
+    connect(watcher, &QFutureWatcher<void>::finished, this, [this, watcher]() {
+        watcher->deleteLater();
+        if (m_dialog) {
+            m_dialog->setStatus("完成");
+            m_dialog->setProgress(100);
+        }
+    });
+
+    connect(m_dialog, &ProgressDialog::cancelled, this, [watcher]() {
+        watcher->cancel();
+    });
+
+    auto future = QtConcurrent::run([this]() {
+        BangumiSyncService::rebuildIndex([this](int processed, int total) {
+            if (m_dialog) {
+                QMetaObject::invokeMethod(this, [this, processed, total]() {
+                    if (m_dialog) {
+                        int progress = total > 0 ? (processed * 100 / total) : 0;
+                        m_dialog->setProgress(progress);
+                        m_dialog->setStatus(QString("%1/%2").arg(processed).arg(total));
+                    }
+                }, Qt::QueuedConnection);
+            }
+        });
+    });
+
+    watcher->setFuture(future);
+    m_dialog->show();
 }
