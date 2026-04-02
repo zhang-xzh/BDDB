@@ -5,7 +5,7 @@ import QtQuick.Window
 
 ApplicationWindow {
     id: root
-    title: qsTr("种子管理")
+    title: "种子管理"
     width: 600
     height: 900
     minimumWidth: 500
@@ -26,7 +26,7 @@ ApplicationWindow {
 
             TextField {
                 id: searchField
-                placeholderText: qsTr("搜索...")
+                placeholderText: "搜索..."
                 Layout.fillWidth: true
                 onTextChanged: root.viewModel?.setSearchText(text)
             }

@@ -5,7 +5,7 @@ import QtQuick.Window
 
 ApplicationWindow {
     id: root
-    title: qsTr("作品搜索")
+    title: "作品搜索"
     width: 900
     height: 700
     minimumWidth: 600
@@ -26,13 +26,13 @@ ApplicationWindow {
 
             TextField {
                 id: searchField
-                placeholderText: qsTr("搜索作品...")
+                placeholderText: "搜索作品..."
                 Layout.fillWidth: true
                 onAccepted: root.viewModel?.search(text)
             }
 
             Button {
-                text: qsTr("搜索")
+                text: "搜索"
                 onClicked: root.viewModel?.search(searchField.text)
             }
         }
@@ -73,12 +73,12 @@ ApplicationWindow {
             }
 
             Button {
-                text: qsTr("选择")
+                text: "选择"
                 onClicked: root.viewModel?.selectCurrent()
             }
 
             Button {
-                text: qsTr("关闭")
+                text: "关闭"
                 onClicked: root.close()
             }
         }

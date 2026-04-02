@@ -5,7 +5,7 @@ import QtQuick.Window
 
 ApplicationWindow {
     id: root
-    title: qsTr("进度")
+    title: "进度"
     width: 400
     height: 150
     minimumWidth: 300
@@ -25,7 +25,7 @@ ApplicationWindow {
         // 状态标签
         Label {
             id: statusLabel
-            text: root.viewModel ? root.viewModel.statusText : qsTr("准备中...")
+            text: root.viewModel ? root.viewModel.statusText : "准备中..."
             Layout.fillWidth: true
             elide: Text.ElideRight
         }
@@ -35,7 +35,7 @@ ApplicationWindow {
             id: progressBar
             Layout.fillWidth: true
             value: root.viewModel ? root.viewModel.progressValue : 0
-            from: 0
+            0
             to: 100
         }
 
@@ -48,7 +48,7 @@ ApplicationWindow {
             }
 
             Button {
-                text: qsTr("取消")
+                text: "取消"
                 onClicked: {
                     if (root.viewModel) root.viewModel.cancel()
                     root.close()
@@ -59,6 +59,7 @@ ApplicationWindow {
 
     Connections {
         target: root.viewModel
+
         function onFinished() {
             // 完成后自动关闭或保持显示结果
         }

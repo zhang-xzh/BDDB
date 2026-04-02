@@ -5,7 +5,7 @@ import QtQuick.Window
 
 ApplicationWindow {
     id: root
-    title: qsTr("媒体编辑")
+    title: "媒体编辑"
     width: 600
     height: 500
     minimumWidth: 400
@@ -20,7 +20,7 @@ ApplicationWindow {
         spacing: 8
 
         Label {
-            text: qsTr("媒体编辑窗口")
+            text: "媒体编辑窗口"
         }
     }
 }

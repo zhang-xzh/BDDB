@@ -5,7 +5,7 @@ import QtQuick.Window
 
 ApplicationWindow {
     id: root
-    title: qsTr("作品关联")
+    title: "作品关联"
     width: 600
     height: 500
     minimumWidth: 400
@@ -20,7 +20,7 @@ ApplicationWindow {
         spacing: 8
 
         Label {
-            text: qsTr("作品关联窗口")
+            text: "作品关联窗口"
         }
     }
 }

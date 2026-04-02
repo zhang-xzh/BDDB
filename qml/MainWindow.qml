@@ -34,7 +34,7 @@ ApplicationWindow {
 
             // 管理分组
             GroupBox {
-                title: qsTr("管理")
+                title: "管理"
                 Layout.fillWidth: true
 
                 ColumnLayout {
@@ -42,13 +42,13 @@ ApplicationWindow {
                     spacing: 8
 
                     Button {
-                        text: qsTr("种子管理")
+                        text: "种子管理"
                         Layout.fillWidth: true
                         onClicked: mainViewModel.showTorrentManager()
                     }
 
                     Button {
-                        text: qsTr("分卷管理")
+                        text: "分卷管理"
                         Layout.fillWidth: true
                         onClicked: mainViewModel.showVolumeManager()
                     }
@@ -57,7 +57,7 @@ ApplicationWindow {
 
             // 搜索分组
             GroupBox {
-                title: qsTr("搜索")
+                title: "搜索"
                 Layout.fillWidth: true
 
                 ColumnLayout {
@@ -65,13 +65,13 @@ ApplicationWindow {
                     spacing: 8
 
                     Button {
-                        text: qsTr("产品搜索")
+                        text: "产品搜索"
                         Layout.fillWidth: true
                         onClicked: mainViewModel.showProductSearch()
                     }
 
                     Button {
-                        text: qsTr("作品搜索")
+                        text: "作品搜索"
                         Layout.fillWidth: true
                         onClicked: mainViewModel.showWorkSearch()
                     }
@@ -80,7 +80,7 @@ ApplicationWindow {
 
             // 数据分组
             GroupBox {
-                title: qsTr("数据")
+                title: "数据"
                 Layout.fillWidth: true
 
                 ColumnLayout {
@@ -88,13 +88,13 @@ ApplicationWindow {
                     spacing: 8
 
                     Button {
-                        text: qsTr("同步种子")
+                        text: "同步种子"
                         Layout.fillWidth: true
                         onClicked: mainViewModel.showSyncDialog()
                     }
 
                     Button {
-                        text: qsTr("关联产品")
+                        text: "关联产品"
                         Layout.fillWidth: true
                         onClicked: mainViewModel.showLinkDialog()
                     }
@@ -103,7 +103,7 @@ ApplicationWindow {
 
             // 索引分组
             GroupBox {
-                title: qsTr("索引")
+                title: "索引"
                 Layout.fillWidth: true
 
                 ColumnLayout {
@@ -111,13 +111,13 @@ ApplicationWindow {
                     spacing: 8
 
                     Button {
-                        text: qsTr("重建Bangumi")
+                        text: "重建Bangumi"
                         Layout.fillWidth: true
                         onClicked: mainViewModel.showRebuildBangumiDialog()
                     }
 
                     Button {
-                        text: qsTr("重建suruga-ya")
+                        text: "重建suruga-ya"
                         Layout.fillWidth: true
                         onClicked: mainViewModel.showRebuildSurugaDialog()
                     }
@@ -127,7 +127,7 @@ ApplicationWindow {
 
         // 日志区域
         GroupBox {
-            title: qsTr("日志")
+            title: "日志"
             Layout.fillWidth: true
             Layout.fillHeight: true
 
@@ -137,7 +137,8 @@ ApplicationWindow {
                 clip: true
                 model: mainViewModel.logModel
 
-                ScrollBar.vertical: ScrollBar {}
+                ScrollBar.vertical: ScrollBar {
+                }
 
                 delegate: Text {
                     text: model.display

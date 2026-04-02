@@ -5,7 +5,7 @@ import QtQuick.Window
 
 ApplicationWindow {
     id: root
-    title: qsTr("分卷管理")
+    title: "分卷管理"
     width: 600
     height: 900
     minimumWidth: 500
@@ -26,14 +26,14 @@ ApplicationWindow {
 
             TextField {
                 id: codeField
-                placeholderText: qsTr("编号...")
+                placeholderText: "编号..."
                 Layout.fillWidth: true
                 onTextChanged: root.viewModel?.setCodeFilter(text)
             }
 
             TextField {
                 id: titleField
-                placeholderText: qsTr("标题...")
+                placeholderText: "标题..."
                 Layout.fillWidth: true
                 onTextChanged: root.viewModel?.setTitleFilter(text)
             }
