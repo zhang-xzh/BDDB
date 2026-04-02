@@ -1,7 +1,5 @@
 #include "db/bangumirepository.h"
 
-#ifdef HAVE_MONGODB
-
 #include "db/connection.h"
 #include <mongocxx/collection.hpp>
 #include <mongocxx/pipeline.hpp>
@@ -326,4 +324,4 @@ DbResult<int> BangumiRepository::getTotalSubjectsCount() {
     }
 }
 
-#endif // HAVE_MONGODB
+

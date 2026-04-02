@@ -13,14 +13,12 @@
 #include <QThread>
 #include <QDebug>
 
-#ifdef HAVE_MONGODB
 #include "db/connection.h"
 #include "db/bddbrepository.h"
 #include <mongocxx/collection.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/oid.hpp>
-#endif
 
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_document;
@@ -331,7 +329,6 @@ TorrentSyncResult QBittorrentClient::syncTorrents(
     TorrentSyncResult result;
     result.success = false;
 
-#ifdef HAVE_MONGODB
     try {
         if (!MongoConnection::instance().isConnected()) {
             result.error = "MongoDB not connected";
@@ -451,15 +448,11 @@ TorrentSyncResult QBittorrentClient::syncTorrents(
     } catch (const std::exception &e) {
         result.error = e.what();
     }
-#else
-    result.error = "MongoDB support not compiled";
-#endif
 
     return result;
 }
 
 QbResult<bool> QBittorrentClient::syncSingleTorrent(const QString &hash) {
-#ifdef HAVE_MONGODB
     try {
         auto torrent = getTorrent(hash);
         if (!torrent) return std::unexpected(torrent.error());
@@ -487,7 +480,4 @@ QbResult<bool> QBittorrentClient::syncSingleTorrent(const QString &hash) {
     } catch (const std::exception &e) {
         return std::unexpected(std::string("Sync failed: ") + e.what());
     }
-#else
-    return std::unexpected("MongoDB support not compiled");
-#endif
 }

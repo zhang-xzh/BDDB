@@ -1,8 +1,6 @@
 #ifndef CONNECTION_H
 #define CONNECTION_H
 
-#ifdef HAVE_MONGODB
-
 #include <memory>
 #include <string>
 #include <mongocxx/client.hpp>
@@ -26,7 +24,5 @@ private:
     std::unique_ptr<mongocxx::client> m_client;
     bool m_connected = false;
 };
-
-#endif // HAVE_MONGODB
 
 #endif // CONNECTION_H

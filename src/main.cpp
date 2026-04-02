@@ -1,7 +1,10 @@
 #include <QApplication>
 #include <QFont>
 #include <QFontDatabase>
+#include <QDebug>
 #include "core/mainwindow.h"
+#include "db/connection.h"
+#include "search/meilisearchclient.h"
 
 int main(int argc, char *argv[]) {
     // Windows 高 DPI 支持 - 必须在 QApplication 之前设置
@@ -18,6 +21,20 @@ int main(int argc, char *argv[]) {
     QFont font = QFontDatabase::systemFont(QFontDatabase::GeneralFont);
     font.setStyleStrategy(QFont::PreferAntialias);
     QApplication::setFont(font);
+
+    // 初始化 MongoDB 连接
+    if (!MongoConnection::instance().connect("mongodb://localhost:27017")) {
+        qWarning() << "Failed to connect to MongoDB";
+    } else {
+        qDebug() << "MongoDB connected successfully";
+    }
+
+    // 初始化 Meilisearch 连接
+    if (!MeiliSearchClient::instance().connect()) {
+        qWarning() << "Failed to connect to Meilisearch";
+    } else {
+        qDebug() << "Meilisearch connected successfully";
+    }
 
     MainWindow window;
     window.show();

@@ -1,8 +1,6 @@
 #ifndef BDDBREPOSITORY_H
 #define BDDBREPOSITORY_H
 
-#ifdef HAVE_MONGODB
-
 #include "models/models.h"
 #include <string>
 #include <vector>
@@ -58,7 +56,5 @@ public:
         std::optional<LinkProgressCallback> onProgress = std::nullopt
     );
 };
-
-#endif // HAVE_MONGODB
 
 #endif // BDDBREPOSITORY_H

@@ -1,8 +1,6 @@
 #ifndef BANGUMIREPOSITORY_H
 #define BANGUMIREPOSITORY_H
 
-#ifdef HAVE_MONGODB
-
 #include "models/models.h"
 #include <string>
 #include <vector>
@@ -23,5 +21,4 @@ public:
     static DbResult<int> getTotalSubjectsCount();
 };
 
-#endif // HAVE_MONGODB
 #endif // BANGUMIREPOSITORY_H

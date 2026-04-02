@@ -2,8 +2,6 @@
 #include "db/connection.h"
 #include "db/surugayarepository.h"
 
-#ifdef HAVE_MONGODB
-
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
 #include <mongocxx/uri.hpp>
@@ -37,20 +35,6 @@ static std::string bsonValueToString(const bsoncxx::document::element &elem) {
             return std::to_string(elem.get_double().value);
         default:
             return {};
-    }
-}
-
-static std::int64_t bsonValueToDateTime(const bsoncxx::document::element &elem) {
-    if (!elem) return 0;
-    switch (elem.type()) {
-        case bsoncxx::type::k_date:
-            return elem.get_date().value.count();
-        case bsoncxx::type::k_int32:
-            return static_cast<std::int64_t>(elem.get_int32().value) * 1000;
-        case bsoncxx::type::k_int64:
-            return static_cast<std::int64_t>(elem.get_int64().value) * 1000;
-        default:
-            return 0;
     }
 }
 
@@ -122,7 +106,7 @@ static bsoncxx::oid stringToOid(const std::string &id) {
 static std::vector<std::string> bsonArrayToStringVector(const bsoncxx::document::element &elem) {
     std::vector<std::string> vec;
     if (!elem || elem.type() != bsoncxx::type::k_array) return vec;
-    for (auto &&item : elem.get_array().value) {
+    for (auto &&item: elem.get_array().value) {
         if (item.type() == bsoncxx::type::k_oid)
             vec.push_back(item.get_oid().value.to_string());
         else if (item.type() == bsoncxx::type::k_string)
@@ -134,7 +118,7 @@ static std::vector<std::string> bsonArrayToStringVector(const bsoncxx::document:
 static std::vector<int> bsonArrayToIntVector(const bsoncxx::document::element &elem) {
     std::vector<int> vec;
     if (!elem || elem.type() != bsoncxx::type::k_array) return vec;
-    for (auto &&item : elem.get_array().value) {
+    for (auto &&item: elem.get_array().value) {
         if (item.type() == bsoncxx::type::k_int32)
             vec.push_back(static_cast<int>(item.get_int32().value));
         else if (item.type() == bsoncxx::type::k_int64)
@@ -143,17 +127,9 @@ static std::vector<int> bsonArrayToIntVector(const bsoncxx::document::element &e
     return vec;
 }
 
-static void appendStringArray(bsoncxx::builder::basic::document &builder, const std::string &key, const std::vector<std::string> &vec) {
-    bsoncxx::builder::basic::array arr;
-    for (const auto &s : vec) {
-        arr.append(s);
-    }
-    builder.append(kvp(key, arr.extract()));
-}
-
 static void appendOidArray(bsoncxx::builder::basic::document &builder, const std::string &key, const std::vector<std::string> &vec) {
     bsoncxx::builder::basic::array arr;
-    for (const auto &s : vec) {
+    for (const auto &s: vec) {
         if (!s.empty()) {
             arr.append(stringToOid(s));
         }
@@ -178,7 +154,7 @@ static BangumiRating parseBangumiRating(const bsoncxx::document::view &view) {
     if (view["score"]) r.score = bsonValueToDouble(view["score"]);
     if (view["total"]) r.total = bsonValueToInt32(view["total"]);
     if (view["count"] && view["count"].type() == bsoncxx::type::k_document) {
-        for (auto &&kv : view["count"].get_document().value) {
+        for (auto &&kv: view["count"].get_document().value) {
             r.count.emplace(std::string(kv.key()), bsonValueToInt32(kv));
         }
     }
@@ -214,7 +190,7 @@ static BangumiStaff parseBangumiStaff(const bsoncxx::document::view &view) {
     if (view["name"]) s.name = bsonValueToString(view["name"]);
     if (view["name_cn"]) s.nameCn = bsonValueToString(view["name_cn"]);
     if (view["jobs"] && view["jobs"].type() == bsoncxx::type::k_array) {
-        for (auto &&item : view["jobs"].get_array().value) {
+        for (auto &&item: view["jobs"].get_array().value) {
             if (item.type() == bsoncxx::type::k_string)
                 s.jobs.push_back(std::string(item.get_string().value));
         }
@@ -307,7 +283,7 @@ static Torrent parseTorrent(const bsoncxx::document::view &view) {
     if (view["created_at"]) t.createdAt = bsonValueToInt64(view["created_at"]);
     if (view["updated_at"]) t.updatedAt = bsonValueToInt64(view["updated_at"]);
     if (view["files"] && view["files"].type() == bsoncxx::type::k_array) {
-        for (auto &&item : view["files"].get_array().value) {
+        for (auto &&item: view["files"].get_array().value) {
             if (item.type() == bsoncxx::type::k_document)
                 t.files.push_back(parseTorrentFile(item.get_document().value));
         }
@@ -368,13 +344,13 @@ static Work parseWork(const bsoncxx::document::view &view) {
     if (view["collection"] && view["collection"].type() == bsoncxx::type::k_document)
         w.collection = parseBangumiCollection(view["collection"].get_document().value);
     if (view["crt"] && view["crt"].type() == bsoncxx::type::k_array) {
-        for (auto &&item : view["crt"].get_array().value) {
+        for (auto &&item: view["crt"].get_array().value) {
             if (item.type() == bsoncxx::type::k_document)
                 w.characters.push_back(parseBangumiCharacter(item.get_document().value));
         }
     }
     if (view["staff"] && view["staff"].type() == bsoncxx::type::k_array) {
-        for (auto &&item : view["staff"].get_array().value) {
+        for (auto &&item: view["staff"].get_array().value) {
             if (item.type() == bsoncxx::type::k_document)
                 w.staff.push_back(parseBangumiStaff(item.get_document().value));
         }
@@ -398,7 +374,7 @@ static void serializeBangumiRating(bsoncxx::builder::basic::document &builder, c
     builder.append(kvp("score", r.score));
     builder.append(kvp("total", r.total));
     bsoncxx::builder::basic::document countDoc;
-    for (const auto &[key, value] : r.count) {
+    for (const auto &[key, value]: r.count) {
         countDoc.append(kvp(key, value));
     }
     builder.append(kvp("count", countDoc.extract()));
@@ -429,7 +405,7 @@ static void serializeBangumiStaff(bsoncxx::builder::basic::document &builder, co
     builder.append(kvp("name", s.name));
     builder.append(kvp("name_cn", s.nameCn));
     bsoncxx::builder::basic::array jobsArr;
-    for (const auto &job : s.jobs) {
+    for (const auto &job: s.jobs) {
         jobsArr.append(job);
     }
     builder.append(kvp("jobs", jobsArr.extract()));
@@ -504,7 +480,7 @@ static bsoncxx::builder::basic::document torrentToBson(const Torrent &t) {
     builder.append(kvp("updated_at", static_cast<std::int64_t>(t.updatedAt)));
 
     bsoncxx::builder::basic::array fileArr{};
-    for (const auto &f : t.files) {
+    for (const auto &f: t.files) {
         bsoncxx::builder::basic::document fdoc{};
         if (!f.id.empty()) fdoc.append(kvp("_id", stringToOid(f.id)));
         fdoc.append(kvp("name", f.name));
@@ -515,7 +491,7 @@ static bsoncxx::builder::basic::document torrentToBson(const Torrent &t) {
         fdoc.append(kvp("is_seed", f.isSeed));
         fdoc.append(kvp("availability", f.availability));
         bsoncxx::builder::basic::array prArr{};
-        for (int v : f.pieceRange) prArr.append(v);
+        for (int v: f.pieceRange) prArr.append(v);
         fdoc.append(kvp("piece_range", prArr.extract()));
         fdoc.append(kvp("created_at", static_cast<std::int64_t>(f.createdAt)));
         fdoc.append(kvp("updated_at", static_cast<std::int64_t>(f.updatedAt)));
@@ -586,7 +562,7 @@ static bsoncxx::builder::basic::document workToBson(const Work &w) {
     builder.append(kvp("collection", collectionDoc.extract()));
 
     bsoncxx::builder::basic::array crtArr;
-    for (const auto &c : w.characters) {
+    for (const auto &c: w.characters) {
         bsoncxx::builder::basic::document cdoc;
         serializeBangumiCharacter(cdoc, c);
         crtArr.append(cdoc.extract());
@@ -594,7 +570,7 @@ static bsoncxx::builder::basic::document workToBson(const Work &w) {
     builder.append(kvp("crt", crtArr.extract()));
 
     bsoncxx::builder::basic::array staffArr;
-    for (const auto &s : w.staff) {
+    for (const auto &s: w.staff) {
         bsoncxx::builder::basic::document sdoc;
         serializeBangumiStaff(sdoc, s);
         staffArr.append(sdoc.extract());
@@ -610,7 +586,7 @@ static bsoncxx::builder::basic::document workToBson(const Work &w) {
 
 // ==================== Torrents ====================
 
-DbResult<std::vector<Torrent>> BddbRepository::loadTorrents(bool includeDeleted) {
+DbResult<std::vector<Torrent> > BddbRepository::loadTorrents(bool includeDeleted) {
     try {
         if (!MongoConnection::instance().isConnected()) return std::vector<Torrent>{};
         auto db = MongoConnection::instance().database("bddb_dev");
@@ -619,11 +595,11 @@ DbResult<std::vector<Torrent>> BddbRepository::loadTorrents(bool includeDeleted)
         opts.projection(make_document(kvp("files", 0)));
 
         auto cursor = includeDeleted
-            ? coll.find({}, opts)
-            : coll.find(make_document(kvp("is_deleted", false)).view(), opts);
+                          ? coll.find({}, opts)
+                          : coll.find(make_document(kvp("is_deleted", false)).view(), opts);
 
         std::vector<Torrent> results;
-        for (auto&& doc : cursor) {
+        for (auto &&doc: cursor) {
             results.push_back(parseTorrent(doc));
         }
         return results;
@@ -685,10 +661,10 @@ DbResult<void> BddbRepository::softDeleteTorrent(const std::string &hash) {
         auto filter = make_document(kvp("hash", hash));
         auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         auto update = make_document(kvp("$set", make_document(
-            kvp("is_deleted", true),
-            kvp("synced_at", static_cast<std::int64_t>(now)),
-            kvp("updated_at", static_cast<std::int64_t>(now))
-        )));
+                                            kvp("is_deleted", true),
+                                            kvp("synced_at", static_cast<std::int64_t>(now)),
+                                            kvp("updated_at", static_cast<std::int64_t>(now))
+                                        )));
         coll.update_one(filter.view(), update.view());
         return {};
     } catch (const std::exception &e) {
@@ -696,12 +672,12 @@ DbResult<void> BddbRepository::softDeleteTorrent(const std::string &hash) {
     }
 }
 
-DbResult<std::vector<FileItem>> BddbRepository::getTorrentFilesAsFileItems(const std::string &torrentId) {
+DbResult<std::vector<FileItem> > BddbRepository::getTorrentFilesAsFileItems(const std::string &torrentId) {
     try {
         auto tResult = getTorrentById(torrentId);
         if (!tResult) return std::unexpected(tResult.error());
         std::vector<FileItem> list;
-        for (const auto &f : tResult->files) {
+        for (const auto &f: tResult->files) {
             FileItem item;
             item.id = f.id;
             item.name = f.name;
@@ -726,7 +702,7 @@ DbResult<void> BddbRepository::saveTorrentFiles(const std::string &torrentId, co
 
         std::map<std::string, TorrentFile> existingMap;
         if (existing && existing->view()["files"] && existing->view()["files"].type() == bsoncxx::type::k_array) {
-            for (auto &&item : existing->view()["files"].get_array().value) {
+            for (auto &&item: existing->view()["files"].get_array().value) {
                 if (item.type() == bsoncxx::type::k_document) {
                     auto f = parseTorrentFile(item.get_document().value);
                     existingMap.emplace(f.name, f);
@@ -735,7 +711,7 @@ DbResult<void> BddbRepository::saveTorrentFiles(const std::string &torrentId, co
         }
 
         bsoncxx::builder::basic::array fileArr{};
-        for (const auto &f : files) {
+        for (const auto &f: files) {
             auto it = existingMap.find(f.name);
             const auto &e = (it != existingMap.end()) ? it->second : TorrentFile{};
             bsoncxx::builder::basic::document fdoc{};
@@ -750,7 +726,7 @@ DbResult<void> BddbRepository::saveTorrentFiles(const std::string &torrentId, co
             fdoc.append(kvp("is_seed", f.isSeed));
             fdoc.append(kvp("availability", f.availability));
             bsoncxx::builder::basic::array prArr{};
-            for (int v : f.pieceRange) prArr.append(v);
+            for (int v: f.pieceRange) prArr.append(v);
             fdoc.append(kvp("piece_range", prArr.extract()));
             fdoc.append(kvp("created_at", static_cast<std::int64_t>(e.createdAt ? e.createdAt : now)));
             fdoc.append(kvp("updated_at", static_cast<std::int64_t>(now)));
@@ -758,9 +734,9 @@ DbResult<void> BddbRepository::saveTorrentFiles(const std::string &torrentId, co
         }
 
         auto update = make_document(kvp("$set", make_document(
-            kvp("files", fileArr.extract()),
-            kvp("updated_at", static_cast<std::int64_t>(now))
-        )));
+                                            kvp("files", fileArr.extract()),
+                                            kvp("updated_at", static_cast<std::int64_t>(now))
+                                        )));
         coll.update_one(filter.view(), update.view());
         return {};
     } catch (const std::exception &e) {
@@ -776,9 +752,9 @@ DbResult<void> BddbRepository::softDeleteTorrentFiles(const std::string &torrent
         auto filter = make_document(kvp("_id", stringToOid(torrentId)));
         auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         auto update = make_document(kvp("$set", make_document(
-            kvp("files", bsoncxx::builder::basic::array{}.extract()),
-            kvp("updated_at", static_cast<std::int64_t>(now))
-        )));
+                                            kvp("files", bsoncxx::builder::basic::array{}.extract()),
+                                            kvp("updated_at", static_cast<std::int64_t>(now))
+                                        )));
         coll.update_one(filter.view(), update.view());
         return {};
     } catch (const std::exception &e) {
@@ -788,11 +764,11 @@ DbResult<void> BddbRepository::softDeleteTorrentFiles(const std::string &torrent
 
 // ==================== Volumes ====================
 
-DbResult<std::vector<Volume>> BddbRepository::loadVolumes(const std::string &torrentId) {
+DbResult<std::vector<Volume> > BddbRepository::loadVolumes(const std::string &torrentId) {
     return getAllVolumes(torrentId);
 }
 
-DbResult<std::vector<Volume>> BddbRepository::getAllVolumes(const std::string &torrentId) {
+DbResult<std::vector<Volume> > BddbRepository::getAllVolumes(const std::string &torrentId) {
     try {
         if (!MongoConnection::instance().isConnected()) return std::vector<Volume>{};
         auto db = MongoConnection::instance().database("bddb_dev");
@@ -801,11 +777,11 @@ DbResult<std::vector<Volume>> BddbRepository::getAllVolumes(const std::string &t
         opts.sort(make_document(kvp("volume_no", 1)));
 
         auto cursor = !torrentId.empty()
-            ? coll.find(make_document(kvp("torrent_id", stringToOid(torrentId)), kvp("is_deleted", false)).view(), opts)
-            : coll.find(make_document(kvp("is_deleted", false)).view(), opts);
+                          ? coll.find(make_document(kvp("torrent_id", stringToOid(torrentId)), kvp("is_deleted", false)).view(), opts)
+                          : coll.find(make_document(kvp("is_deleted", false)).view(), opts);
 
         std::vector<Volume> results;
-        for (auto&& doc : cursor) {
+        for (auto &&doc: cursor) {
             results.push_back(parseVolume(doc));
         }
         return results;
@@ -854,7 +830,7 @@ DbResult<void> BddbRepository::saveVolume(const Volume &volume) {
     }
 }
 
-DbResult<std::map<std::string, int>> BddbRepository::getVolumeCounts() {
+DbResult<std::map<std::string, int> > BddbRepository::getVolumeCounts() {
     try {
         if (!MongoConnection::instance().isConnected()) return std::map<std::string, int>{};
         auto db = MongoConnection::instance().database("bddb_dev");
@@ -868,7 +844,7 @@ DbResult<std::map<std::string, int>> BddbRepository::getVolumeCounts() {
 
         auto cursor = coll.aggregate(pipeline);
         std::map<std::string, int> counts;
-        for (auto &&doc : cursor) {
+        for (auto &&doc: cursor) {
             if (auto idElem = doc["_id"]; idElem) {
                 auto [tid, count] = std::make_pair(
                     bsonOidToString(idElem),
@@ -895,14 +871,14 @@ DbResult<void> BddbRepository::deleteStaleVolumes(const std::string &torrentId, 
         builder.append(kvp("is_deleted", false));
         if (!keepVolumeNos.empty()) {
             bsoncxx::builder::basic::array arr{};
-            for (int n : keepVolumeNos) arr.append(n);
+            for (int n: keepVolumeNos) arr.append(n);
             builder.append(kvp("volume_no", make_document(kvp("$nin", arr.extract()))));
         }
 
         auto update = make_document(kvp("$set", make_document(
-            kvp("is_deleted", true),
-            kvp("updated_at", static_cast<std::int64_t>(now))
-        )));
+                                            kvp("is_deleted", true),
+                                            kvp("updated_at", static_cast<std::int64_t>(now))
+                                        )));
         coll.update_many(builder.extract(), update.view());
         return {};
     } catch (const std::exception &e) {
@@ -910,7 +886,7 @@ DbResult<void> BddbRepository::deleteStaleVolumes(const std::string &torrentId, 
     }
 }
 
-DbResult<std::vector<FileItem>> BddbRepository::getVolumeFilesAsFileItems(const std::string &volumeId) {
+DbResult<std::vector<FileItem> > BddbRepository::getVolumeFilesAsFileItems(const std::string &volumeId) {
     try {
         auto vResult = getVolumeById(volumeId);
         if (!vResult) return std::unexpected(vResult.error());
@@ -919,7 +895,7 @@ DbResult<std::vector<FileItem>> BddbRepository::getVolumeFilesAsFileItems(const 
         if (!tResult) return std::unexpected(tResult.error());
         std::unordered_set<std::string> idSet(vResult->fileIds.begin(), vResult->fileIds.end());
         std::vector<FileItem> list;
-        for (const auto &f : tResult->files) {
+        for (const auto &f: tResult->files) {
             if (idSet.contains(f.id)) {
                 FileItem item;
                 item.id = f.id;
@@ -937,7 +913,7 @@ DbResult<std::vector<FileItem>> BddbRepository::getVolumeFilesAsFileItems(const 
 
 // ==================== Medias ====================
 
-DbResult<std::vector<Media>> BddbRepository::loadMedias(const std::string &volumeId) {
+DbResult<std::vector<Media> > BddbRepository::loadMedias(const std::string &volumeId) {
     try {
         if (!MongoConnection::instance().isConnected()) return std::vector<Media>{};
         auto db = MongoConnection::instance().database("bddb_dev");
@@ -948,7 +924,7 @@ DbResult<std::vector<Media>> BddbRepository::loadMedias(const std::string &volum
 
         auto cursor = coll.find(filter.view(), opts);
         std::vector<Media> results;
-        for (auto&& doc : cursor) {
+        for (auto &&doc: cursor) {
             results.push_back(parseMedia(doc));
         }
         return results;
@@ -957,7 +933,7 @@ DbResult<std::vector<Media>> BddbRepository::loadMedias(const std::string &volum
     }
 }
 
-DbResult<std::map<std::string, int>> BddbRepository::getMediaCountsByVolume() {
+DbResult<std::map<std::string, int> > BddbRepository::getMediaCountsByVolume() {
     try {
         if (!MongoConnection::instance().isConnected()) return std::map<std::string, int>{};
         auto db = MongoConnection::instance().database("bddb_dev");
@@ -971,7 +947,7 @@ DbResult<std::map<std::string, int>> BddbRepository::getMediaCountsByVolume() {
 
         auto cursor = coll.aggregate(pipeline);
         std::map<std::string, int> counts;
-        for (auto &&doc : cursor) {
+        for (auto &&doc: cursor) {
             if (auto idElem = doc["_id"]; idElem) {
                 auto [vid, count] = std::make_pair(
                     bsonOidToString(idElem),
@@ -1012,7 +988,7 @@ DbResult<void> BddbRepository::saveMedia(const Media &media) {
     }
 }
 
-DbResult<void> BddbRepository::deleteStaleMedias(const std::string &volumeId, const std::vector<std::pair<int, MediaType>> &keepMedias) {
+DbResult<void> BddbRepository::deleteStaleMedias(const std::string &volumeId, const std::vector<std::pair<int, MediaType> > &keepMedias) {
     try {
         if (!MongoConnection::instance().isConnected()) return {};
         auto db = MongoConnection::instance().database("bddb_dev");
@@ -1022,15 +998,15 @@ DbResult<void> BddbRepository::deleteStaleMedias(const std::string &volumeId, co
         if (keepMedias.empty()) {
             auto filter = make_document(kvp("volume_id", stringToOid(volumeId)), kvp("is_deleted", false));
             auto update = make_document(kvp("$set", make_document(
-                kvp("is_deleted", true),
-                kvp("updated_at", static_cast<std::int64_t>(now))
-            )));
+                                                kvp("is_deleted", true),
+                                                kvp("updated_at", static_cast<std::int64_t>(now))
+                                            )));
             coll.update_many(filter.view(), update.view());
             return {};
         }
 
         bsoncxx::builder::basic::array norArr{};
-        for (const auto &p : keepMedias) {
+        for (const auto &p: keepMedias) {
             bsoncxx::builder::basic::document cond{};
             cond.append(kvp("media_no", p.first));
             cond.append(kvp("media_type", mediaTypeToString(p.second)));
@@ -1043,9 +1019,9 @@ DbResult<void> BddbRepository::deleteStaleMedias(const std::string &volumeId, co
             kvp("$nor", norArr.extract())
         );
         auto update = make_document(kvp("$set", make_document(
-            kvp("is_deleted", true),
-            kvp("updated_at", static_cast<std::int64_t>(now))
-        )));
+                                            kvp("is_deleted", true),
+                                            kvp("updated_at", static_cast<std::int64_t>(now))
+                                        )));
         coll.update_many(filter.view(), update.view());
         return {};
     } catch (const std::exception &e) {
@@ -1053,7 +1029,7 @@ DbResult<void> BddbRepository::deleteStaleMedias(const std::string &volumeId, co
     }
 }
 
-DbResult<std::map<std::string, int>> BddbRepository::getWorkCountsByVolume() {
+DbResult<std::map<std::string, int> > BddbRepository::getWorkCountsByVolume() {
     try {
         if (!MongoConnection::instance().isConnected()) return std::map<std::string, int>{};
         auto db = MongoConnection::instance().database("bddb_dev");
@@ -1062,15 +1038,15 @@ DbResult<std::map<std::string, int>> BddbRepository::getWorkCountsByVolume() {
         pipeline.match(make_document(kvp("is_deleted", false)));
         pipeline.add_fields(make_document(
             kvp("work_ids", make_document(
-                kvp("$ifNull", make_array("$work_ids", make_array()))
-            ))
+                    kvp("$ifNull", make_array("$work_ids", make_array()))
+                ))
         ));
         pipeline.add_fields(make_document(
             kvp("count", make_document(kvp("$size", "$work_ids")))
         ));
         auto cursor = coll.aggregate(pipeline);
         std::map<std::string, int> counts;
-        for (auto &&doc : cursor) {
+        for (auto &&doc: cursor) {
             if (auto idElem = doc["_id"]; idElem) {
                 auto [vid, count] = std::make_pair(
                     bsonOidToString(idElem),
@@ -1087,7 +1063,7 @@ DbResult<std::map<std::string, int>> BddbRepository::getWorkCountsByVolume() {
 
 // ==================== Works ====================
 
-DbResult<std::vector<Work>> BddbRepository::loadWorks() {
+DbResult<std::vector<Work> > BddbRepository::loadWorks() {
     try {
         if (!MongoConnection::instance().isConnected()) return std::vector<Work>{};
         auto db = MongoConnection::instance().database("bddb_dev");
@@ -1095,7 +1071,7 @@ DbResult<std::vector<Work>> BddbRepository::loadWorks() {
 
         auto cursor = coll.find({});
         std::vector<Work> results;
-        for (auto&& doc : cursor) {
+        for (auto &&doc: cursor) {
             results.push_back(parseWork(doc));
         }
         return results;
@@ -1172,10 +1148,10 @@ DbResult<void> BddbRepository::removeWorkFromVolume(const std::string &volumeId,
         auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         auto filter = make_document(kvp("_id", stringToOid(volumeId)));
         auto update = make_document(kvp("$pull", make_document(
-            kvp("work_ids", stringToOid(workId))
-        )), kvp("$set", make_document(
-            kvp("updated_at", static_cast<std::int64_t>(now))
-        )));
+                                            kvp("work_ids", stringToOid(workId))
+                                        )), kvp("$set", make_document(
+                                                    kvp("updated_at", static_cast<std::int64_t>(now))
+                                                )));
         coll.update_one(filter.view(), update.view());
         return {};
     } catch (const std::exception &e) {
@@ -1201,27 +1177,27 @@ DbResult<VolumeListResult> BddbRepository::getVolumesWithPagination(const Volume
 
         if (!params.searchCatalogNo.empty()) {
             matchStage.append(kvp("catalog_no", make_document(
-                kvp("$regex", params.searchCatalogNo),
-                kvp("$options", "i")
-            )));
+                                      kvp("$regex", params.searchCatalogNo),
+                                      kvp("$options", "i")
+                                  )));
         }
         if (!params.searchTitle.empty()) {
             matchStage.append(kvp("volume_name", make_document(
-                kvp("$regex", params.searchTitle),
-                kvp("$options", "i")
-            )));
+                                      kvp("$regex", params.searchTitle),
+                                      kvp("$options", "i")
+                                  )));
         }
         if (params.useFilterHasWork) {
             if (params.filterHasWork) {
                 matchStage.append(kvp("work_ids", make_document(
-                    kvp("$exists", true),
-                    kvp("$not", make_document(kvp("$size", 0)))
-                )));
+                                          kvp("$exists", true),
+                                          kvp("$not", make_document(kvp("$size", 0)))
+                                      )));
             } else {
                 matchStage.append(kvp("$or", make_array(
-                    make_document(kvp("work_ids", make_document(kvp("$exists", false)))),
-                    make_document(kvp("work_ids", make_document(kvp("$size", 0))))
-                )));
+                                          make_document(kvp("work_ids", make_document(kvp("$exists", false)))),
+                                          make_document(kvp("work_ids", make_document(kvp("$size", 0))))
+                                      )));
             }
         }
 
@@ -1266,7 +1242,7 @@ DbResult<VolumeListResult> BddbRepository::getVolumesWithPagination(const Volume
             }
             countPipeline.count("total");
             auto countCursor = coll.aggregate(countPipeline);
-            for (auto &&doc : countCursor) {
+            for (auto &&doc: countCursor) {
                 result.total = bsonValueToInt32(doc["total"]);
             }
         }
@@ -1276,7 +1252,7 @@ DbResult<VolumeListResult> BddbRepository::getVolumesWithPagination(const Volume
         pipeline.limit(params.pageSize);
 
         auto cursor = coll.aggregate(pipeline);
-        for (auto&& doc : cursor) {
+        for (auto &&doc: cursor) {
             result.data.push_back(parseVolume(doc));
         }
         return result;
@@ -1305,7 +1281,7 @@ DbResult<BddbRepository::LinkResult> BddbRepository::linkVolumesToProducts(
         auto filter = make_document(kvp("is_deleted", false));
         auto cursor = volumesColl.find(filter.view());
 
-        for (auto &&doc : cursor) {
+        for (auto &&doc: cursor) {
             ++processed;
             if (onProgress) {
                 (*onProgress)(processed, static_cast<int>(totalCount), "Processing volume " + std::to_string(processed));
@@ -1320,12 +1296,12 @@ DbResult<BddbRepository::LinkResult> BddbRepository::linkVolumesToProducts(
 
             auto productsResult = SurugaYaRepository::findProductsByCatalogNo(catalogNo);
             if (!productsResult) continue;
-            const auto& products = *productsResult;
+            const auto &products = *productsResult;
 
             std::vector<std::string> newIds;
             std::unordered_set<std::string> existingSet(v.productIds.begin(), v.productIds.end());
 
-            for (const auto &product : products) {
+            for (const auto &product: products) {
                 result.matched++;
                 if (!existingSet.contains(product.id)) {
                     newIds.push_back(product.id);
@@ -1337,7 +1313,7 @@ DbResult<BddbRepository::LinkResult> BddbRepository::linkVolumesToProducts(
             if (!newIds.empty()) {
                 auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
                 bsoncxx::builder::basic::array addArr{};
-                for (const auto &nid : newIds) addArr.append(stringToOid(nid));
+                for (const auto &nid: newIds) addArr.append(stringToOid(nid));
                 auto vFilter = make_document(kvp("_id", stringToOid(v.id)));
                 auto update = make_document(
                     kvp("$addToSet", make_document(kvp("product_ids", make_document(kvp("$each", addArr.extract()))))),
@@ -1354,4 +1330,3 @@ DbResult<BddbRepository::LinkResult> BddbRepository::linkVolumesToProducts(
     }
 }
 
-#endif // HAVE_MONGODB

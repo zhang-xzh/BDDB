@@ -1,7 +1,5 @@
 #include "db/surugayarepository.h"
 
-#ifdef HAVE_MONGODB
-
 #include "db/connection.h"
 #include <mongocxx/collection.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
@@ -335,4 +333,4 @@ DbResult<std::vector<Product>> SurugaYaRepository::findByManufacturer(
     }
 }
 
-#endif // HAVE_MONGODB
+

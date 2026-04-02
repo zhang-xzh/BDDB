@@ -164,16 +164,13 @@ endif ()
 message(STATUS "✓ Using Qt ${Qt6Core_VERSION}")
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# MongoDB C++ 驱动智能查找
-# ═══════════════════════════════════════════════════════════════════════════════
-# ═══════════════════════════════════════════════════════════════════════════════
 # MongoDB C++ 驱动查找
 # ═══════════════════════════════════════════════════════════════════════════════
 message(STATUS "🔍 Searching for MongoDB C++ driver...")
 
 # 首先尝试标准 find_package（通过 CMAKE_PREFIX_PATH 或 vcpkg）
-find_package(mongocxx CONFIG QUIET)
-find_package(bsoncxx CONFIG QUIET)
+find_package(mongocxx CONFIG)
+find_package(bsoncxx CONFIG)
 
 if (mongocxx_FOUND AND bsoncxx_FOUND)
     message(STATUS "✓ Found MongoDB C++ driver via CMake config")
@@ -271,14 +268,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Concurrent
 )
 
-# MongoDB 支持（可选）
+# MongoDB 支持（必需）
 if (mongocxx_FOUND AND bsoncxx_FOUND)
     target_link_libraries(${PROJECT_NAME} PRIVATE
             mongo::mongocxx_shared
             mongo::bsoncxx_shared
-    )
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
-            HAVE_MONGODB=1
     )
     message(STATUS "✓ MongoDB C++ driver enabled")
 
@@ -286,8 +280,7 @@ if (mongocxx_FOUND AND bsoncxx_FOUND)
     get_target_property(MONGOCXX_INCLUDE_DIRS mongo::mongocxx_shared INTERFACE_INCLUDE_DIRECTORIES)
     message(STATUS "  mongocxx include: ${MONGOCXX_INCLUDE_DIRS}")
 else ()
-    message(STATUS "⚠ MongoDB C++ driver not found - local DB features disabled")
-    message(STATUS "  Install via vcpkg: vcpkg install mongocxx")
+    message(FATAL_ERROR "MongoDB C++ driver not found. Install via vcpkg: vcpkg install mongocxx")
 endif ()
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -384,6 +377,6 @@ message(STATUS "╠════════════════════�
 message(STATUS "║ C++ Standard:    ${CMAKE_CXX_STANDARD}")
 message(STATUS "║ Qt Version:      ${Qt6Core_VERSION}")
 message(STATUS "║ Build Type:      ${CMAKE_BUILD_TYPE}")
-message(STATUS "║ MongoDB Driver:  ${mongocxx_FOUND} (optional)")
+message(STATUS "║ MongoDB Driver:  ${mongocxx_FOUND} (required)")
 message(STATUS "╚══════════════════════════════════════════════════════════════╝")
 message(STATUS "")

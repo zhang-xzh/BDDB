@@ -1,7 +1,5 @@
 #include "db/connection.h"
 
-#ifdef HAVE_MONGODB
-
 #include <mongocxx/instance.hpp>
 #include <mongocxx/uri.hpp>
 #include <cstdlib>
@@ -36,4 +34,4 @@ mongocxx::database MongoConnection::database(const std::string &name) {
     return (*m_client)[name];
 }
 
-#endif // HAVE_MONGODB
+

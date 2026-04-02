@@ -22,7 +22,6 @@ SearchResult<SyncResult> ProductSyncService::syncAllProducts(
 ) {
     SyncResult result;
 
-#ifdef HAVE_MONGODB
     try {
         if (!MongoConnection::instance().isConnected()) {
             return std::unexpected("MongoDB not connected");
@@ -145,9 +144,6 @@ SearchResult<SyncResult> ProductSyncService::syncAllProducts(
     } catch (const std::exception &e) {
         return std::unexpected(std::string("Sync failed: ") + e.what());
     }
-#else
-    return std::unexpected("MongoDB support not compiled");
-#endif
 
     return result;
 }
@@ -155,7 +151,6 @@ SearchResult<SyncResult> ProductSyncService::syncAllProducts(
 SearchResult<void> ProductSyncService::syncProductsByIds(
     const std::vector<std::string> &productIds
 ) {
-#ifdef HAVE_MONGODB
     try {
         if (!MongoConnection::instance().isConnected()) {
             return std::unexpected("MongoDB not connected");
@@ -193,15 +188,11 @@ SearchResult<void> ProductSyncService::syncProductsByIds(
     } catch (const std::exception &e) {
         return std::unexpected(std::string("Sync by IDs failed: ") + e.what());
     }
-#else
-    return std::unexpected("MongoDB support not compiled");
-#endif
 
     return {};
 }
 
 SearchResult<void> ProductSyncService::syncSingleProduct(const std::string &productId) {
-#ifdef HAVE_MONGODB
     try {
         if (!MongoConnection::instance().isConnected()) {
             return std::unexpected("MongoDB not connected");
@@ -235,9 +226,6 @@ SearchResult<void> ProductSyncService::syncSingleProduct(const std::string &prod
     } catch (const std::exception &e) {
         return std::unexpected(std::string("Sync single product failed: ") + e.what());
     }
-#else
-    return std::unexpected("MongoDB support not compiled");
-#endif
 }
 
 SearchResult<SyncResult> ProductSyncService::rebuildIndex(

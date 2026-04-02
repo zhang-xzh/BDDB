@@ -1,8 +1,6 @@
 #ifndef SURUGAYAREPOSITORY_H
 #define SURUGAYAREPOSITORY_H
 
-#ifdef HAVE_MONGODB
-
 #include "models/models.h"
 #include <string>
 #include <vector>
@@ -65,5 +63,4 @@ public:
     static DbResult<std::vector<Product>> findByManufacturer(const std::string& manufacturer, const PaginationParams& params = {});
 };
 
-#endif // HAVE_MONGODB
 #endif // SURUGAYAREPOSITORY_H
