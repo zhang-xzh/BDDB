@@ -9,6 +9,8 @@ import {SPACING} from '@/lib/utils'
 const ConfigPage: React.FC = () => {
     const [syncing, setSyncing] = useState(false)
     const [linking, setLinking] = useState(false)
+    const [rebuildingBangumi, setRebuildingBangumi] = useState(false)
+    const [rebuildingMeili, setRebuildingMeili] = useState(false)
 
     // 同步 qBittorrent
     const syncTorrents = useCallback(async () => {
@@ -47,6 +49,42 @@ const ConfigPage: React.FC = () => {
         }
     }, [])
 
+    // 重建 Bangumi 索引
+    const rebuildBangumi = useCallback(async () => {
+        setRebuildingBangumi(true)
+        try {
+            const data = await postApi('/api/bangumi/rebuild')
+            if (data?.success) {
+                message.success('Bangumi 索引重建完成')
+            } else {
+                message.error(data?.error || '重建失败')
+            }
+        } catch (error) {
+            console.error('Bangumi 重建失败:', error)
+            message.error('Bangumi 重建失败')
+        } finally {
+            setRebuildingBangumi(false)
+        }
+    }, [])
+
+    // 重建 Meilisearch 索引
+    const rebuildMeili = useCallback(async () => {
+        setRebuildingMeili(true)
+        try {
+            const data = await postApi('/api/meili/rebuild')
+            if (data?.success) {
+                message.success('suruga_ya 索引重建完成')
+            } else {
+                message.error(data?.error || '重建失败')
+            }
+        } catch (error) {
+            console.error('suruga_ya 重建失败:', error)
+            message.error('suruga_ya 重建失败')
+        } finally {
+            setRebuildingMeili(false)
+        }
+    }, [])
+
     return (
         <Flex vertical gap={SPACING.lg}>
             <Flex align="center" gap={8}>
@@ -55,7 +93,7 @@ const ConfigPage: React.FC = () => {
             </Flex>
 
             <Row gutter={[SPACING.md, SPACING.md]}>
-                {/* 同步操作 */}
+                {/* 数据管理 */}
                 <Col xs={24} md={12}>
                     <Card title="同步操作" size="small" styles={{body: {padding: SPACING.md}}}>
                         <Space style={{width: '100%'}} size={SPACING.md} orientation="vertical">
@@ -78,10 +116,6 @@ const ConfigPage: React.FC = () => {
 
                         </Space>
                     </Card>
-                </Col>
-
-                {/* 数据管理 */}
-                <Col xs={24} md={12}>
                     <Card title="数据管理" size="small" styles={{body: {padding: SPACING.md}}}>
                         <Space style={{width: '100%'}} size={SPACING.md} orientation="vertical">
                             <Flex vertical gap="small">
@@ -97,6 +131,38 @@ const ConfigPage: React.FC = () => {
                                     block
                                 >
                                     {linking ? '关联中...' : '开始关联'}
+                                </Button>
+                            </Flex>
+
+                            <Flex vertical gap="small">
+                                <Typography.Text strong style={{fontSize: 13}}>重建 Bangumi 索引</Typography.Text>
+                                <Typography.Paragraph type="secondary" style={{fontSize: 12, marginBottom: 0}}>
+                                    执行 bangumi:rebuild 脚本：删除旧索引并从 MongoDB 全量重建 Bangumi 搜索索引。
+                                </Typography.Paragraph>
+                                <Button
+                                    onClick={rebuildBangumi}
+                                    loading={rebuildingBangumi}
+                                    icon={<SyncOutlined spin={rebuildingBangumi}/>}
+                                    size="middle"
+                                    block
+                                >
+                                    {rebuildingBangumi ? '重建中...' : '开始重建'}
+                                </Button>
+                            </Flex>
+
+                            <Flex vertical gap="small">
+                                <Typography.Text strong style={{fontSize: 13}}>重建 suruga_ya 索引</Typography.Text>
+                                <Typography.Paragraph type="secondary" style={{fontSize: 12, marginBottom: 0}}>
+                                    执行 meili:rebuild 脚本：删除旧索引并从 MongoDB 全量重建产品搜索索引。
+                                </Typography.Paragraph>
+                                <Button
+                                    onClick={rebuildMeili}
+                                    loading={rebuildingMeili}
+                                    icon={<SyncOutlined spin={rebuildingMeili}/>}
+                                    size="middle"
+                                    block
+                                >
+                                    {rebuildingMeili ? '重建中...' : '开始重建'}
                                 </Button>
                             </Flex>
                         </Space>
