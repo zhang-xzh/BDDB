@@ -16,6 +16,7 @@ Always respond in Chinese unless the user asks for another language.
 - 构建系统：CMake
 - 数据库：MongoDB（mongocxx + bsoncxx）
 - 目标平台：Windows
+- UI 框架：QML + Qt Quick Controls 2（Fusion 样式）
 
 ---
 
@@ -141,102 +142,213 @@ if (result) { process(result->view()); }
 
 ---
 
-## 二、Qt 使用规范
+## 二、Qt / QML 使用规范
 
-### 信号槽
+### UI 层：QML
 
-**强制使用函数指针语法，禁止字符串宏语法**
+**所有 UI 必须用 QML 编写，禁止使用 Qt Widgets 构建界面**
 
-```cpp
-// ✅ 正确（编译期检查）
-connect(btn, &QPushButton::clicked, this, &MyWidget::onClicked);
-connect(model, &UserModel::dataChanged, this, [this](auto& user) {
-    updateUI(user);
-});
+```qml
+// ✅ 正确：声明式 UI，结构清晰
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 
-// ❌ 禁止（运行期才报错）
-connect(btn, SIGNAL(clicked()), this, SLOT(onClicked()));
+ApplicationWindow {
+    title: "主窗口"
+    visible: true
+
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 12
+
+        TextField {
+            id: nameInput
+            placeholderText: "请输入姓名"
+            Layout.fillWidth: true
+        }
+
+        Button {
+            text: "提交"
+            onClicked: viewModel.submit(nameInput.text)
+        }
+    }
+}
+
+// ❌ 禁止：在 QML 中写业务逻辑
+Button {
+    onClicked: {
+        // 不允许在 QML 里直接操作数据库或复杂逻辑
+        let result = db.query("SELECT ...")
+    }
+}
 ```
 
-### 内存管理
-
-**Qt 对象树管理的对象直接 new，其余用智能指针**
-
-```cpp
-// ✅ 正确：Qt 对象树管理
-auto* label = new QLabel("Hello", this); // parent 负责释放
-
-// ✅ 正确：非 Qt 对象用智能指针
-auto repo = std::make_unique<UserRepository>(db);
-auto config = std::make_shared<AppConfig>();
-
-// ❌ 禁止：非 Qt 对象裸 new
-UserRepository* repo = new UserRepository(db); // 需要手动 delete
-```
-
-**禁止在构造函数中直接操作 UI 以外的资源，使用 `QTimer::singleShot` 延迟初始化**
+**样式统一使用 Fusion，在 main.cpp 中全局设置**
 
 ```cpp
 // ✅ 正确
-MyWidget::MyWidget(QWidget* parent) : QWidget(parent) {
-    setupUi();
-    QTimer::singleShot(0, this, &MyWidget::initialize);
+#include <QQuickStyle>
+QQuickStyle::setStyle("Fusion");
+```
+
+**多窗口：每个独立窗口用 `ApplicationWindow`，禁止设置 `transientParent`（保持独立任务栏图标）**
+
+```qml
+// ✅ 正确：独立任务栏图标
+ApplicationWindow {
+    id: secondWindow
+    title: "第二窗口"
+    // 不设置 transientParent
 }
 
-void MyWidget::initialize() {
-    // 数据库连接、网络请求等
+// ❌ 禁止：会失去独立任务栏图标
+Window {
+    transientParent: mainWindow
 }
+```
+
+### ViewModel 层：C++ 暴露给 QML
+
+**ViewModel 必须继承 `QObject`，用 `Q_PROPERTY` 暴露属性，用 `Q_INVOKABLE` 暴露方法**
+
+```cpp
+// ✅ 正确
+class UserViewModel : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(QString userName READ userName NOTIFY userNameChanged)
+    Q_PROPERTY(bool loading READ loading NOTIFY loadingChanged)
+
+public:
+    explicit UserViewModel(QObject* parent = nullptr);
+
+    Q_INVOKABLE void submit(const QString& name);
+    Q_INVOKABLE void loadUser(const QString& id);
+
+    QString userName() const { return m_userName; }
+    bool loading() const { return m_loading; }
+
+signals:
+    void userNameChanged();
+    void loadingChanged();
+    void errorOccurred(const QString& message);
+
+private:
+    QString m_userName;
+    bool m_loading = false;
+};
+```
+
+**在 QML 中绑定 ViewModel 属性，禁止在 QML 中存储业务状态**
+
+```qml
+// ✅ 正确：单向数据流，QML 只读取和触发
+Text {
+    text: userViewModel.userName  // 绑定属性
+}
+Button {
+    enabled: !userViewModel.loading
+    onClicked: userViewModel.loadUser(idInput.text)  // 调用方法
+}
+Connections {
+    target: userViewModel
+    function onErrorOccurred(message) { errorDialog.open() }
+}
+
+// ❌ 禁止：QML 自己维护业务状态
+property string localUserName: ""
+onClicked: { localUserName = input.text; /* 本地处理 */ }
+```
+
+### 注册方式
+
+**ViewModel 通过 `qmlRegisterSingletonInstance` 或 `setContextProperty` 注入，禁止在 QML 里 new C++ 对象**
+
+```cpp
+// ✅ 正确：单例注入
+auto* vm = new UserViewModel(&engine);
+engine.rootContext()->setContextProperty("userViewModel", vm);
+
+// 或 Qt 6 推荐方式
+qmlRegisterSingletonInstance("com.myapp", 1, 0, "UserViewModel", vm);
 ```
 
 ### 数据模型
 
-**列表数据必须继承 `QAbstractItemModel`，禁止直接用 `QListWidget` 填充大量数据**
+**列表数据必须继承 `QAbstractListModel`，通过 `roleNames()` 暴露字段给 QML**
 
 ```cpp
-// ✅ 正确：自定义 Model
+// ✅ 正确
 class UserModel : public QAbstractListModel {
     Q_OBJECT
 public:
+    enum Roles { NameRole = Qt::UserRole + 1, AgeRole };
+
     int rowCount(const QModelIndex& = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
+    QHash<int, QByteArray> roleNames() const override {
+        return { {NameRole, "name"}, {AgeRole, "age"} };
+    }
+
 private:
     std::vector<User> m_users;
 };
+```
 
-// ❌ 禁止：大量数据直接塞 Widget
-for (auto& user : users)
-    listWidget->addItem(QString::fromStdString(user.name)); // 无法虚拟化
+```qml
+// QML 侧直接用 role 名称访问
+ListView {
+    model: userModel
+    delegate: Text { text: model.name + " / " + model.age }
+}
+```
+
+**禁止用 `QVariantList` 或 `QStringList` 直接绑定大量数据**
+
+```cpp
+// ❌ 禁止：无法虚拟化，大数据量卡顿
+Q_PROPERTY(QStringList names READ names NOTIFY namesChanged)
 ```
 
 ### 异步与线程
 
-**耗时操作（数据库、网络）必须在非 UI 线程执行，用 `QFuture` 或 `QtConcurrent`**
+**耗时操作必须在非 UI 线程执行，结果通过信号回传给 QML**
 
 ```cpp
 // ✅ 正确
-auto future = QtConcurrent::run([this, id]() -> DbResult<User> {
-    return m_repo->findById(id);
-});
+void UserViewModel::loadUser(const QString& id) {
+    m_loading = true;
+    emit loadingChanged();
 
-auto* watcher = new QFutureWatcher<DbResult<User>>(this);
-connect(watcher, &QFutureWatcher<DbResult<User>>::finished, this, [watcher, this]() {
-    auto result = watcher->result();
-    if (result) updateUI(*result);
-    else showError(QString::fromStdString(result.error()));
-    watcher->deleteLater();
-});
-watcher->setFuture(future);
+    auto future = QtConcurrent::run([this, id = id.toStdString()]() -> DbResult<User> {
+        return m_repo->findById(id);
+    });
+
+    auto* watcher = new QFutureWatcher<DbResult<User>>(this);
+    connect(watcher, &QFutureWatcher<DbResult<User>>::finished, this, [watcher, this]() {
+        auto result = watcher->result();
+        if (result) {
+            m_userName = QString::fromStdString(result->name);
+            emit userNameChanged();
+        } else {
+            emit errorOccurred(QString::fromStdString(result.error()));
+        }
+        m_loading = false;
+        emit loadingChanged();
+        watcher->deleteLater();
+    });
+    watcher->setFuture(future);
+}
 
 // ❌ 禁止：UI 线程直接查询
-void onBtnClicked() {
-    auto user = m_repo->findById(id); // 卡 UI
-    updateUI(*user);
+Q_INVOKABLE void loadUser(const QString& id) {
+    auto user = m_repo->findById(id.toStdString()); // 卡 UI
 }
 ```
 
 ### 字符串
 
-**内部逻辑统一用 `std::string`，仅在 Qt API 边界转换**
+**C++ 内部逻辑统一用 `std::string`，仅在 Qt/QML 边界转换**
 
 ```cpp
 // ✅ 正确：边界转换
@@ -246,10 +358,6 @@ QString toQString(const std::string& s) {
 std::string fromQString(const QString& s) {
     return s.toStdString();
 }
-
-// ❌ 禁止：混用两种字符串类型
-QString name = QString::fromStdString(doc["name"].get_string().value.data());
-// 重复转换，且 get_string().value 是 string_view，直接 .data() 可能截断
 ```
 
 ---
@@ -361,9 +469,9 @@ private:
 ### 分层原则
 
 ```
-UI 层（QWidget/QML）
-    ↕ QFuture / signal-slot
-ViewModel 层（Q_OBJECT, 暴露 Qt 友好接口）
+UI 层（QML）
+    ↕ Q_PROPERTY 绑定 / Q_INVOKABLE 调用 / 信号
+ViewModel 层（QObject + Q_PROPERTY，线程切换，暴露 Qt 友好接口）
     ↕ std::expected
 Service 层（业务逻辑，纯 C++，无 Qt 依赖）
     ↕ std::expected
@@ -374,15 +482,17 @@ MongoDB
 
 **各层依赖规则：**
 
-- UI 层只能依赖 ViewModel 层
-- ViewModel 层可以依赖 Service 层，负责线程切换
-- Service / Repository 层禁止包含任何 Qt UI 头文件
+- QML 只能调用 ViewModel 的 `Q_INVOKABLE` 方法和读取 `Q_PROPERTY`
+- QML 禁止包含业务逻辑、条件判断复杂的 JS 代码
+- ViewModel 负责线程切换，将异步结果通过信号通知 QML
+- Service / Repository 层禁止包含任何 Qt / QML 头文件
 - 领域对象（User、Order 等）不得继承 `QObject`
 
 ### 命名规范
 
 ```cpp
-// 类名：PascalCase
+// C++ 类名：PascalCase
+class UserViewModel {};
 class UserRepository {};
 
 // 成员变量：m_ 前缀
@@ -391,9 +501,13 @@ QString m_userName;
 // 私有方法：camelCase
 void loadData();
 
-// Qt 槽函数：on + 发送者 + 信号名
-void onLoginBtnClicked();
-void onUserModelDataChanged();
+// 信号：动词过去式或名词+Changed
+signals:
+    void userNameChanged();
+    void errorOccurred(const QString& message);
+
+// Q_INVOKABLE 方法：camelCase 动词开头
+Q_INVOKABLE void submitForm(const QString& name);
 
 // 常量：k 前缀 + PascalCase
 constexpr int kMaxRetries = 3;
@@ -403,23 +517,39 @@ template<BsonSerializable TEntity>
 class Repository {};
 ```
 
+```qml
+// QML 属性：camelCase
+property string userName: ""
+
+// QML 信号处理：on + 信号名（首字母大写）
+onClicked: { ... }
+onUserNameChanged: { ... }
+
+// QML id：camelCase，语义化
+id: submitButton
+id: userNameInput
+```
+
 ---
 
 ## 五、禁止项清单
 
-| 禁止                       | 替代方案                                  |
-|--------------------------|---------------------------------------|
-| 裸指针表示所有权                 | `std::unique_ptr` / `std::shared_ptr` |
-| `new` 非 Qt 对象后不 delete   | 智能指针                                  |
-| `SIGNAL()`/`SLOT()` 字符串宏 | 函数指针语法                                |
-| UI 线程执行数据库操作             | `QtConcurrent::run`                   |
-| 无约束模板参数                  | Concepts                              |
-| 跨层传播裸异常                  | `std::expected`                       |
-| `bsoncxx` 类型泄露到业务层       | Repository + 领域对象转换                   |
-| `to_json` 后直接当普通 JSON 用  | 用 bsoncxx API 直接取值                    |
-| `QListWidget` 填充大量数据     | 继承 `QAbstractItemModel`               |
-| 手动 `for` 循环收集容器          | Ranges + `ranges::to<>`               |
-| `void*` 或 C union        | `std::variant`                        |
+| 禁止                                  | 替代方案                                                  |
+|-------------------------------------|-------------------------------------------------------|
+| Qt Widgets 构建 UI                    | QML + Qt Quick Controls 2                             |
+| QML 中写业务逻辑                          | 逻辑下沉到 C++ ViewModel                                   |
+| QML 中直接 new C++ 对象                  | `setContextProperty` / `qmlRegisterSingletonInstance` |
+| `transientParent` 导致丢失任务栏图标         | 独立 `ApplicationWindow` 不设父窗口                          |
+| `QVariantList`/`QStringList` 绑定大量数据 | 继承 `QAbstractListModel`                               |
+| UI 线程执行数据库操作                        | `QtConcurrent::run` + `QFutureWatcher`                |
+| 裸指针表示所有权（非 QObject）                 | `std::unique_ptr` / `std::shared_ptr`                 |
+| `SIGNAL()`/`SLOT()` 字符串宏            | 函数指针语法                                                |
+| 无约束模板参数                             | Concepts                                              |
+| 跨层传播裸异常                             | `std::expected`                                       |
+| `bsoncxx` 类型泄露到业务层                  | Repository + 领域对象转换                                   |
+| `to_json` 后直接当普通 JSON 用             | 用 bsoncxx API 直接取值                                    |
+| 手动 `for` 循环收集容器                     | Ranges + `ranges::to<>`                               |
+| `void*` 或 C union                   | `std::variant`                                        |
 
 ---
 
@@ -437,6 +567,21 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 if (MSVC)
     add_compile_options(/std:c++latest /W4 /permissive- /utf-8)
 endif ()
+
+# Qt Quick / QML 必须启用
+find_package(Qt6 REQUIRED COMPONENTS Core Quick QuickControls2 Concurrent)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+        Qt6::Core Qt6::Quick Qt6::QuickControls2 Qt6::Concurrent
+)
+
+# QML 资源文件
+qt_add_qml_module(${PROJECT_NAME}
+        URI com.myapp
+        VERSION 1.0
+        QML_FILES
+        qml/Main.qml
+        qml/SecondWindow.qml
+)
 ```
 
 # 环境说明
