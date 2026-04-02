@@ -1,7 +1,7 @@
 #include <QApplication>
 #include <QFontDatabase>
 #include <QDebug>
-#include "core/mainwindow.h"
+#include "ui/mainwindow.h"
 #include "db/connection.h"
 #include "search/meilisearchclient.h"
 #include "api/qbittorrentclient.h"

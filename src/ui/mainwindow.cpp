@@ -1,4 +1,4 @@
-#include "core/mainwindow.h"
+#include "mainwindow.h"
 #include "ui/torrentmanagerwindow.h"
 #include "ui/volumemanagerwindow.h"
 #include "ui/productsearchwindow.h"
@@ -145,7 +145,7 @@ void MainWindow::setupUI() {
     setFixedSize(sizeHint());
 }
 
-void MainWindow::appendLog(const QString& message) {
+void MainWindow::appendLog(const QString &message) {
     if (m_logList) {
         const QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
         auto *item = new QListWidgetItem(QString("[%1] %2").arg(timestamp, message));

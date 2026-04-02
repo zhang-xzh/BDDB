@@ -1,5 +1,5 @@
 #include "torrentmanagerwindow.h"
-#include "models/torrentmodel.h"
+#include "torrentmodel.h"
 #include "db/bddbrepository.h"
 #include <QLineEdit>
 #include <QTableView>

@@ -1,4 +1,4 @@
-#include "models/volumemodel.h"
+#include "volumemodel.h"
 
 VolumeModel::VolumeModel(QObject *parent)
     : QAbstractTableModel(parent) {

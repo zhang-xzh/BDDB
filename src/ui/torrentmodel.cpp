@@ -1,4 +1,4 @@
-#include "models/torrentmodel.h"
+#include "torrentmodel.h"
 
 TorrentModel::TorrentModel(QObject *parent)
     : QAbstractTableModel(parent) {
@@ -9,7 +9,7 @@ int TorrentModel::rowCount(const QModelIndex &parent) const {
 }
 
 int TorrentModel::columnCount(const QModelIndex &parent) const {
-    return parent.isValid() ? 0 : 2; // 状态, 种子名
+    return parent.isValid() ? 0 : 1; // 状态, 种子名
 }
 
 QVariant TorrentModel::data(const QModelIndex &index, int role) const {
@@ -20,8 +20,7 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const {
 
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
-            case 0: return QString::fromStdString(torrent.state);
-            case 1: return QString::fromStdString(torrent.name);
+            case 0: return QString::fromStdString(torrent.name);
             default: return QVariant();
         }
     }
@@ -34,8 +33,7 @@ QVariant TorrentModel::headerData(int section, Qt::Orientation orientation, int 
         return QVariant();
 
     switch (section) {
-        case 0: return QStringLiteral("状态");
-        case 1: return QStringLiteral("种子名");
+        case 0: return QStringLiteral("种子名");
         default: return QVariant();
     }
 }
@@ -52,7 +50,7 @@ void TorrentModel::clear() {
     endResetModel();
 }
 
-const Torrent* TorrentModel::torrentAt(int row) const {
+const Torrent *TorrentModel::torrentAt(int row) const {
     if (row < 0 || row >= static_cast<int>(m_torrents.size()))
         return nullptr;
     return &m_torrents.at(row);

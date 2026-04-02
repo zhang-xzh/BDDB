@@ -1,5 +1,5 @@
 #include "volumemanagerwindow.h"
-#include "models/volumemodel.h"
+#include "volumemodel.h"
 #include "db/bddbrepository.h"
 #include <QLabel>
 #include <QLineEdit>
