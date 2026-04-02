@@ -5,20 +5,21 @@ import QtQuick.Window
 
 ApplicationWindow {
     id: root
+
+    flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowSystemMenuHint | Qt.WindowMinimizeButtonHint | Qt.WindowCloseButtonHint
+    height: 500
+    maximumHeight: 500
+    maximumWidth: 700
+    minimumHeight: 500
+    minimumWidth: 700
     title: "BDDB"
     visible: true
     width: 700
-    height: 500
-    minimumWidth: 700
-    minimumHeight: 500
-    maximumWidth: 700
-    maximumHeight: 500
-    flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowSystemMenuHint | Qt.WindowMinimizeButtonHint | Qt.WindowCloseButtonHint
 
     // 禁用最大化按钮
     onVisibilityChanged: {
         if (visibility === Window.Maximized) {
-            visibility = Window.Windowed
+            visibility = Window.Windowed;
         }
     }
 
@@ -34,22 +35,23 @@ ApplicationWindow {
 
             // 管理分组
             GroupBox {
-                title: "管理"
                 Layout.fillWidth: true
+                title: "管理"
 
                 ColumnLayout {
                     anchors.fill: parent
                     spacing: 8
 
                     Button {
-                        text: "种子管理"
                         Layout.fillWidth: true
+                        text: "种子管理"
+
                         onClicked: mainViewModel.showTorrentManager()
                     }
-
                     Button {
-                        text: "分卷管理"
                         Layout.fillWidth: true
+                        text: "分卷管理"
+
                         onClicked: mainViewModel.showVolumeManager()
                     }
                 }
@@ -57,22 +59,23 @@ ApplicationWindow {
 
             // 搜索分组
             GroupBox {
-                title: "搜索"
                 Layout.fillWidth: true
+                title: "搜索"
 
                 ColumnLayout {
                     anchors.fill: parent
                     spacing: 8
 
                     Button {
-                        text: "产品搜索"
                         Layout.fillWidth: true
+                        text: "产品搜索"
+
                         onClicked: mainViewModel.showProductSearch()
                     }
-
                     Button {
-                        text: "作品搜索"
                         Layout.fillWidth: true
+                        text: "作品搜索"
+
                         onClicked: mainViewModel.showWorkSearch()
                     }
                 }
@@ -80,22 +83,23 @@ ApplicationWindow {
 
             // 数据分组
             GroupBox {
-                title: "数据"
                 Layout.fillWidth: true
+                title: "数据"
 
                 ColumnLayout {
                     anchors.fill: parent
                     spacing: 8
 
                     Button {
-                        text: "同步种子"
                         Layout.fillWidth: true
+                        text: "同步种子"
+
                         onClicked: mainViewModel.showSyncDialog()
                     }
-
                     Button {
-                        text: "关联产品"
                         Layout.fillWidth: true
+                        text: "关联产品"
+
                         onClicked: mainViewModel.showLinkDialog()
                     }
                 }
@@ -103,22 +107,23 @@ ApplicationWindow {
 
             // 索引分组
             GroupBox {
-                title: "索引"
                 Layout.fillWidth: true
+                title: "索引"
 
                 ColumnLayout {
                     anchors.fill: parent
                     spacing: 8
 
                     Button {
-                        text: "重建Bangumi"
                         Layout.fillWidth: true
+                        text: "重建Bangumi"
+
                         onClicked: mainViewModel.showRebuildBangumiDialog()
                     }
-
                     Button {
-                        text: "重建suruga-ya"
                         Layout.fillWidth: true
+                        text: "重建suruga-ya"
+
                         onClicked: mainViewModel.showRebuildSurugaDialog()
                     }
                 }
@@ -127,19 +132,19 @@ ApplicationWindow {
 
         // 日志区域
         GroupBox {
-            title: "日志"
-            Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.fillWidth: true
+            title: "日志"
 
             ListView {
                 id: logListView
+
                 anchors.fill: parent
                 clip: true
                 model: mainViewModel.logModel
 
                 ScrollBar.vertical: ScrollBar {
                 }
-
                 delegate: Text {
                     text: model.display
                     wrapMode: Text.Wrap
@@ -147,7 +152,7 @@ ApplicationWindow {
 
                 // 自动滚动到底部
                 onCountChanged: {
-                    positionViewAtEnd()
+                    positionViewAtEnd();
                 }
             }
         }

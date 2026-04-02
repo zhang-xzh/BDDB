@@ -5,14 +5,15 @@ import QtQuick.Window
 
 ApplicationWindow {
     id: root
-    title: "作品搜索"
-    width: 900
-    height: 700
-    minimumWidth: 600
-    minimumHeight: 500
-    flags: Qt.Window
 
     property var viewModel
+
+    flags: Qt.Window
+    height: 700
+    minimumHeight: 500
+    minimumWidth: 600
+    title: "作品搜索"
+    width: 900
 
     ColumnLayout {
         anchors.fill: parent
@@ -26,41 +27,47 @@ ApplicationWindow {
 
             TextField {
                 id: searchField
-                placeholderText: "搜索作品..."
-                Layout.fillWidth: true
-                onAccepted: root.viewModel?.search(text)
-            }
 
+                Layout.fillWidth: true
+                placeholderText: "搜索作品..."
+
+                onAccepted: {
+                    if (root.viewModel)
+                        root.viewModel.search(text);
+                }
+            }
             Button {
                 text: "搜索"
-                onClicked: root.viewModel?.search(searchField.text)
+
+                onClicked: {
+                    if (root.viewModel)
+                        root.viewModel.search(searchField.text);
+                }
             }
         }
 
         // 结果列表
         TableView {
             id: tableView
-            Layout.fillWidth: true
+
             Layout.fillHeight: true
+            Layout.fillWidth: true
             clip: true
-
-            model: root.viewModel?.searchResultModel
-
+            columnWidthProvider: function (column) {
+                var widths = [200, 200, 60, 100];
+                return widths[column] || 100;
+            }
+            model: root.viewModel ? root.viewModel.searchResultModel : null
             selectionBehavior: TableView.SelectRows
             selectionMode: TableView.SingleSelection
 
-            columnWidthProvider: function(column) {
-                var widths = [200, 200, 60, 100]
-                return widths[column] || 100
-            }
-
             delegate: Label {
-                implicitHeight: 30
-                text: display
-                verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight
+                implicitHeight: 30
                 leftPadding: 4
                 rightPadding: 4
+                text: display
+                verticalAlignment: Text.AlignVCenter
             }
         }
 
@@ -71,14 +78,17 @@ ApplicationWindow {
             Item {
                 Layout.fillWidth: true
             }
-
             Button {
                 text: "选择"
-                onClicked: root.viewModel?.selectCurrent()
-            }
 
+                onClicked: {
+                    if (root.viewModel)
+                        root.viewModel.selectCurrent();
+                }
+            }
             Button {
                 text: "关闭"
+
                 onClicked: root.close()
             }
         }
