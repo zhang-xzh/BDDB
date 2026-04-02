@@ -49,24 +49,11 @@ void VolumeManagerWindow::setupUI() {
     m_tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_tableView->setAlternatingRowColors(true);
     layout->addWidget(m_tableView);
-
-    // 底部操作栏
-    auto *bottomLayout = new QHBoxLayout();
-    auto *countLabel = new QLabel("已选 0 项", this);
-    auto *editVolumeBtn = new QPushButton("编辑分卷", this);
-    auto *editMediaBtn = new QPushButton("编辑媒介", this);
-    auto *linkWorkBtn = new QPushButton("编辑作品", this);
-    bottomLayout->addWidget(countLabel);
-    bottomLayout->addStretch();
-    bottomLayout->addWidget(editVolumeBtn);
-    bottomLayout->addWidget(editMediaBtn);
-    bottomLayout->addWidget(linkWorkBtn);
-    layout->addLayout(bottomLayout);
 }
 
 void VolumeManagerWindow::loadData() {
-    auto *watcher = new QFutureWatcher<DbResult<std::vector<Volume>>>(this);
-    connect(watcher, &QFutureWatcher<DbResult<std::vector<Volume>>>::finished, this, [this, watcher]() {
+    auto *watcher = new QFutureWatcher<DbResult<std::vector<Volume> > >(this);
+    connect(watcher, &QFutureWatcher<DbResult<std::vector<Volume> > >::finished, this, [this, watcher]() {
         auto result = watcher->result();
         if (result) {
             m_model->setVolumes(std::move(*result));
@@ -74,7 +61,7 @@ void VolumeManagerWindow::loadData() {
         watcher->deleteLater();
     });
 
-    auto future = QtConcurrent::run([]() -> DbResult<std::vector<Volume>> {
+    auto future = QtConcurrent::run([]() -> DbResult<std::vector<Volume> > {
         return BddbRepository::getAllVolumes();
     });
     watcher->setFuture(future);

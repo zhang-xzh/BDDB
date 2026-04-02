@@ -50,14 +50,14 @@ void TorrentManagerWindow::setupUI() {
 void TorrentManagerWindow::loadData() {
     // 在后台线程加载数据
     auto *watcher = new QFutureWatcher<DbResult<std::vector<Torrent> > >(this);
-    connect(watcher, &QFutureWatcher<DbResult<std::vector<Torrent> > >::finished, this, [this, watcher]() {
+    connect(watcher, &QFutureWatcher<DbResult<std::vector<Torrent> > >::finished, this, [this, watcher] {
         if (auto result = watcher->result()) {
             m_model->setTorrents(std::move(*result));
         }
         watcher->deleteLater();
     });
 
-    auto future = QtConcurrent::run([]() -> DbResult<std::vector<Torrent> > {
+    const auto future = QtConcurrent::run([]() -> DbResult<std::vector<Torrent> > {
         return BddbRepository::loadTorrents(false);
     });
     watcher->setFuture(future);
