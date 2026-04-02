@@ -27,8 +27,11 @@ private:
     void showVolumeManager();
     void showProductSearch();
     void showWorkSearch();
+
     void showSyncDialog();
     void showLinkDialog();
+    void showRebuildBangumiDialog();
+    void showRebuildSurugaDialog();
 
     QPointer<TorrentManagerWindow> m_torrentManagerWindow;
     QPointer<VolumeManagerWindow> m_volumeManagerWindow;
@@ -37,8 +40,12 @@ private:
     QPointer<WorkLinkWindow> m_workLinkWindow;
     QPointer<ProductSearchWindow> m_productSearchWindow;
     QPointer<WorkSearchWindow> m_workSearchWindow;
+
+    // 独立的进度对话框
     QPointer<ProgressDialog> m_syncDialog;
     QPointer<ProgressDialog> m_linkDialog;
+    QPointer<ProgressDialog> m_rebuildBangumiDialog;
+    QPointer<ProgressDialog> m_rebuildSurugaDialog;
 };
 
 #endif // MAINWINDOW_H

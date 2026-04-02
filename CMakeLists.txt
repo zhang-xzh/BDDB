@@ -13,7 +13,7 @@ if (WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
             "C:/Users/$ENV{USERNAME}/.vcpkg-clion/vcpkg/scripts/buildsystems/vcpkg.cmake"
             "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake"
     )
-    
+
     foreach (VCPKG_CMAKE ${VCPKG_CANDIDATE_PATHS})
         if (EXISTS ${VCPKG_CMAKE})
             set(CMAKE_TOOLCHAIN_FILE ${VCPKG_CMAKE} CACHE STRING "vcpkg toolchain" FORCE)
@@ -21,7 +21,7 @@ if (WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
             break()
         endif ()
     endforeach ()
-    
+
     if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
         message(STATUS "⚠ vcpkg toolchain not found in standard locations")
         message(STATUS "  Consider setting VCPKG_ROOT environment variable or CMAKE_TOOLCHAIN_FILE")
@@ -31,10 +31,10 @@ endif ()
 # ═══════════════════════════════════════════════════════════════════════════════
 # 项目定义
 # ═══════════════════════════════════════════════════════════════════════════════
-project(BDDB 
-    VERSION 0.1.0 
-    LANGUAGES CXX
-    DESCRIPTION "BDDB - Modern C++/Qt6 Application"
+project(BDDB
+        VERSION 0.1.0
+        LANGUAGES CXX
+        DESCRIPTION "BDDB - Modern C++/Qt6 Application"
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -58,15 +58,15 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # ═══════════════════════════════════════════════════════════════════════════════
 if (MSVC)
     add_compile_options(
-        /std:c++latest    # 最新 C++ 标准
-        /W4               # 高警告级别
-        /permissive-      # 严格标准符合
-        /utf-8            # UTF-8 源码
-        /Zc:__cplusplus   # 正确的 __cplusplus 宏
-        /MP               # 多处理器编译
+            /std:c++latest    # 最新 C++ 标准
+            /W4               # 高警告级别
+            /permissive-      # 严格标准符合
+            /utf-8            # UTF-8 源码
+            /Zc:__cplusplus   # 正确的 __cplusplus 宏
+            /MP               # 多处理器编译
     )
     add_link_options(
-        /INCREMENTAL:NO   # 禁用增量链接以获得更干净的构建
+            /INCREMENTAL:NO   # 禁用增量链接以获得更干净的构建
     )
 endif ()
 
@@ -78,32 +78,32 @@ function(find_qt6_smart)
     if (Qt6_DIR)
         return()
     endif ()
-    
+
     message(STATUS "🔍 Searching for Qt6...")
-    
+
     # 1. 检查环境变量
     if (DEFINED ENV{QT_ROOT_DIR} AND EXISTS "$ENV{QT_ROOT_DIR}/lib/cmake/Qt6")
         set(Qt6_DIR "$ENV{QT_ROOT_DIR}/lib/cmake/Qt6" CACHE PATH "Qt6 directory")
         message(STATUS "✓ Found Qt6 via QT_ROOT_DIR: $ENV{QT_ROOT_DIR}")
         return()
     endif ()
-    
+
     if (DEFINED ENV{Qt6_DIR})
         set(Qt6_DIR "$ENV{Qt6_DIR}" CACHE PATH "Qt6 directory")
         message(STATUS "✓ Found Qt6 via Qt6_DIR environment variable")
         return()
     endif ()
-    
+
     # 2. 尝试从 Qt 安装器的标准路径查找
     if (WIN32)
         # 使用文件 GLOB 自动发现安装的 Qt 版本
-        file(GLOB QT_VERSION_DIRS 
-            "C:/Qt/6.*/msvc*"
-            "C:/Qt/6.*.*/msvc*"
-            "$ENV{USERPROFILE}/Qt/6.*/msvc*"
-            "$ENV{LOCALAPPDATA}/Qt/6.*/msvc*"
+        file(GLOB QT_VERSION_DIRS
+                "C:/Qt/6.*/msvc*"
+                "C:/Qt/6.*.*/msvc*"
+                "$ENV{USERPROFILE}/Qt/6.*/msvc*"
+                "$ENV{LOCALAPPDATA}/Qt/6.*/msvc*"
         )
-        
+
         # 按版本号降序排序（优先使用新版本）
         if (QT_VERSION_DIRS)
             list(SORT QT_VERSION_DIRS COMPARE NATURAL ORDER DESCENDING)
@@ -116,10 +116,10 @@ function(find_qt6_smart)
             endif ()
         endif ()
     elseif (APPLE)
-        file(GLOB QT_VERSION_DIRS 
-            "~/Qt/6.*/macos"
-            "/opt/Qt/6.*/macos"
-            "/usr/local/Qt*/6.*/macos"
+        file(GLOB QT_VERSION_DIRS
+                "~/Qt/6.*/macos"
+                "/opt/Qt/6.*/macos"
+                "/usr/local/Qt*/6.*/macos"
         )
         if (QT_VERSION_DIRS)
             list(SORT QT_VERSION_DIRS COMPARE NATURAL ORDER DESCENDING)
@@ -136,7 +136,7 @@ function(find_qt6_smart)
             return()
         endif ()
     endif ()
-    
+
     message(STATUS "⚠ Qt6 not auto-detected. Install Qt6 or set Qt6_DIR/QT_ROOT_DIR")
 endfunction()
 
@@ -147,12 +147,12 @@ find_qt6_smart()
 # ═══════════════════════════════════════════════════════════════════════════════
 set(QT_NO_FIND_VULKAN_SDK TRUE)  # 禁用可选的 Vulkan 支持
 
-find_package(Qt6 REQUIRED COMPONENTS 
-    Core 
-    Gui 
-    Widgets 
-    Network 
-    Concurrent
+find_package(Qt6 REQUIRED COMPONENTS
+        Core
+        Gui
+        Widgets
+        Network
+        Concurrent
 )
 
 # 确保 Qt6 资源编译器可用
@@ -185,11 +185,11 @@ else ()
     else ()
         # 尝试常见的 vcpkg 安装路径
         set(VCPKG_CANDIDATES
-            "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows"
-            "${CMAKE_CURRENT_SOURCE_DIR}/../vcpkg_installed/x64-windows"
-            "$ENV{VCPKG_ROOT}/installed/x64-windows"
-            "$ENV{USERPROFILE}/.vcpkg-clion/vcpkg/installed/x64-windows"
-            "C:/vcpkg/installed/x64-windows"
+                "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows"
+                "${CMAKE_CURRENT_SOURCE_DIR}/../vcpkg_installed/x64-windows"
+                "$ENV{VCPKG_ROOT}/installed/x64-windows"
+                "$ENV{USERPROFILE}/.vcpkg-clion/vcpkg/installed/x64-windows"
+                "C:/vcpkg/installed/x64-windows"
         )
         foreach (CANDIDATE ${VCPKG_CANDIDATES})
             if (EXISTS "${CANDIDATE}/share")
@@ -231,11 +231,11 @@ endif ()
 # 源文件收集
 # ═══════════════════════════════════════════════════════════════════════════════
 file(GLOB_RECURSE BDDB_SOURCES
-    CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.ui"
+        CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.ui"
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -243,11 +243,19 @@ file(GLOB_RECURSE BDDB_SOURCES
 # ═══════════════════════════════════════════════════════════════════════════════
 add_executable(${PROJECT_NAME} ${BDDB_SOURCES})
 
+# Windows DPI 感知设置 - 解决字体锯齿问题
+if (WIN32 AND MSVC)
+    # 启用每监视器 DPI 感知
+    set_target_properties(${PROJECT_NAME} PROPERTIES VS_DPI_AWARE "PerMonitor")
+    # 嵌入 DPI 感知清单文件
+    target_sources(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/resources/BDDB.manifest")
+endif ()
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 包含目录
 # ═══════════════════════════════════════════════════════════════════════════════
-target_include_directories(${PROJECT_NAME} 
-    PRIVATE 
+target_include_directories(${PROJECT_NAME}
+        PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
@@ -255,24 +263,24 @@ target_include_directories(${PROJECT_NAME}
 # 链接库
 # ═══════════════════════════════════════════════════════════════════════════════
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    Qt6::Core
-    Qt6::Gui
-    Qt6::Widgets
-    Qt6::Network
-    Qt6::Concurrent
+        Qt6::Core
+        Qt6::Gui
+        Qt6::Widgets
+        Qt6::Network
+        Qt6::Concurrent
 )
 
 # MongoDB 支持（可选）
 if (mongocxx_FOUND AND bsoncxx_FOUND)
-    target_link_libraries(${PROJECT_NAME} PRIVATE 
-        mongo::mongocxx_shared 
-        mongo::bsoncxx_shared
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+            mongo::mongocxx_shared
+            mongo::bsoncxx_shared
     )
-    target_compile_definitions(${PROJECT_NAME} PRIVATE 
-        HAVE_MONGODB=1
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+            HAVE_MONGODB=1
     )
     message(STATUS "✓ MongoDB C++ driver enabled")
-    
+
     # 获取 include 目录信息用于诊断
     get_target_property(MONGOCXX_INCLUDE_DIRS mongo::mongocxx_shared INTERFACE_INCLUDE_DIRECTORIES)
     message(STATUS "  mongocxx include: ${MONGOCXX_INCLUDE_DIRS}")
@@ -296,10 +304,10 @@ endif ()
 # ═══════════════════════════════════════════════════════════════════════════════
 if (WIN32)
     set_target_properties(${PROJECT_NAME} PROPERTIES
-        WIN32_EXECUTABLE YES
-        OUTPUT_NAME "BDDB"
+            WIN32_EXECUTABLE YES
+            OUTPUT_NAME "BDDB"
     )
-    
+
     # Windows 下部署依赖 DLL
     if (TARGET Qt6::qmake)
         get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
@@ -314,12 +322,12 @@ if (WIN32)
 
             # 使用 windeployqt 部署 Qt 依赖（构建后执行）
             add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+                    COMMAND "${WINDEPLOYQT_EXECUTABLE}"
                     "$<TARGET_FILE:${PROJECT_NAME}>"
                     --no-translations
                     --no-compiler-runtime
                     --no-opengl-sw
-                COMMENT "Deploying Qt dependencies..."
+                    COMMENT "Deploying Qt dependencies..."
             )
         endif ()
     endif ()
@@ -336,19 +344,19 @@ if (WIN32)
         endif ()
 
         set(MONGODB_DLLS
-            "${VCPKG_BIN_DIR}/mongoc2.dll"
-            "${VCPKG_BIN_DIR}/mongocxx-v_noabi-rhi-md.dll"
-            "${VCPKG_BIN_DIR}/bson2.dll"
-            "${VCPKG_BIN_DIR}/bsoncxx-v_noabi-rhi-md.dll"
+                "${VCPKG_BIN_DIR}/mongoc2.dll"
+                "${VCPKG_BIN_DIR}/mongocxx-v_noabi-rhi-md.dll"
+                "${VCPKG_BIN_DIR}/bson2.dll"
+                "${VCPKG_BIN_DIR}/bsoncxx-v_noabi-rhi-md.dll"
         )
 
-        foreach(DLL_PATH ${MONGODB_DLLS})
+        foreach (DLL_PATH ${MONGODB_DLLS})
             if (EXISTS ${DLL_PATH})
                 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        COMMAND ${CMAKE_COMMAND} -E copy_if_different
                         "${DLL_PATH}"
                         "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-                    COMMENT "Copying ${DLL_PATH}"
+                        COMMENT "Copying ${DLL_PATH}"
                 )
             endif ()
         endforeach ()
@@ -361,8 +369,8 @@ endif ()
 include(GNUInstallDirs)
 
 install(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    BUNDLE DESTINATION .
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        BUNDLE DESTINATION .
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
