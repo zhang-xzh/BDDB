@@ -165,21 +165,18 @@ message(STATUS "✓ Using Qt ${Qt6Core_VERSION}")
 # ═══════════════════════════════════════════════════════════════════════════════
 # MongoDB C++ 驱动智能查找
 # ═══════════════════════════════════════════════════════════════════════════════
-function(find_mongocxx_smart)
-    message(STATUS "🔍 Searching for MongoDB C++ driver...")
-    
-    set(MONGOCXX_FOUND FALSE)
-    
-    # 首先尝试标准 find_package（通过 CMAKE_PREFIX_PATH 或 vcpkg）
-    find_package(mongocxx CONFIG QUIET)
-    find_package(bsoncxx CONFIG QUIET)
-    
-    if (mongocxx_FOUND AND bsoncxx_FOUND)
-        message(STATUS "✓ Found MongoDB C++ driver via CMake config")
-        set(MONGOCXX_FOUND TRUE PARENT_SCOPE)
-        return()
-    endif ()
-    
+# ═══════════════════════════════════════════════════════════════════════════════
+# MongoDB C++ 驱动查找
+# ═══════════════════════════════════════════════════════════════════════════════
+message(STATUS "🔍 Searching for MongoDB C++ driver...")
+
+# 首先尝试标准 find_package（通过 CMAKE_PREFIX_PATH 或 vcpkg）
+find_package(mongocxx CONFIG QUIET)
+find_package(bsoncxx CONFIG QUIET)
+
+if (mongocxx_FOUND AND bsoncxx_FOUND)
+    message(STATUS "✓ Found MongoDB C++ driver via CMake config")
+else ()
     # 尝试从 vcpkg 安装目录自动推断
     if (DEFINED VCPKG_INSTALLED_DIR)
         set(VCPKG_BASE "${VCPKG_INSTALLED_DIR}")
@@ -201,40 +198,34 @@ function(find_mongocxx_smart)
             endif ()
         endforeach ()
     endif ()
-    
-    if (NOT VCPKG_BASE)
-        message(STATUS "⚠ vcpkg installed directory not found")
-        return()
-    endif ()
-    
-    message(STATUS "  Checking vcpkg: ${VCPKG_BASE}")
-    
-    # 在 share 目录中搜索 mongocxx 和 bsoncxx
-    file(GLOB MONGOCXX_CONFIG_PATHS "${VCPKG_BASE}/share/*mongocxx*/*config*.cmake")
-    file(GLOB BSONCXX_CONFIG_PATHS "${VCPKG_BASE}/share/*bsoncxx*/*config*.cmake")
-    
-    if (MONGOCXX_CONFIG_PATHS AND BSONCXX_CONFIG_PATHS)
-        # 提取目录路径
-        list(GET MONGOCXX_CONFIG_PATHS 0 MONGOCXX_CONFIG)
-        list(GET BSONCXX_CONFIG_PATHS 0 BSONCXX_CONFIG)
-        get_filename_component(mongocxx_DIR "${MONGOCXX_CONFIG}" DIRECTORY)
-        get_filename_component(bsoncxx_DIR "${BSONCXX_CONFIG}" DIRECTORY)
-        
-        set(mongocxx_DIR "${mongocxx_DIR}" CACHE PATH "mongocxx directory" FORCE)
-        set(bsoncxx_DIR "${bsoncxx_DIR}" CACHE PATH "bsoncxx directory" FORCE)
-        
-        # 重新查找
-        find_package(mongocxx CONFIG REQUIRED)
-        find_package(bsoncxx CONFIG REQUIRED)
-        
-        if (mongocxx_FOUND AND bsoncxx_FOUND)
-            message(STATUS "✓ Found MongoDB C++ driver in vcpkg")
-            set(MONGOCXX_FOUND TRUE PARENT_SCOPE)
+
+    if (VCPKG_BASE)
+        message(STATUS "  Checking vcpkg: ${VCPKG_BASE}")
+
+        # 在 share 目录中搜索 mongocxx 和 bsoncxx
+        file(GLOB MONGOCXX_CONFIG_PATHS "${VCPKG_BASE}/share/*mongocxx*/*config*.cmake")
+        file(GLOB BSONCXX_CONFIG_PATHS "${VCPKG_BASE}/share/*bsoncxx*/*config*.cmake")
+
+        if (MONGOCXX_CONFIG_PATHS AND BSONCXX_CONFIG_PATHS)
+            # 提取目录路径
+            list(GET MONGOCXX_CONFIG_PATHS 0 MONGOCXX_CONFIG)
+            list(GET BSONCXX_CONFIG_PATHS 0 BSONCXX_CONFIG)
+            get_filename_component(mongocxx_DIR "${MONGOCXX_CONFIG}" DIRECTORY)
+            get_filename_component(bsoncxx_DIR "${BSONCXX_CONFIG}" DIRECTORY)
+
+            set(mongocxx_DIR "${mongocxx_DIR}" CACHE PATH "mongocxx directory" FORCE)
+            set(bsoncxx_DIR "${bsoncxx_DIR}" CACHE PATH "bsoncxx directory" FORCE)
+
+            # 重新查找
+            find_package(mongocxx CONFIG REQUIRED)
+            find_package(bsoncxx CONFIG REQUIRED)
+
+            if (mongocxx_FOUND AND bsoncxx_FOUND)
+                message(STATUS "✓ Found MongoDB C++ driver in vcpkg")
+            endif ()
         endif ()
     endif ()
-endfunction()
-
-find_mongocxx_smart()
+endif ()
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 源文件收集
@@ -279,13 +270,15 @@ if (mongocxx_FOUND AND bsoncxx_FOUND)
     )
     target_compile_definitions(${PROJECT_NAME} PRIVATE 
         HAVE_MONGODB=1
-        BSONCXX_STATIC
-        MONGOCXX_STATIC
     )
     message(STATUS "✓ MongoDB C++ driver enabled")
+    
+    # 获取 include 目录信息用于诊断
+    get_target_property(MONGOCXX_INCLUDE_DIRS mongo::mongocxx_shared INTERFACE_INCLUDE_DIRECTORIES)
+    message(STATUS "  mongocxx include: ${MONGOCXX_INCLUDE_DIRS}")
 else ()
     message(STATUS "⚠ MongoDB C++ driver not found - local DB features disabled")
-    message(STATUS "  Install via vcpkg: vcpkg install mongocxx[bsoncxx]")
+    message(STATUS "  Install via vcpkg: vcpkg install mongocxx")
 endif ()
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -307,16 +300,58 @@ if (WIN32)
         OUTPUT_NAME "BDDB"
     )
     
-    # Windows 下复制 Qt 依赖（开发时有用）
+    # Windows 下部署依赖 DLL
     if (TARGET Qt6::qmake)
         get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
         get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
-        
-        # 添加 windeployqt 自定义命令（可选）
         find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${QT_BIN_DIR}")
+
         if (WINDEPLOYQT_EXECUTABLE)
             message(STATUS "  Found windeployqt: ${WINDEPLOYQT_EXECUTABLE}")
+
+            # 获取目标文件路径
+            set(TARGET_EXE "$<TARGET_FILE:${PROJECT_NAME}>")
+
+            # 使用 windeployqt 部署 Qt 依赖（构建后执行）
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+                    "$<TARGET_FILE:${PROJECT_NAME}>"
+                    --no-translations
+                    --no-compiler-runtime
+                    --no-opengl-sw
+                COMMENT "Deploying Qt dependencies..."
+            )
         endif ()
+    endif ()
+
+    # 复制 MongoDB C++ 驱动 DLL
+    if (mongocxx_FOUND AND bsoncxx_FOUND)
+        # 从 vcpkg 安装目录获取 DLL 路径
+        if (DEFINED VCPKG_INSTALLED_DIR)
+            set(VCPKG_BIN_DIR "${VCPKG_INSTALLED_DIR}/x64-windows/bin")
+        elseif (DEFINED _VCPKG_INSTALLED_DIR)
+            set(VCPKG_BIN_DIR "${_VCPKG_INSTALLED_DIR}/x64-windows/bin")
+        else ()
+            set(VCPKG_BIN_DIR "C:/Users/zhang/.vcpkg-clion/vcpkg/installed/x64-windows/bin")
+        endif ()
+
+        set(MONGODB_DLLS
+            "${VCPKG_BIN_DIR}/mongoc2.dll"
+            "${VCPKG_BIN_DIR}/mongocxx-v_noabi-rhi-md.dll"
+            "${VCPKG_BIN_DIR}/bson2.dll"
+            "${VCPKG_BIN_DIR}/bsoncxx-v_noabi-rhi-md.dll"
+        )
+
+        foreach(DLL_PATH ${MONGODB_DLLS})
+            if (EXISTS ${DLL_PATH})
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        "${DLL_PATH}"
+                        "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+                    COMMENT "Copying ${DLL_PATH}"
+                )
+            endif ()
+        endforeach ()
     endif ()
 endif ()
 
