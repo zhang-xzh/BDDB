@@ -37,6 +37,8 @@ export {
     searchBangumi,
     getBangumiIndexStats,
     getBangumiTypeStats,
+    syncAllBangumiSubjects,
+    rebuildBangumiIndex,
     type BangumiSearchDoc,
     type BangumiSearchResult,
     type BangumiSearchOptions,

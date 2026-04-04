@@ -1,5 +1,7 @@
 import {getMeiliClient} from './client'
 import type {SearchParams} from 'meilisearch'
+import {getAllSubjects, getTotalSubjectsCount, SUBJECT_TYPE_NAMES} from '@/lib/mongodb'
+import {getSubjectUrl} from '@/lib/bangumi'
 
 // Bangumi 搜索索引名称 (与 products 索引区分)
 export const BANGUMI_INDEX = 'bangumi_subjects'
@@ -327,4 +329,98 @@ export async function getBangumiTypeStats(): Promise<Record<number, number>> {
     }
 
     return typeStats
+}
+
+// ============ 同步功能 ============
+
+import type {BangumiSubjectDoc} from '@/lib/mongodb'
+
+/**
+ * 将 BangumiSubjectDoc 转换为搜索文档
+ */
+function convertToSearchDoc(subject: BangumiSubjectDoc): BangumiSearchDoc {
+    return {
+        subject_id: subject._id,
+        name: subject.name,
+        name_cn: subject.name_cn || '',
+        type: subject.type,
+        type_name: SUBJECT_TYPE_NAMES[subject.type] || '未知',
+        platform: subject.platform,
+        platform_name: subject.platform_info?.type_cn,
+        summary: subject.summary || '',
+        date: subject.date,
+        score: subject.meta?.score,
+        rank: subject.meta?.rank,
+        url: getSubjectUrl(subject._id),
+        tags: subject.meta?.tags || [],
+        nsfw: subject.nsfw || false,
+    }
+}
+
+/**
+ * 全量同步所有 Bangumi 条目
+ */
+export async function syncAllBangumiSubjects(
+    onProgress?: (processed: number, total: number) => void
+): Promise<{ total: number; indexed: number }> {
+    console.log('[bangumiSearch] Starting full sync...')
+
+    const total = await getTotalSubjectsCount()
+    console.log(`[bangumiSearch] Total subjects to sync: ${total}`)
+
+    if (total === 0) {
+        console.log('[bangumiSearch] No subjects found in MongoDB')
+        return {total: 0, indexed: 0}
+    }
+
+    // 确保索引存在
+    await setupBangumiIndex()
+
+    const batchSize = 1000
+    let processed = 0
+    let skip = 0
+
+    while (processed < total) {
+        const subjects = await getAllSubjects({batchSize, skip})
+
+        if (subjects.length === 0) break
+
+        // 转换为搜索文档
+        const docs = subjects.map(convertToSearchDoc)
+
+        // 批量索引
+        await bulkIndexBangumiSubjects(docs)
+
+        processed += subjects.length
+        skip += batchSize
+
+        onProgress?.(processed, total)
+        console.log(`[bangumiSearch] Progress: ${processed}/${total}`)
+    }
+
+    console.log('[bangumiSearch] Sync completed')
+
+    // 显示统计
+    const stats = await getBangumiIndexStats()
+    console.log(`[bangumiSearch] Indexed documents: ${stats.totalDocuments}`)
+
+    return {total, indexed: processed}
+}
+
+/**
+ * 重建 Bangumi 索引
+ */
+export async function rebuildBangumiIndex(
+    onProgress?: (processed: number, total: number) => void
+): Promise<{ total: number; indexed: number }> {
+    console.log('[bangumiSearch] Rebuilding index...')
+
+    // 删除旧索引
+    await deleteBangumiIndex()
+
+    // 重新同步
+    const result = await syncAllBangumiSubjects(onProgress)
+
+    console.log('[bangumiSearch] Rebuild completed')
+    return result
 }

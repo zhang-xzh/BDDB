@@ -87,12 +87,15 @@ export async function syncProductsByIds(productIds: string[]): Promise<void> {
 }
 
 // 重建索引（删除并重新创建）
-export async function rebuildIndex(): Promise<void> {
+export async function rebuildIndex(
+    onProgress?: (processed: number, total: number) => void
+): Promise<{ total: number; indexed: number }> {
     console.log('[meilisearch-sync] Rebuilding index...')
     await deleteProductsIndex()
     await setupProductsIndex()
-    await syncAllProducts()
+    const result = await syncAllProducts(onProgress)
     console.log('[meilisearch-sync] Rebuild completed')
+    return result
 }
 
 // 同步单个产品

@@ -7,93 +7,15 @@
 //   stats    - 显示索引统计
 //   clear    - 清空索引
 
-import type {BangumiSearchDoc} from '@/lib/meilisearch'
-import {BANGUMI_INDEX, bulkIndexBangumiSubjects, clearAllBangumiSubjects, deleteBangumiIndex, ensureMeiliConnected, getBangumiIndexStats, setupBangumiIndex,} from '@/lib/meilisearch'
-import {type BangumiSubjectDoc, getAllSubjects, getTotalSubjectsCount, SUBJECT_TYPE_NAMES,} from '@/lib/mongodb'
-import {getSubjectUrl} from '@/lib/bangumi'
-
-/**
- * 将 BangumiSubjectDoc 转换为搜索文档
- */
-function convertToSearchDoc(subject: BangumiSubjectDoc): BangumiSearchDoc {
-    return {
-        subject_id: subject._id,
-        name: subject.name,
-        name_cn: subject.name_cn || '',
-        type: subject.type,
-        type_name: SUBJECT_TYPE_NAMES[subject.type] || '未知',
-        platform: subject.platform,
-        platform_name: subject.platform_info?.type_cn,
-        summary: subject.summary || '',
-        date: subject.date,
-        score: subject.meta?.score,
-        rank: subject.meta?.rank,
-        url: getSubjectUrl(subject._id),
-        tags: subject.meta?.tags || [],
-        nsfw: subject.nsfw || false,
-    }
-}
-
-/**
- * 全量同步所有 Bangumi 条目
- */
-async function syncAllBangumiSubjects(): Promise<void> {
-    console.log('[syncBangumiMeili] Starting full sync...')
-
-    const total = await getTotalSubjectsCount()
-    console.log(`[syncBangumiMeili] Total subjects to sync: ${total}`)
-
-    if (total === 0) {
-        console.log('[syncBangumiMeili] No subjects found in MongoDB')
-        return
-    }
-
-    // 确保索引存在
-    await setupBangumiIndex()
-
-    const batchSize = 1000
-    let processed = 0
-    let skip = 0
-
-    while (processed < total) {
-        const subjects = await getAllSubjects({batchSize, skip})
-
-        if (subjects.length === 0) break
-
-        // 转换为搜索文档
-        const docs = subjects.map(convertToSearchDoc)
-
-        // 批量索引
-        await bulkIndexBangumiSubjects(docs)
-
-        processed += subjects.length
-        skip += batchSize
-
-        const percent = Math.round((processed / total) * 100)
-        process.stdout.write(`\r[syncBangumiMeili] Progress: ${processed}/${total} (${percent}%)`)
-    }
-
-    console.log('\n[syncBangumiMeili] Sync completed')
-
-    // 显示统计
-    const stats = await getBangumiIndexStats()
-    console.log(`[syncBangumiMeili] Indexed documents: ${stats.totalDocuments}`)
-}
-
-/**
- * 重建索引
- */
-async function rebuildBangumiIndex(): Promise<void> {
-    console.log('[syncBangumiMeili] Rebuilding index...')
-
-    // 删除旧索引
-    await deleteBangumiIndex()
-
-    // 重新同步
-    await syncAllBangumiSubjects()
-
-    console.log('[syncBangumiMeili] Rebuild completed')
-}
+import {
+    BANGUMI_INDEX,
+    clearAllBangumiSubjects,
+    deleteBangumiIndex,
+    ensureMeiliConnected,
+    getBangumiIndexStats,
+    rebuildBangumiIndex,
+    syncAllBangumiSubjects,
+} from '@/lib/meilisearch'
 
 /**
  * 显示索引统计
@@ -117,6 +39,32 @@ async function clearBangumiIndex(): Promise<void> {
 }
 
 /**
+ * 全量同步
+ */
+async function syncAll(): Promise<void> {
+    console.log('[syncBangumiMeili] Starting full sync...')
+    const result = await syncAllBangumiSubjects((processed, total) => {
+        const percent = Math.round((processed / total) * 100)
+        process.stdout.write(`\r[syncBangumiMeili] Progress: ${processed}/${total} (${percent}%)`)
+    })
+    console.log('\n[syncBangumiMeili] Sync completed')
+    console.log(`[syncBangumiMeili] Indexed documents: ${result.indexed}`)
+}
+
+/**
+ * 重建索引
+ */
+async function rebuild(): Promise<void> {
+    console.log('[syncBangumiMeili] Rebuilding index...')
+    const result = await rebuildBangumiIndex((processed, total) => {
+        const percent = Math.round((processed / total) * 100)
+        process.stdout.write(`\r[syncBangumiMeili] Progress: ${processed}/${total} (${percent}%)`)
+    })
+    console.log('\n[syncBangumiMeili] Rebuild completed')
+    console.log(`[syncBangumiMeili] Indexed documents: ${result.indexed}`)
+}
+
+/**
  * 主函数
  */
 async function main(): Promise<void> {
@@ -134,10 +82,10 @@ async function main(): Promise<void> {
     try {
         switch (command) {
             case 'full':
-                await syncAllBangumiSubjects()
+                await syncAll()
                 break
             case 'rebuild':
-                await rebuildBangumiIndex()
+                await rebuild()
                 break
             case 'stats':
                 await showBangumiStats()

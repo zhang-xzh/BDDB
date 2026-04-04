@@ -7,7 +7,15 @@
 //   stats       - 显示索引统计
 //   clear       - 清空所有文档
 
-import {clearAllProducts, ensureMeiliConnected, getIndexStats, rebuildIndex, setupProductsIndex, syncAllProducts,} from '@/lib/meilisearch'
+import {
+    clearAllProducts,
+    ensureMeiliConnected,
+    getIndexStats,
+    PRODUCTS_INDEX,
+    rebuildIndex,
+    setupProductsIndex,
+    syncAllProducts,
+} from '@/lib/meilisearch'
 
 async function main() {
     const command = process.argv[2] || 'full'
@@ -32,13 +40,15 @@ async function main() {
             break
 
         case 'rebuild':
-            await rebuildIndex()
+            const result = await rebuildIndex()
             console.log('[syncMeilisearch] Rebuild completed')
+            console.log(`[syncMeilisearch] Indexed documents: ${result.indexed}`)
             break
 
         case 'stats':
             const stats = await getIndexStats()
             console.log('[syncMeilisearch] Index stats:')
+            console.log(`  - Index name: ${PRODUCTS_INDEX}`)
             console.log(`  - Total documents: ${stats.totalDocuments}`)
             console.log(`  - Is indexing: ${stats.isIndexing}`)
             break
