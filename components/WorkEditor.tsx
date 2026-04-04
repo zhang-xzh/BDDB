@@ -3,12 +3,13 @@
 import {fetchApi, postApi} from '@/lib/api'
 import {type BangumiSearchResult, type BangumiSubject, formatDate, getBangumiSubject, getTypeName, searchBangumi} from '@/lib/bangumi'
 import type {FileItem} from '@/lib/mongodb'
-import {buildTree} from '@/lib/utils'
+import {buildTree, SPACING} from '@/lib/utils'
 import {EditOutlined, LinkOutlined, SaveOutlined} from '@ant-design/icons'
-import {App, Button, Card, Descriptions, Empty, Flex, Select, Spin, Tag, Typography} from 'antd'
+import {App, Button, Card, Descriptions, Empty, Flex, Select, Space, Spin, Tag, Typography} from 'antd'
 import type {DefaultOptionType, RefSelectProps} from 'antd/es/select'
 import type {DataNode} from 'antd/es/tree'
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {ProductNotePanel} from "@/components/ProductNotePanel";
 
 type SearchResultItem = BangumiSearchResult['list'][number]
 type WorkCandidate = BangumiSubject | SearchResultItem
@@ -155,9 +156,9 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
 
 function WorkDetail({work}: { work: BangumiSubject }) {
     return (
-        <Card size="small">
-            <Flex vertical gap={12}>
-                <Flex vertical gap={4}>
+        <Card size="small" styles={{body: {padding: '8px 12px'}}}>
+            <Flex vertical gap={8}>
+                <Flex vertical gap={2}>
                     <Typography.Title level={5} style={{margin: 0}}>
                         {work.name_cn || work.name}
                     </Typography.Title>
@@ -166,25 +167,29 @@ function WorkDetail({work}: { work: BangumiSubject }) {
                     )}
                 </Flex>
 
-                <Descriptions size="small" column={1} items={[
-                    {key: 'type', label: '类型', children: getTypeName(work.type)},
-                    {key: 'eps', label: '话数', children: work.eps > 0 ? `${work.eps} 话` : '-'},
-                    {key: 'air_date', label: '放送日期', children: formatDate(work.air_date)},
-                    {key: 'rating', label: '评分', children: work.rating?.score > 0 ? `${work.rating.score} / 10 (${work.rating.total} 人评分)` : '-'},
-                    {key: 'rank', label: '排名', children: work.rank > 0 ? `#${work.rank}` : '-'},
-                    {key: 'summary', label: '简介', children: work.summary || '-'},
-                    {
-                        key: 'url',
-                        label: 'Bangumi',
-                        children: work.url ? (
-                            <Typography.Link href={work.url} target="_blank" rel="noreferrer">
-                                {work.url}
-                            </Typography.Link>
-                        ) : '-'
-                    },
-                ]}/>
+                <Descriptions
+                    size="small"
+                    column={1}
+                    items={[
+                        {key: 'type', label: '类型', children: getTypeName(work.type)},
+                        {key: 'eps', label: '话数', children: work.eps > 0 ? `${work.eps} 话` : '-'},
+                        {key: 'air_date', label: '放送日期', children: formatDate(work.air_date)},
+                        {key: 'rating', label: '评分', children: work.rating?.score > 0 ? `${work.rating.score} / 10 (${work.rating.total} 人评分)` : '-'},
+                        {key: 'rank', label: '排名', children: work.rank > 0 ? `#${work.rank}` : '-'},
+                        {key: 'summary', label: '简介', children: work.summary || '-'},
+                        {
+                            key: 'url',
+                            label: 'Bangumi',
+                            children: work.url ? (
+                                <Typography.Link href={work.url} target="_blank" rel="noreferrer">
+                                    {work.url}
+                                </Typography.Link>
+                            ) : '-'
+                        },
+                    ]}
+                />
 
-                <Flex wrap gap={8}>
+                <Flex wrap gap={6}>
                     <Tag>想看: {work.collection?.wish ?? 0}</Tag>
                     <Tag>看过: {work.collection?.collect ?? 0}</Tag>
                     <Tag>在看: {work.collection?.doing ?? 0}</Tag>
@@ -198,7 +203,7 @@ function WorkDetail({work}: { work: BangumiSubject }) {
 
 function WorkReadOnlyView({works, onEdit}: { works: BangumiSubject[]; onEdit: () => void }) {
     return (
-        <Flex vertical gap={12}>
+        <Flex vertical gap={8}>
             {works.map((work) => (
                 <React.Fragment key={work.id}>
                     <WorkDetail work={work}/>
@@ -278,7 +283,7 @@ function WorkEditView({
     }, [])
 
     return (
-        <Flex vertical gap={12}>
+        <Flex vertical gap={8}>
             <Select
                 ref={selectRef}
                 mode="multiple"
@@ -307,9 +312,9 @@ function WorkEditView({
 
             {tempWorks.length > 0 && (
                 <Card size="small">
-                    <Flex vertical gap={8}>
+                    <Flex vertical gap={6}>
                         {tempWorks.map(work => (
-                            <Flex key={work.id} justify="space-between" align="center" gap={12}>
+                            <Flex key={work.id} justify="space-between" align="center" gap={8}>
                                 <Flex vertical gap={2} style={{minWidth: 0, flex: 1}}>
                                     <Typography.Text strong ellipsis>{work.name_cn || work.name}</Typography.Text>
                                     <Typography.Text type="secondary" style={{fontSize: 12}}>
@@ -400,7 +405,7 @@ function WorkFormList({
     }, [message, onSubmit, onWorksChange, tempWorks])
 
     return (
-        <Card size="small" title="作品信息">
+        <Card size="small" title="作品信息" styles={{body: {padding: '8px 12px'}}}>
             {isEditing ? (
                 <WorkEditView
                     selectedWorks={selectedWorks}
@@ -428,18 +433,27 @@ function WorkFormList({
 export function WorkEditorContent({
                                       loading,
                                       saving,
+                                      volumeInfo,
+                                      files,
+                                      treeData,
+                                      defaultExpandedKeys,
                                       selectedWorks,
                                       onWorksChange,
                                       onSubmit,
                                   }: WorkEditorContentProps) {
     return (
         <Spin spinning={loading || saving}>
-            <WorkFormList
-                selectedWorks={selectedWorks}
-                onWorksChange={onWorksChange}
-                saving={saving}
-                onSubmit={onSubmit}
-            />
+            <Space orientation="vertical" style={{width: "100%"}}>
+                <ProductNotePanel volumeId={volumeInfo?.volumeId}/>
+                <Space orientation="vertical" style={{width: '100%', paddingTop: SPACING.sm}} size={SPACING.md}>
+                    <WorkFormList
+                        selectedWorks={selectedWorks}
+                        onWorksChange={onWorksChange}
+                        saving={saving}
+                        onSubmit={onSubmit}
+                    />
+                </Space>
+            </Space>
         </Spin>
     )
 }

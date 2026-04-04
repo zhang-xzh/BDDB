@@ -172,8 +172,8 @@ const desktopTheme = (isDark: boolean): ThemeConfig => ({
             optionActiveBg: isDark ? '#3a3a3a' : '#e8e8e8',
         },
         Tree: {
-            // 树图标居中
-            titleHeight: 28,
+            // 树节点紧凑
+            titleHeight: 20,
             nodeSelectedBg: isDark ? '#333333' : '#e8e8e8',
         },
     },
