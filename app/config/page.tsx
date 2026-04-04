@@ -95,7 +95,7 @@ const ConfigPage: React.FC = () => {
             <Row gutter={[SPACING.md, SPACING.md]}>
                 {/* 数据管理 */}
                 <Col xs={24} md={12}>
-                    <Card title="同步操作" size="small" styles={{body: {padding: SPACING.md}}}>
+                    <Card title="数据管理" size="small" styles={{body: {padding: SPACING.md}}}>
                         <Space style={{width: '100%'}} size={SPACING.md} orientation="vertical">
                             <Flex vertical gap="small">
                                 <Typography.Text strong style={{fontSize: 13}}>同步 qBittorrent</Typography.Text>
@@ -103,21 +103,15 @@ const ConfigPage: React.FC = () => {
                                     从 qBittorrent 获取最新的种子列表并更新到数据库。如果种子已存在则更新状态，否则添加新种子。
                                 </Typography.Paragraph>
                                 <Button
-                                    type="primary"
                                     onClick={syncTorrents}
                                     loading={syncing}
                                     icon={<SyncOutlined spin={syncing}/>}
-                                    size="middle"
                                     block
                                 >
                                     {syncing ? '同步中...' : '开始同步'}
                                 </Button>
                             </Flex>
 
-                        </Space>
-                    </Card>
-                    <Card title="数据管理" size="small" styles={{body: {padding: SPACING.md}}}>
-                        <Space style={{width: '100%'}} size={SPACING.md} orientation="vertical">
                             <Flex vertical gap="small">
                                 <Typography.Text strong style={{fontSize: 13}}>关联产品</Typography.Text>
                                 <Typography.Paragraph type="secondary" style={{fontSize: 12, marginBottom: 0}}>
@@ -127,7 +121,6 @@ const ConfigPage: React.FC = () => {
                                     onClick={linkProducts}
                                     loading={linking}
                                     icon={<LinkOutlined/>}
-                                    size="middle"
                                     block
                                 >
                                     {linking ? '关联中...' : '开始关联'}
@@ -143,7 +136,6 @@ const ConfigPage: React.FC = () => {
                                     onClick={rebuildBangumi}
                                     loading={rebuildingBangumi}
                                     icon={<SyncOutlined spin={rebuildingBangumi}/>}
-                                    size="middle"
                                     block
                                 >
                                     {rebuildingBangumi ? '重建中...' : '开始重建'}
@@ -159,7 +151,6 @@ const ConfigPage: React.FC = () => {
                                     onClick={rebuildMeili}
                                     loading={rebuildingMeili}
                                     icon={<SyncOutlined spin={rebuildingMeili}/>}
-                                    size="middle"
                                     block
                                 >
                                     {rebuildingMeili ? '重建中...' : '开始重建'}
