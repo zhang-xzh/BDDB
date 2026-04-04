@@ -1,16 +1,14 @@
 'use client'
 
-import {FileTreeCard} from '@/components/FileTreeCard'
 import {fetchApi, postApi} from '@/lib/api'
 import {type BangumiSearchResult, type BangumiSubject, formatDate, getBangumiSubject, getTypeName, searchBangumi} from '@/lib/bangumi'
 import type {FileItem} from '@/lib/mongodb'
-import {buildTree, SPACING} from '@/lib/utils'
+import {buildTree} from '@/lib/utils'
 import {EditOutlined, LinkOutlined, SaveOutlined} from '@ant-design/icons'
-import {App, Button, Card, Descriptions, Empty, Flex, Select, Space, Spin, Tag, Typography} from 'antd'
+import {App, Button, Card, Descriptions, Empty, Flex, Select, Spin, Tag, Typography} from 'antd'
 import type {DefaultOptionType, RefSelectProps} from 'antd/es/select'
 import type {DataNode} from 'antd/es/tree'
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {ProductNotePanel} from "@/components/ProductNotePanel";
 
 type SearchResultItem = BangumiSearchResult['list'][number]
 type WorkCandidate = BangumiSubject | SearchResultItem
@@ -430,41 +428,18 @@ function WorkFormList({
 export function WorkEditorContent({
                                       loading,
                                       saving,
-                                      volumeInfo,
-                                      files,
-                                      treeData,
-                                      defaultExpandedKeys,
                                       selectedWorks,
                                       onWorksChange,
                                       onSubmit,
                                   }: WorkEditorContentProps) {
     return (
         <Spin spinning={loading || saving}>
-            <Space orientation="vertical" style={{width: "100%"}}>
-                <Space
-                    orientation="vertical"
-                    style={{width: "100%", paddingTop: SPACING.sm}}
-                    size={SPACING.md}
-                >
-                    <ProductNotePanel volumeId={volumeInfo?.volumeId}/>
-                </Space>
-                <Space orientation="vertical" style={{width: '100%', paddingTop: SPACING.sm}} size={SPACING.md}>
-                    <FileTreeCard
-                        files={files}
-                        treeData={treeData}
-                        defaultExpandedKeys={defaultExpandedKeys}
-                        blockNode
-                        selectable={false}
-                        titleSuffix={volumeInfo?.catalogNo || undefined}
-                    />
-                    <WorkFormList
-                        selectedWorks={selectedWorks}
-                        onWorksChange={onWorksChange}
-                        saving={saving}
-                        onSubmit={onSubmit}
-                    />
-                </Space>
-            </Space>
+            <WorkFormList
+                selectedWorks={selectedWorks}
+                onWorksChange={onWorksChange}
+                saving={saving}
+                onSubmit={onSubmit}
+            />
         </Spin>
     )
 }
