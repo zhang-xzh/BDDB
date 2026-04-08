@@ -4,7 +4,7 @@ import {fetchApi, postApi} from '@/lib/api'
 import {type BangumiSearchResult, type BangumiSubject, formatDate, getBangumiSubject, getTypeName, searchBangumi} from '@/lib/bangumi'
 import type {FileItem} from '@/lib/mongodb'
 import {buildTree, SPACING} from '@/lib/utils'
-import {EditOutlined, LinkOutlined, SaveOutlined} from '@ant-design/icons'
+import {EditOutlined, SaveOutlined} from '@ant-design/icons'
 import {App, Button, Card, Descriptions, Empty, Flex, Select, Space, Spin, Tag, Typography} from 'antd'
 import type {DefaultOptionType, RefSelectProps} from 'antd/es/select'
 import type {DataNode} from 'antd/es/tree'
@@ -156,60 +156,58 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
 
 function WorkDetail({work}: { work: BangumiSubject }) {
     return (
-        <Card size="small" styles={{body: {padding: `${SPACING.sm}px ${SPACING.md}px`}}}>
-            <Flex vertical gap={SPACING.sm}>
-                <Flex vertical gap={2}>
-                    <Typography.Title level={5} style={{margin: 0}}>
-                        {work.name_cn || work.name}
-                    </Typography.Title>
-                    {work.name_cn && work.name !== work.name_cn && (
-                        <Typography.Text type="secondary">{work.name}</Typography.Text>
-                    )}
-                </Flex>
-
-                <Descriptions
-                    size="small"
-                    column={1}
-                    items={[
-                        {key: 'type', label: '类型', children: getTypeName(work.type)},
-                        {key: 'eps', label: '话数', children: work.eps > 0 ? `${work.eps} 话` : '-'},
-                        {key: 'air_date', label: '放送日期', children: formatDate(work.air_date)},
-                        {key: 'rating', label: '评分', children: work.rating?.score > 0 ? `${work.rating.score} / 10 (${work.rating.total} 人评分)` : '-'},
-                        {key: 'rank', label: '排名', children: work.rank > 0 ? `#${work.rank}` : '-'},
-                        {key: 'summary', label: '简介', children: work.summary || '-'},
-                        {
-                            key: 'url',
-                            label: 'Bangumi',
-                            children: work.url ? (
-                                <Typography.Link href={work.url} target="_blank" rel="noreferrer">
-                                    {work.url}
-                                </Typography.Link>
-                            ) : '-'
-                        },
-                    ]}
-                />
-
-                <Flex wrap gap={SPACING.sm}>
-                    <Tag>想看: {work.collection?.wish ?? 0}</Tag>
-                    <Tag>看过: {work.collection?.collect ?? 0}</Tag>
-                    <Tag>在看: {work.collection?.doing ?? 0}</Tag>
-                    <Tag>搁置: {work.collection?.on_hold ?? 0}</Tag>
-                    <Tag>抛弃: {work.collection?.dropped ?? 0}</Tag>
-                </Flex>
+        <Flex vertical gap="middle">
+            <Flex vertical gap={2}>
+                <Typography.Title level={5} style={{margin: 0}}>
+                    {work.name_cn || work.name}
+                </Typography.Title>
+                {work.name_cn && work.name !== work.name_cn && (
+                    <Typography.Text type="secondary">{work.name}</Typography.Text>
+                )}
             </Flex>
-        </Card>
+
+            <Descriptions
+                size="small"
+                column={1}
+                items={[
+                    {key: 'type', label: '类型', children: getTypeName(work.type)},
+                    {key: 'eps', label: '话数', children: work.eps > 0 ? `${work.eps} 话` : '-'},
+                    {key: 'air_date', label: '放送日期', children: formatDate(work.air_date)},
+                    {key: 'rating', label: '评分', children: work.rating?.score > 0 ? `${work.rating.score} / 10 (${work.rating.total} 人评分)` : '-'},
+                    {key: 'rank', label: '排名', children: work.rank > 0 ? `#${work.rank}` : '-'},
+                    {key: 'summary', label: '简介', children: work.summary || '-'},
+                    {
+                        key: 'url',
+                        label: 'Bangumi',
+                        children: work.url ? (
+                            <Typography.Link href={work.url} target="_blank" rel="noreferrer">
+                                {work.url}
+                            </Typography.Link>
+                        ) : '-'
+                    },
+                ]}
+            />
+
+            <Flex wrap gap="middle">
+                <Tag>想看: {work.collection?.wish ?? 0}</Tag>
+                <Tag>看过: {work.collection?.collect ?? 0}</Tag>
+                <Tag>在看: {work.collection?.doing ?? 0}</Tag>
+                <Tag>搁置: {work.collection?.on_hold ?? 0}</Tag>
+                <Tag>抛弃: {work.collection?.dropped ?? 0}</Tag>
+            </Flex>
+        </Flex>
     )
 }
 
 function WorkReadOnlyView({works, onEdit}: { works: BangumiSubject[]; onEdit: () => void }) {
     return (
-        <Flex vertical gap={SPACING.sm}>
+        <Flex vertical gap="middle">
             {works.map((work) => (
                 <React.Fragment key={work.id}>
                     <WorkDetail work={work}/>
                 </React.Fragment>
             ))}
-            <Button icon={<EditOutlined/>} onClick={onEdit} style={{width: 120}}>
+            <Button icon={<EditOutlined/>} onClick={onEdit} style={{width: 120}} size="small">
                 更换作品
             </Button>
         </Flex>
@@ -283,14 +281,14 @@ function WorkEditView({
     }, [])
 
     return (
-        <Flex vertical gap={SPACING.sm}>
+        <Flex vertical gap="middle">
             <Select
+                size={"small"}
                 ref={selectRef}
                 mode="multiple"
                 showSearch
                 allowClear
                 filterOption={false}
-                style={{width: '100%'}}
                 placeholder="输入日文或中文标题搜索作品"
                 value={tempWorks.map(work => work.id)}
                 options={options}
@@ -311,34 +309,26 @@ function WorkEditView({
             />
 
             {tempWorks.length > 0 && (
-                <Card size="small">
-                    <Flex vertical gap={SPACING.sm}>
-                        {tempWorks.map(work => (
-                            <Flex key={work.id} justify="space-between" align="center" gap={SPACING.sm}>
-                                <Flex vertical gap={2} style={{minWidth: 0, flex: 1}}>
-                                    <Typography.Text strong ellipsis>{work.name_cn || work.name}</Typography.Text>
-                                    <Typography.Text type="secondary">
-                                        {getTypeName(work.type)} {work.air_date ? `· ${formatDate(work.air_date)}` : ''}
-                                    </Typography.Text>
-                                </Flex>
-                                {'url' in work && work.url && (
-                                    <Typography.Link href={work.url} target="_blank" rel="noreferrer">
-                                        <LinkOutlined/>
-                                    </Typography.Link>
-                                )}
+                <Flex vertical gap="middle">
+                    {tempWorks.map(work => (
+                        <Flex key={work.id} justify="space-between" align="center" gap="middle">
+                            <Flex vertical gap={2}>
+                                <Typography.Text strong ellipsis>{work.name_cn || work.name}</Typography.Text>
+                                <Typography.Text type="secondary">
+                                    {getTypeName(work.type)} {work.air_date ? `· ${formatDate(work.air_date)}` : ''}
+                                </Typography.Text>
                             </Flex>
-                        ))}
-                    </Flex>
-                </Card>
+                        </Flex>
+                    ))}
+                </Flex>
             )}
-
-            <Flex gap={SPACING.sm}>
+            <Flex gap="middle">
                 {onCancel && (
-                    <Button onClick={onCancel} disabled={saving}>
+                    <Button onClick={onCancel} disabled={saving} size={"small"}>
                         取消
                     </Button>
                 )}
-                <Button type="primary" icon={<SaveOutlined/>} onClick={onSave} disabled={!isChanged || saving} loading={saving}>
+                <Button type="primary" size={"small"} icon={<SaveOutlined/>} onClick={onSave} disabled={!isChanged || saving} loading={saving}>
                     保存
                 </Button>
             </Flex>
@@ -443,7 +433,7 @@ export function WorkEditorContent({
                                   }: WorkEditorContentProps) {
     return (
         <Spin spinning={loading || saving}>
-            <Space orientation="vertical" style={{width: '100%', paddingTop: SPACING.sm}} size={SPACING.sm}>
+            <Space orientation="vertical" style={{width: '100%'}} size="middle">
                 <ProductNotePanel volumeId={volumeInfo?.volumeId}/>
                 <WorkFormList selectedWorks={selectedWorks} onWorksChange={onWorksChange} saving={saving} onSubmit={onSubmit}/>
             </Space>

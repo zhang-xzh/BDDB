@@ -162,7 +162,7 @@ const SiderContent: React.FC = () => {
         return {
             key: product.product_id || String(index),
             label: (
-                <Flex gap={SPACING.md} align="center">
+                <Flex gap="middle" align="center">
                     {/* 缩略图 - 点击放大 */}
                     {thumbnailUrl ? (
                         <Image
@@ -190,8 +190,8 @@ const SiderContent: React.FC = () => {
                         <Text strong style={{wordBreak: 'break-word'}}>
                             {product.title}
                         </Text>
-                        <Flex gap={SPACING.sm} wrap align="center" justify="space-between">
-                            <Flex gap={SPACING.sm} wrap>
+                        <Flex gap="middle" wrap align="center" justify="space-between">
+                            <Flex gap="middle" wrap>
                                 {product.model_number && (
                                     <Tag>{product.model_number}</Tag>
                                 )}
@@ -214,7 +214,7 @@ const SiderContent: React.FC = () => {
                 </Flex>
             ),
             children: (
-                <Flex vertical gap={SPACING.md}>
+                <Flex vertical gap="middle">
                     {product.note_raw ? (
                         <div
                             style={{
@@ -236,7 +236,7 @@ const SiderContent: React.FC = () => {
     })
 
     return (
-        <Flex vertical gap={SPACING.md} style={{height: '100%'}}>
+        <Flex vertical gap="middle" style={{height: '100%'}}>
             <Input.Search
                 style={{position: 'sticky', top: 0, zIndex: 1}}
                 placeholder="搜索产品..."
@@ -250,7 +250,7 @@ const SiderContent: React.FC = () => {
             <Flex vertical ref={scrollContainerRef} style={{flex: 1, overflow: 'auto', minHeight: 0}}>
                 {searchResult ? (
                     (searchResult.products || []).length > 0 ? (
-                        <Flex vertical gap={SPACING.sm}>
+                        <Flex vertical gap="middle">
                             <Text type="secondary">
                                 共找到 {searchResult.total} 个结果
                                 {hasMore && '（滚动加载更多）'}

@@ -84,7 +84,7 @@ function AppLayout({children, isDark, onToggle}: {
                     <Button
                         type="text"
                         size="small"
-                        icon={isDark ? <SunOutlined style={{color: '#ffffff'}}/> : <MoonOutlined style={{color: '#ffffff'}}/>}
+                        icon={isDark ? <SunOutlined/> : <MoonOutlined/>}
                         onClick={onToggle}
                     />
                 </Header>
@@ -131,11 +131,11 @@ function AppLayout({children, isDark, onToggle}: {
 }
 
 const desktopTheme = (isDark: boolean): ThemeConfig => ({
-    algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+    algorithm: [
+        isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        theme.compactAlgorithm,
+    ],
     token: {
-        fontSize: 12,
-        fontSizeSM: 11,
-        fontSizeLG: 13,
         colorBgLayout: isDark ? '#1a1a1a' : '#d9d9d9',           // 页面背景：浅灰
         colorBgContainer: isDark ? '#242424' : '#e8e8e8',         // 卡片背景：淡灰
         colorBorder: isDark ? '#333333' : '#b8b8b8',              // 边框：中灰
@@ -148,22 +148,6 @@ const desktopTheme = (isDark: boolean): ThemeConfig => ({
         colorText: isDark ? '#e0e0e0' : '#333333',
         colorTextSecondary: isDark ? '#a6a6a6' : '#555555',
         colorTextTertiary: isDark ? '#737373' : '#777777',
-        paddingXS: 6,
-        paddingSM: 8,
-        padding: 12,
-        paddingMD: 12,
-        paddingLG: 16,
-        marginXS: 6,
-        marginSM: 8,
-        margin: 12,
-        marginMD: 12,
-        marginLG: 16,
-        controlHeight: 28,
-        controlHeightSM: 24,
-        controlHeightLG: 32,
-        borderRadius: 4,
-        borderRadiusSM: 2,
-        borderRadiusLG: 6,
     },
     components: {
         Layout: {
@@ -172,37 +156,7 @@ const desktopTheme = (isDark: boolean): ThemeConfig => ({
             siderBg: isDark ? '#242424' : '#e8e8e8',
         },
         Menu: {
-            itemHeight: 32,
-            itemPaddingInline: 12,
-            collapsedWidth: 40
-        },
-        Table: {
-            cellPaddingBlock: 8,
-            cellPaddingInline: 12,
-            headerBg: isDark ? '#1f1f1f' : '#7a9ab0',  // 灰蓝色表头
-        },
-        Card: {
-            paddingLG: 16,
-        },
-        Input: {
-            paddingBlock: 4,
-            paddingInline: 10,
-        },
-        Button: {
-            paddingInline: 12,
-            paddingBlock: 4,
-        },
-        Switch: {
-            // 开关内部文字大小和内边距
-            fontSize: 11,
-            fontSizeSM: 10,
-            innerMinMargin: 2,
-            innerMaxMargin: 4,
-        },
-        Select: {
-            // 选择器选项背景
-            optionSelectedBg: isDark ? '#333333' : '#d9d9d9',
-            optionActiveBg: isDark ? '#3a3a3a' : '#e8e8e8',
+            collapsedWidth: 45
         },
         Tree: {
             // 树节点紧凑

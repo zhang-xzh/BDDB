@@ -45,7 +45,7 @@ const TorrentFiltersBar: React.FC<{
       }) => {
     const {token} = theme.useToken()
     return (
-        <Space wrap size={SPACING.sm} style={{
+        <Space wrap size="middle" style={{
             position: 'sticky',
             top: 0,
             zIndex: 1,
@@ -64,7 +64,7 @@ const TorrentFiltersBar: React.FC<{
                     />
                 }
             />
-            <Select allowClear placeholder="是否处理" style={{width: 150}} value={filterHasVolumes}
+            <Select allowClear placeholder="是否处理" size="small" style={{width: 150}} value={filterHasVolumes}
                     onChange={onHasVolumesChange}
                     options={[{label: '已处理', value: true}, {label: '未处理', value: false}]}/>
             <Typography.Text type="secondary">
@@ -165,7 +165,7 @@ const TorrentsPage: React.FC = () => {
 
     if (torrents.length === 0 && !loading) {
         return (
-            <Flex vertical gap={SPACING.md}>
+            <Flex vertical gap="middle">
                 <TorrentFiltersBar
                     searchText={searchText}
                     invertSearch={invertSearch}
@@ -183,7 +183,7 @@ const TorrentsPage: React.FC = () => {
     }
 
     return (
-        <Flex vertical gap={SPACING.md}>
+        <Flex vertical gap="middle">
             <TorrentFiltersBar
                 searchText={searchText}
                 invertSearch={invertSearch}

@@ -1,6 +1,5 @@
 import {Collapse, Flex} from 'antd';
 import React, {type ReactNode, useMemo} from 'react';
-import {SPACING} from '@/lib/utils';
 
 /**
  * 行标签包装器：展开时阻止点击冒泡（防止误触收起），收起时允许点击展开。
@@ -13,7 +12,7 @@ export const ExpandBlocker: React.FC<{ isExpanded: boolean; children: ReactNode 
         <Flex
             onClick={(e) => isExpanded && e.stopPropagation()}
             align="center"
-            gap={SPACING.sm}
+            gap="middle"
             style={{width: '100%', cursor: 'pointer'}}
         >
             <Flex style={{width: 24, flexShrink: 0}}/>

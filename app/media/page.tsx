@@ -60,7 +60,7 @@ const VolumeFiltersBar: React.FC<{
       }) => {
     const {token} = theme.useToken()
     return (
-        <Space wrap size={SPACING.sm} style={{
+        <Space wrap size="middle" style={{
             position: 'sticky',
             top: 0,
             zIndex: 1,
@@ -91,6 +91,7 @@ const VolumeFiltersBar: React.FC<{
                 }
             />
             <Select
+                size="small"
                 allowClear
                 placeholder="是否处理"
                 style={{width: 150}}
@@ -209,7 +210,7 @@ const MediaPage: React.FC = () => {
 
     if (volumes.length === 0 && !loading) {
         return (
-            <Flex vertical gap={SPACING.md}>
+            <Flex vertical gap="middle">
                 <VolumeFiltersBar
                     searchCatalogNo={searchCatalogNo}
                     searchTitle={searchTitle}
@@ -229,7 +230,7 @@ const MediaPage: React.FC = () => {
     }
 
     return (
-        <Flex vertical gap={SPACING.md}>
+        <Flex vertical gap="middle">
             <VolumeFiltersBar
                 searchCatalogNo={searchCatalogNo}
                 searchTitle={searchTitle}

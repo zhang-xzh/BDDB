@@ -745,12 +745,14 @@ function MediaRow({
                 序号 {no}
             </Typography.Text>
             <Select
+                size={"small"}
                 value={form.media_type}
                 onChange={(val) => onMediaFormChange(no, {...form, media_type: val})}
                 options={MEDIA_TYPES}
                 style={{width: 100}}
             />
             <Input
+                size={"small"}
                 value={form.content_title}
                 onChange={(e) =>
                     onMediaFormChange(no, {...form, content_title: e.target.value})
@@ -760,6 +762,7 @@ function MediaRow({
                 status={titleError ? "error" : undefined}
             />
             <Input
+                size={"small"}
                 value={form.description}
                 onChange={(e) =>
                     onMediaFormChange(no, {...form, description: e.target.value})
@@ -793,7 +796,7 @@ function MediaFormList({
 
     const actions =
         onCancelEdit || onSaveEdit ? (
-            <Flex gap={SPACING.sm}>
+            <Flex gap="middle">
                 {onCancelEdit && (
                     <Button onClick={onCancelEdit} disabled={saving} size="small">
                         取消
@@ -816,7 +819,7 @@ function MediaFormList({
 
     return (
         <Card size="small" title="媒介信息">
-            <Space orientation="vertical" size={SPACING.md}>
+            <Space orientation="vertical" size="middle">
                 {selectedMedias.map((no) => (
                     <MediaRow
                         key={no}
@@ -850,7 +853,7 @@ function MediaReadOnlyView({
 
     return (
         <Card size="small" title="媒介信息">
-            <Space orientation="vertical" size={SPACING.md}>
+            <Space orientation="vertical" size="middle">
                 {selectedMedias.map((no) => {
                     const form = mediaForms[no] || {
                         media_type: "bd",
@@ -858,7 +861,7 @@ function MediaReadOnlyView({
                         description: "",
                     };
                     return (
-                        <Space key={no} size={SPACING.sm}>
+                        <Space key={no} size="middle">
                             <Typography.Text strong>
                                 序号 {no} · {getMediaTypeLabel(form.media_type)}
                             </Typography.Text>
@@ -955,8 +958,8 @@ export function MediaEditorContent({
         <Spin spinning={loading}>
             <Space
                 orientation="vertical"
-                style={{width: "100%", paddingTop: SPACING.sm}}
-                size={SPACING.sm}
+                style={{width: "100%", paddingTop: SPACING.md}}
+                size="small"
             >
                 {isEditing ? (
                     <>

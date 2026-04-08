@@ -3,7 +3,7 @@
 import {DiscTreeNodeContent, FileTreeCard} from '@/components/FileTreeCard'
 import {fetchApi, postApi} from '@/lib/api'
 import type {FileItem, NodeData, TorrentWithVolume, Volume, VolumeForm} from '@/lib/mongodb'
-import {buildTree, FlatTree, SPACING} from '@/lib/utils'
+import {buildTree, FlatTree} from '@/lib/utils'
 import {DeleteOutlined, EditOutlined, SaveOutlined} from '@ant-design/icons'
 import {Button, Card, Empty, Flex, Input, InputNumber, message, Space, Spin, Typography} from 'antd'
 import type {DataNode} from 'antd/es/tree'
@@ -524,12 +524,14 @@ function VolumeRow({vol, label, volumeForms, onVolumeFormChange, onDeleteVolume,
         <Space>
             <Typography.Text strong style={{minWidth: 60, display: 'inline-block'}}>{label}</Typography.Text>
             <Input
+                size={"small"}
                 value={form.catalog_no}
                 onChange={e => onVolumeFormChange(vol, {...form, catalog_no: e.target.value})}
                 placeholder="型番" style={{width: 120}}
                 status={submitted && !form.catalog_no.trim() ? 'error' : undefined}
             />
             <Input
+                size={"small"}
                 value={form.volume_name}
                 onChange={e => onVolumeFormChange(vol, {...form, volume_name: e.target.value})}
                 placeholder="标题" style={{width: 700}}
@@ -556,7 +558,7 @@ function VolumeFormList({
 
     const rowProps = {volumeForms, onVolumeFormChange, onDeleteVolume, submitted}
     const actions = (onCancelEdit || onSaveEdit) ? (
-        <Flex gap={SPACING.sm}>
+        <Flex gap="middle">
             {onCancelEdit && (
                 <Button onClick={onCancelEdit} disabled={saving} size="small">取消</Button>
             )}
@@ -570,12 +572,12 @@ function VolumeFormList({
 
     if (worksCount === 1) {
         return (
-        <Card size="small" title="卷信息">
-            <Space orientation="vertical" size={SPACING.md}>
-                {selectedVolumes.map(vol => <VolumeRow key={vol} vol={vol} label={`第${vol}卷`} {...rowProps} />)}
-                {actions}
-            </Space>
-        </Card>
+            <Card size="small" title="卷信息">
+                <Space orientation="vertical" size="middle">
+                    {selectedVolumes.map(vol => <VolumeRow key={vol} vol={vol} label={`第${vol}卷`} {...rowProps} />)}
+                    {actions}
+                </Space>
+            </Card>
         )
     }
 
@@ -588,14 +590,13 @@ function VolumeFormList({
 
     return (
         <Card size="small" title="卷信息">
-            <Space orientation="vertical" size={SPACING.md}>
+            <Space orientation="vertical" size="middle">
                 {Object.entries(groups).sort(([a], [b]) => Number(a) - Number(b)).map(([wiStr, vols]) => {
                     const wi = Number(wiStr)
                     return (
                         <Flex key={wi} vertical>
-                            <Typography.Text strong
-                                             style={{display: 'block', marginBottom: SPACING.sm}}>作品 {wi}</Typography.Text>
-                            <Space orientation="vertical" style={{width: '100%', paddingLeft: SPACING.md}} size={SPACING.sm}>
+                            <Typography.Text strong style={{display: 'block'}}>作品 {wi}</Typography.Text>
+                            <Space orientation="vertical" style={{width: '100%'}}>
                                 {vols.sort((a, b) => a - b).map(vn => {
                                     const enc = wi * 1000 + vn
                                     return <VolumeRow key={enc} vol={enc} label={`第${vn}卷`} {...rowProps} />
@@ -627,14 +628,14 @@ function VolumeReadOnlyView({
 
     return (
         <Card size="small" title="卷信息">
-            <Space orientation="vertical" size={SPACING.md}>
+            <Space orientation="vertical" size="middle">
                 {selectedVolumes.map(vol => {
                     const form = volumeForms[vol] || {catalog_no: '', volume_name: ''}
                     const label = worksCount === 1
                         ? `第${vol}卷`
                         : `作品 ${Math.floor(vol / 1000)} · 第${vol % 1000}卷`
                     return (
-                        <Space key={vol} size={SPACING.sm}>
+                        <Space key={vol} size="middle">
                             <Typography.Text strong>{label}</Typography.Text>
                             <Typography.Text>{form.catalog_no?.trim() ? form.catalog_no : '—'}</Typography.Text>
                             <Typography.Text type="secondary">{form.volume_name?.trim() ? form.volume_name : '—'}</Typography.Text>
@@ -739,7 +740,7 @@ export function DiscEditorContent({
 
     return (
         <Spin spinning={loading}>
-            <Space orientation="vertical" style={{width: '100%', paddingTop: SPACING.sm}} size={SPACING.sm}>
+            <Space orientation="vertical" style={{width: '100%'}}>
                 {isEditing ? (
                     <>
                         <FileTreeCard

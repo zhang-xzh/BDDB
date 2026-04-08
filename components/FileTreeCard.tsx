@@ -50,7 +50,7 @@ export function FileTreeCard({
                 {titleExtra}
             </Space>
         }
-              styles={{body: {padding: SPACING.sm}}}
+              styles={{body: {padding: SPACING.md}}}
         >
             <Tree
                 treeData={treeData}

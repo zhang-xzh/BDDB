@@ -48,7 +48,7 @@ function buildJsonTreeNodes(data: unknown, key: string = "root", title: string =
         return {
             key,
             title: (
-                <Flex gap="small" style={{width: "100%"}} align="flex-start">
+                <Flex gap="middle" style={{width: "100%"}} align="flex-start">
                     <Typography.Text strong>{title}</Typography.Text>
                     <Typography.Text type="secondary">: </Typography.Text>
                     <Typography.Text style={{flex: 1}}>
@@ -65,7 +65,7 @@ function buildJsonTreeNodes(data: unknown, key: string = "root", title: string =
     const count = entries.length;
 
     const nodeTitle = (
-        <Flex gap="small" style={{width: "100%"}}>
+        <Flex gap="middle" style={{width: "100%"}}>
             <Typography.Text strong>{title}</Typography.Text>
             <Typography.Text type="secondary">
                 {isArray ? ` [${count}]` : ` {${count}}`}
@@ -194,7 +194,7 @@ export function ProductNotePanel({volumeId}: { volumeId?: string }) {
             title={
                 <Typography.Text strong>产品信息</Typography.Text>
             }
-            styles={{body: {padding: SPACING.sm}}}>
+            styles={{body: {padding: SPACING.md}}}>
             <JsonTree data={noteData.note} title="note" maxHeight={500}/>
         </Card>
     );
