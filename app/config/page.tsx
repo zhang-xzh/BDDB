@@ -1,7 +1,7 @@
 'use client'
 
 import React, {useCallback, useState} from 'react'
-import {Button, Card, Flex, message, Space, Typography} from 'antd'
+import {Button, Card, message, Space, Typography} from 'antd'
 import {LinkOutlined, SyncOutlined} from '@ant-design/icons'
 import {postApi} from '@/lib/api'
 
@@ -85,69 +85,63 @@ const ConfigPage: React.FC = () => {
     }, [])
 
     return (
-        <Card title="数据管理" size="small" style={{width: 600}}>
-            <Space size="middle" orientation="vertical">
-                <Flex vertical gap="middle">
-                    <Typography.Text strong>同步 qBittorrent</Typography.Text>
-                    <Typography.Paragraph type="secondary">
-                        从 qBittorrent 获取最新的种子列表并更新到数据库。如果种子已存在则更新状态，否则添加新种子。
-                    </Typography.Paragraph>
-                    <Button
-                        onClick={syncTorrents}
-                        loading={syncing}
-                        icon={<SyncOutlined spin={syncing}/>}
-                        block
-                    >
-                        {syncing ? '同步中...' : '开始同步'}
-                    </Button>
-                </Flex>
+        <Space size="middle" orientation="vertical">
+            <Card title="同步 qBittorrent">
+                <Typography.Paragraph type="secondary">
+                    从 qBittorrent 获取最新的种子列表并更新到数据库。如果种子已存在则更新状态，否则添加新种子。
+                </Typography.Paragraph>
+                <Button
+                    onClick={syncTorrents}
+                    loading={syncing}
+                    icon={<SyncOutlined spin={syncing}/>}
+                    block
+                >
+                    {syncing ? '同步中...' : '开始同步'}
+                </Button>
+            </Card>
 
-                <Flex vertical gap="middle">
-                    <Typography.Text strong>关联产品</Typography.Text>
-                    <Typography.Paragraph type="secondary">
-                        根据 catalog_no 匹配 suruga_ya 产品库的型番，将匹配的产品 ID 填入卷的 product_ids 字段。
-                    </Typography.Paragraph>
-                    <Button
-                        onClick={linkProducts}
-                        loading={linking}
-                        icon={<LinkOutlined/>}
-                        block
-                    >
-                        {linking ? '关联中...' : '开始关联'}
-                    </Button>
-                </Flex>
+            <Card title="关联产品">
+                <Typography.Paragraph type="secondary">
+                    根据 catalog_no 匹配 suruga_ya 产品库的型番，将匹配的产品 ID 填入卷的 product_ids 字段。
+                </Typography.Paragraph>
+                <Button
+                    onClick={linkProducts}
+                    loading={linking}
+                    icon={<LinkOutlined/>}
+                    block
+                >
+                    {linking ? '关联中...' : '开始关联'}
+                </Button>
+            </Card>
 
-                <Flex vertical gap="middle">
-                    <Typography.Text strong>重建 Bangumi 索引</Typography.Text>
-                    <Typography.Paragraph type="secondary" style={{marginBottom: 0}}>
-                        执行 bangumi:rebuild 脚本：删除旧索引并从 MongoDB 全量重建 Bangumi 搜索索引。
-                    </Typography.Paragraph>
-                    <Button
-                        onClick={rebuildBangumi}
-                        loading={rebuildingBangumi}
-                        icon={<SyncOutlined spin={rebuildingBangumi}/>}
-                        block
-                    >
-                        {rebuildingBangumi ? '重建中...' : '开始重建'}
-                    </Button>
-                </Flex>
+            <Card title="重建 Bangumi 索引">
+                <Typography.Paragraph type="secondary" style={{marginBottom: 0}}>
+                    执行 bangumi:rebuild 脚本：删除旧索引并从 MongoDB 全量重建 Bangumi 搜索索引。
+                </Typography.Paragraph>
+                <Button
+                    onClick={rebuildBangumi}
+                    loading={rebuildingBangumi}
+                    icon={<SyncOutlined spin={rebuildingBangumi}/>}
+                    block
+                >
+                    {rebuildingBangumi ? '重建中...' : '开始重建'}
+                </Button>
+            </Card>
 
-                <Flex vertical gap="middle">
-                    <Typography.Text strong>重建 suruga_ya 索引</Typography.Text>
-                    <Typography.Paragraph type="secondary" style={{marginBottom: 0}}>
-                        执行 meili:rebuild 脚本：删除旧索引并从 MongoDB 全量重建产品搜索索引。
-                    </Typography.Paragraph>
-                    <Button
-                        onClick={rebuildMeili}
-                        loading={rebuildingMeili}
-                        icon={<SyncOutlined spin={rebuildingMeili}/>}
-                        block
-                    >
-                        {rebuildingMeili ? '重建中...' : '开始重建'}
-                    </Button>
-                </Flex>
-            </Space>
-        </Card>
+            <Card title="重建 suruga_ya 索引">
+                <Typography.Paragraph type="secondary" style={{marginBottom: 0}}>
+                    执行 meili:rebuild 脚本：删除旧索引并从 MongoDB 全量重建产品搜索索引。
+                </Typography.Paragraph>
+                <Button
+                    onClick={rebuildMeili}
+                    loading={rebuildingMeili}
+                    icon={<SyncOutlined spin={rebuildingMeili}/>}
+                    block
+                >
+                    {rebuildingMeili ? '重建中...' : '开始重建'}
+                </Button>
+            </Card>
+        </Space>
     )
 }
 
