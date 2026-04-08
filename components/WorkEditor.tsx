@@ -405,7 +405,7 @@ function WorkFormList({
     }, [message, onSubmit, onWorksChange, tempWorks])
 
     return (
-        <Card size="small" title="作品信息" styles={{body: {padding: '8px 12px'}}}>
+        <Card size="small" title="作品信息" styles={{body: {padding: SPACING.md}}}>
             {isEditing ? (
                 <WorkEditView
                     selectedWorks={selectedWorks}
@@ -443,16 +443,9 @@ export function WorkEditorContent({
                                   }: WorkEditorContentProps) {
     return (
         <Spin spinning={loading || saving}>
-            <Space orientation="vertical" style={{width: "100%"}}>
+            <Space orientation="vertical" style={{width: '100%', paddingTop: SPACING.sm}} size={SPACING.sm}>
                 <ProductNotePanel volumeId={volumeInfo?.volumeId}/>
-                <Space orientation="vertical" style={{width: '100%', paddingTop: SPACING.sm}} size={SPACING.md}>
-                    <WorkFormList
-                        selectedWorks={selectedWorks}
-                        onWorksChange={onWorksChange}
-                        saving={saving}
-                        onSubmit={onSubmit}
-                    />
-                </Space>
+                <WorkFormList selectedWorks={selectedWorks} onWorksChange={onWorksChange} saving={saving} onSubmit={onSubmit}/>
             </Space>
         </Spin>
     )

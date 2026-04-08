@@ -194,7 +194,7 @@ export function ProductNotePanel({volumeId}: { volumeId?: string }) {
             title={
                 <Typography.Text strong>产品信息</Typography.Text>
             }
-            styles={{body: {padding: SPACING.md}}}>
+            styles={{body: {padding: SPACING.sm}}}>
             <JsonTree data={noteData.note} title="note" maxHeight={500}/>
         </Card>
     );

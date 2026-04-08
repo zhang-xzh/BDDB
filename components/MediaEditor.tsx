@@ -953,61 +953,38 @@ export function MediaEditorContent({
 
     return (
         <Spin spinning={loading}>
-            <Space orientation="vertical" style={{width: "100%"}}>
-                <Space
-                    orientation="vertical"
-                    style={{width: "100%", paddingTop: SPACING.sm}}
-                    size={SPACING.sm}
-                >
-                    <ProductNotePanel volumeId={volumeId}/>
-                </Space>
-                <Space
-                    orientation="vertical"
-                    style={{width: "100%", paddingTop: SPACING.sm}}
-                    size={SPACING.sm}
-                >
-                    {isEditing ? (
-                        <>
-                            <FileTreeCard
-                                files={files}
-                                treeData={treeData}
-                                defaultExpandedKeys={defaultExpandedKeys}
-                                titleRender={titleRender}
-                            />
-
-                            <MediaFormList
-                                selectedMedias={selectedMedias}
-                                mediaForms={mediaForms}
-                                onMediaFormChange={updateMediaForm}
-                                onDeleteMedia={deleteMedia}
-                                onCancelEdit={
-                                    selectedMedias.length > 0
-                                        ? () => {
-                                            const hasSaved = cancelChanges?.();
-                                            if (hasSaved) setIsEditing(false);
-                                        }
-                                        : undefined
-                                }
-                                onSaveEdit={
-                                    selectedMedias.length > 0 && handleSubmit
-                                        ? () => {
-                                            void handleSubmit();
-                                        }
-                                        : undefined
-                                }
-                                saving={saving}
-                                isChanged={isChanged}
-                                submitted={submitted}
-                            />
-                        </>
-                    ) : (
-                        <MediaReadOnlyView
-                            selectedMedias={selectedMedias}
-                            mediaForms={mediaForms}
-                            onEdit={() => setIsEditing(true)}
+            <Space
+                orientation="vertical"
+                style={{width: "100%", paddingTop: SPACING.sm}}
+                size={SPACING.sm}
+            >
+                {isEditing ? (
+                    <>
+                        <ProductNotePanel volumeId={volumeId}/>
+                        <FileTreeCard files={files} treeData={treeData} defaultExpandedKeys={defaultExpandedKeys} titleRender={titleRender}/>
+                        <MediaFormList
+                            selectedMedias={selectedMedias} mediaForms={mediaForms} onMediaFormChange={updateMediaForm} onDeleteMedia={deleteMedia}
+                            onCancelEdit={
+                                selectedMedias.length > 0
+                                    ? () => {
+                                        const hasSaved = cancelChanges?.();
+                                        if (hasSaved) setIsEditing(false);
+                                    }
+                                    : undefined
+                            }
+                            onSaveEdit={
+                                selectedMedias.length > 0 && handleSubmit
+                                    ? () => {
+                                        void handleSubmit();
+                                    }
+                                    : undefined
+                            }
+                            saving={saving} isChanged={isChanged} submitted={submitted}
                         />
-                    )}
-                </Space>
+                    </>
+                ) : (
+                    <MediaReadOnlyView selectedMedias={selectedMedias} mediaForms={mediaForms} onEdit={() => setIsEditing(true)}/>
+                )}
             </Space>
         </Spin>
     );
