@@ -174,6 +174,7 @@ const desktopTheme = (isDark: boolean): ThemeConfig => ({
         Menu: {
             itemHeight: 32,
             itemPaddingInline: 12,
+            collapsedWidth: 40
         },
         Table: {
             cellPaddingBlock: 8,
