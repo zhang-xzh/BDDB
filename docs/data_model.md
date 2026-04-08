@@ -29,13 +29,15 @@
 │  │  ├── catalog_no (型番: BCXA-1234)                                   │   │
 │  │  ├── volume_name (标题: 「作品名」第1巻)                               │   │
 │  │  ├── file_ids[] ◄──────┐  引用Torrent中的部分文件                      │   │
-│  │  └── work_ids[] ────┐  │  关联Bangumi作品                              │   │
+│  │  ├── work_ids[] ────┐  │  关联Bangumi作品 (→ bddb_works)              │   │
+│  │  └── product_ids[] ─┼──┼► 关联商品信息 (→ productRepository.ts)       │   │
 │  │                     │  │                                            │   │
 │  │  ┌──────────────────┼──┼─────────────────────────────────────────┐  │   │
 │  │  │  Volume 2        │  │                                         │  │   │
 │  │  │  ├── volume_no=2 │  │                                         │  │   │
 │  │  │  ├── file_ids[] ─┼──┘                                         │  │   │
-│  │  │  └── work_ids[] ─┘                                             │  │   │
+│  │  │  ├── work_ids[] ─┘                                             │  │   │
+│  │  │  └── product_ids[]                                             │  │   │
 │  │  └────────────────────────────────────────────────────────────────┘  │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                          │                                                  │
@@ -63,9 +65,9 @@
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              Work 层 (作品元数据)  ←── 来自 Bangumi API      │
+│                    Work 层 (作品元数据)  ←── 来自 bangumi 离线数据源(bangumi/Archive)        │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │  Work (作品条目)                                                      │   │
+│  │  Work (作品条目, 存于 bddb_works, 数据源为本地 Bangumi MongoDB)          │   │
 │  │  ├── id (Bangumi subject ID)                                        │   │
 │  │  ├── name (日文名)                                                   │   │
 │  │  ├── name_cn (中文名)                                                │   │
@@ -73,7 +75,7 @@
 │  │  ├── images (封面图)                                                 │   │
 │  │  ├── rating (评分)                                                   │   │
 │  │  ├── summary (剧情简介)                                               │   │
-│  │  ├── air_date (放送日期)                                             │   │
+│  │  ├── date (放送日期)                                                  │   │
 │  │  └── ...                                                            │   │
 │  │                                                                     │   │
 │  │  【关系】Volume.work_ids[] ──────► 关联多个 Work                      │   │
@@ -81,25 +83,47 @@
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    Product 层 (商品数据)  ←── 来自自建駿河屋离线商品信息        │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  Product (商品条目, 存于 suruga_ya.products)                           │   │
+│  │  ├── product_id (商品ID)                                             │   │
+│  │  ├── title (标题)                                                    │   │
+│  │  ├── url (产品URL)                                                   │   │
+│  │  ├── images[] (图片)                                                 │   │
+│  │  ├── attributes.型番 ◄──── 用于与 Volume.catalog_no 匹配关联           │   │
+│  │  ├── attributes.発売日 (发售日)                                        │   │
+│  │  ├── attributes.定価 (定价)                                           │   │
+│  │  └── ...                                                            │   │
+│  │                                                                     │   │
+│  │  【关系】Volume.product_ids[] ──────► 关联多个 Product                 │   │
+│  │  (通过 catalog_no = attributes.型番 自动匹配)                           │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## 数据流向
 
-| 层级   | 实体          | 来源               | 拆分/关联逻辑         |
-|------|-------------|------------------|-----------------|
-| L1   | **Torrent** | qBittorrent 同步   | 按文件结构拆分为 Volume |
-| L2   | **Volume**  | DiscEditor 人工拆分  | 按内容类型拆分为 Media  |
-| L3   | **Media**   | MediaEditor 人工拆分 | 最终内容单元          |
-| Meta | **Work**    | Bangumi API 拉取   | 元数据关联到 Volume   |
+| 层级   | 实体          | 来源                          | 拆分/关联逻辑               |
+|------|-------------|-----------------------------|-----------------------|
+| L1   | **Torrent** | qBittorrent 同步              | 按文件结构拆分为 Volume       |
+| L2   | **Volume**  | DiscEditor 人工拆分             | 按内容类型拆分为 Media        |
+| L3   | **Media**   | MediaEditor 人工拆分            | 最终内容单元                |
+| Meta | **Work**    | `bangumiRepository.ts` 本地查询 | 元数据关联到 Volume         |
+| Meta | **Product** | `productRepository.ts` 本地查询 | 商品信息关联到 Volume (型番匹配) |
 
 ## MongoDB 集合
 
-| 集合名             | 说明    | 关键字段                                     |
-|-----------------|-------|------------------------------------------|
-| `bddb_torrents` | 种子数据  | `hash`, `files[]`                        |
-| `bddb_volumes`  | 卷/碟数据 | `torrent_id`, `file_ids[]`, `work_ids[]` |
-| `bddb_medias`   | 媒介数据  | `volume_id`, `file_ids[]`                |
-| `bddb_works`    | 作品元数据 | `id` (Bangumi ID), `name`, `name_cn`     |
+| 集合名                  | 数据库       | 说明                                        | 关键字段                                                      |
+|----------------------|-----------|-------------------------------------------|-----------------------------------------------------------|
+| `bddb_torrents`      | bddb      | 种子数据                                      | `hash`, `files[]`                                         |
+| `bddb_volumes`       | bddb      | 卷/碟数据                                     | `torrent_id`, `file_ids[]`, `work_ids[]`, `product_ids[]` |
+| `bddb_medias`        | bddb      | 媒介数据                                      | `volume_id`, `file_ids[]`                                 |
+| `bddb_works`         | bddb      | 作品元数据                                     | `id` (Bangumi subject ID), `name`, `name_cn`              |
+| `subjects` 等         | bangumi   | Bangumi 本地数据（由 `bangumiRepository.ts` 访问） | `_id`, `name`, `name_cn`, `date`                          |
+| `suruga_ya.products` | suruga_ya | 商品数据                                      | `product_id`, `title`, `attributes.型番`                    |
 
 ## 关系说明
 
@@ -120,6 +144,15 @@
 - 一个 Volume 可关联多个 Work（如总集篇 BOX）
 - 一个 Work 可属于多个 Volume
 - 通过 Volume 的 `work_ids[]` 数组实现
+- Work 数据来源：`bangumiRepository.ts` 从本地 Bangumi MongoDB (`subjects` 集合) 查询，写入 `bddb_works`
+
+### 4. Volume → Product (N:M)
+
+- 一个 Volume 可关联多个 Product（同一型番可能对应多个商品记录）
+- 一个 Product 可属于多个 Volume
+- 通过 Volume 的 `product_ids[]` 数组实现
+- 关联逻辑：`Volume.catalog_no` 匹配 `Product.attributes.型番`，由 `linkVolumesToProducts()` 自动执行
+- Product 数据来源：`productRepository.ts` 从 `suruga_ya.products` 集合读取
 
 ## 页面功能对应
 
@@ -132,21 +165,36 @@
 ## ER 图
 
 ```
-┌─────────────┐       ┌─────────────┐       ┌─────────────┐
-│  Torrent    │◄──────│   Volume    │◄──────│    Media    │
-├─────────────┤  1:N  ├─────────────┤  1:N  ├─────────────┤
-│ _id         │       │ torrent_id  │       │ volume_id   │
-│ hash        │       │ catalog_no  │       │ media_type  │
-│ files[]     │──────►│ file_ids[]  │──────►│ file_ids[]  │
-└─────────────┘       │ work_ids[]  │─►─┐   └─────────────┘
-                      └─────────────┘   │
-                              ▲         │
-                      ┌───────┘         │
-                      │ N:M               │
-               ┌─────────────┐          │
-               │    Work     │◄─────────┘
-               ├─────────────┤
-               │ id (Bangumi)│
-               │ name        │
-               └─────────────┘
+┌─────────────────┐       ┌──────────────────────┐       ┌─────────────────┐
+│    Torrent      │◄──────│       Volume         │◄──────│      Media      │
+├─────────────────┤  1:N  ├──────────────────────┤  1:N  ├─────────────────┤
+│ _id             │       │ torrent_id           │       │ volume_id       │
+│ hash            │       │ catalog_no           │       │ media_type      │
+│ files[]         │──────►│ file_ids[]           │──────►│ file_ids[]      │
+└─────────────────┘       │ work_ids[]     ──►─┐ │       └─────────────────┘
+                          │ product_ids[]  ──►─┼─┼─┐
+                          └──────────────────────┘ │ │
+                                  ▲               │ │
+                          ┌───────┘               │ │
+                          │ N:M (via work_ids)    │ │
+                 ┌─────────────────┐              │ │
+                 │      Work       │◄─────────────┘ │
+                 ├─────────────────┤                │
+                 │ _id             │                │
+                 │ id (Bangumi)    │                │
+                 │ name / name_cn  │                │
+                 │ [bddb_works]    │                │
+                 └─────────────────┘                │
+                 [来自 bangumiRepository.ts]         │
+                                                    │ N:M (via product_ids)
+                 ┌─────────────────┐                │
+                 │     Product     │◄───────────────┘
+                 ├─────────────────┤
+                 │ _id             │
+                 │ product_id      │
+                 │ title           │
+                 │ attributes.型番 │◄── 匹配 catalog_no
+                 │ [suruga_ya]     │
+                 └─────────────────┘
+                 [来自 productRepository.ts]
 ```
