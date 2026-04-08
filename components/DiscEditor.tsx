@@ -5,9 +5,9 @@ import {fetchApi, postApi} from '@/lib/api'
 import type {FileItem, NodeData, TorrentWithVolume, Volume, VolumeForm} from '@/lib/mongodb'
 import {buildTree, FlatTree, SPACING} from '@/lib/utils'
 import {DeleteOutlined, EditOutlined, SaveOutlined} from '@ant-design/icons'
-import {Button, Card, Empty, Flex, Input, InputNumber, message, Modal, Space, Spin, Typography} from 'antd'
+import {Button, Card, Empty, Flex, Input, InputNumber, message, Space, Spin, Typography} from 'antd'
 import type {DataNode} from 'antd/es/tree'
-import {forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState,} from 'react'
+import {useCallback, useEffect, useMemo, useRef, useState,} from 'react'
 
 export interface DiscEditorRef {
     open: (torrentHash: string, name?: string, syncFiles?: boolean) => Promise<void>
@@ -558,10 +558,10 @@ function VolumeFormList({
     const actions = (onCancelEdit || onSaveEdit) ? (
         <Flex gap={8}>
             {onCancelEdit && (
-                <Button onClick={onCancelEdit} disabled={saving}>取消</Button>
+                <Button onClick={onCancelEdit} disabled={saving} size="small">取消</Button>
             )}
             {onSaveEdit && (
-                <Button type="primary" icon={<SaveOutlined/>} onClick={onSaveEdit} disabled={!isChanged || saving} loading={saving}>
+                <Button type="primary" icon={<SaveOutlined/>} onClick={onSaveEdit} disabled={!isChanged || saving} loading={saving} size="small">
                     保存
                 </Button>
             )}
@@ -739,7 +739,7 @@ export function DiscEditorContent({
 
     return (
         <Spin spinning={loading}>
-            <Space orientation="vertical" style={{width: '100%', paddingTop: SPACING.sm}} size={SPACING.md}>
+            <Space orientation="vertical" style={{width: '100%', paddingTop: SPACING.sm}} size={SPACING.sm}>
                 {isEditing ? (
                     <>
                         <FileTreeCard
@@ -783,40 +783,3 @@ export function DiscEditorContent({
         </Spin>
     )
 }
-
-// ─── DiscEditor Modal (default export) ───────────────────────────────────────
-
-const DiscEditor = forwardRef<DiscEditorRef, { onSave?: () => void }>(
-    function DiscEditor({onSave}, ref) {
-        const editor = useDiscEditor(onSave)
-        useImperativeHandle(ref, () => ({open: editor.open}), [editor.open])
-        return (
-            <Modal
-                open={editor.visible} title={editor.torrentName || '编辑产品信息'}
-                width={900} onCancel={editor.handleCancel} destroyOnHidden footer={null}
-            >
-                <DiscEditorContent
-                    loading={editor.loading} saving={editor.saving} files={editor.files}
-                    treeData={editor.treeData} nodeData={editor.nodeData}
-                    defaultExpandedKeys={editor.defaultExpandedKeys}
-                    selectedVolumes={editor.selectedVolumes} visibleVolumes={editor.visibleVolumes}
-                    loadMoreVolumes={editor.loadMoreVolumes} worksCount={editor.worksCount}
-                    submitted={editor.submitted}
-                    setWorksCount={editor.setWorksCount} volumeForms={editor.volumeForms}
-                    resetSubmitted={editor.resetSubmitted}
-                    updateVolumeForm={editor.updateVolumeForm} onVolumeChange={editor.onVolumeChange}
-                    onSharedVolumeChange={editor.onSharedVolumeChange} onToggleShared={editor.onToggleShared}
-                    getNodeVolume={editor.getNodeVolume} getNodeShared={editor.getNodeShared}
-                    getNodeSharedVolumes={editor.getNodeSharedVolumes}
-                    getComputedNodeValue={editor.getComputedNodeValue}
-                    resetVolumeAssignments={editor.resetVolumeAssignments} deleteVolume={editor.deleteVolume}
-                    handleSubmit={editor.handleSubmit}
-                    hasChanges={editor.hasChanges}
-                    isChanged={editor.isChanged}
-                />
-            </Modal>
-        )
-    }
-)
-
-export default DiscEditor

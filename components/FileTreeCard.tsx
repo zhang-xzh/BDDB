@@ -49,7 +49,9 @@ export function FileTreeCard({
                 </Typography.Text>
                 {titleExtra}
             </Space>
-        } styles={{body: {padding: SPACING.md}}}>
+        }
+              styles={{body: {padding: SPACING.sm}}}
+        >
             <Tree
                 treeData={treeData}
                 expandedKeys={expandedKeys}

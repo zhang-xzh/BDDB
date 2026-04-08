@@ -172,8 +172,8 @@
 │ hash            │       │ catalog_no           │       │ media_type      │
 │ files[]         │──────►│ file_ids[]           │──────►│ file_ids[]      │
 └─────────────────┘       │ work_ids[]     ──►─┐ │       └─────────────────┘
-                          │ product_ids[]  ──►─┼─┼─┐
-                          └──────────────────────┘ │ │
+                          │ product_ids[]  ──►─┼─┼──┐
+                          └──────────────────────┘│ │
                                   ▲               │ │
                           ┌───────┘               │ │
                           │ N:M (via work_ids)    │ │
@@ -185,7 +185,7 @@
                  │ name / name_cn  │                │
                  │ [bddb_works]    │                │
                  └─────────────────┘                │
-                 [来自 bangumiRepository.ts]         │
+                 [来自 bangumiRepository.ts]        │
                                                     │ N:M (via product_ids)
                  ┌─────────────────┐                │
                  │     Product     │◄───────────────┘

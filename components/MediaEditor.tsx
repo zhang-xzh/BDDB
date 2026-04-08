@@ -795,12 +795,13 @@ function MediaFormList({
         onCancelEdit || onSaveEdit ? (
             <Flex gap={8}>
                 {onCancelEdit && (
-                    <Button onClick={onCancelEdit} disabled={saving}>
+                    <Button onClick={onCancelEdit} disabled={saving} size="small">
                         取消
                     </Button>
                 )}
                 {onSaveEdit && (
                     <Button
+                        size="small"
                         type="primary"
                         icon={<SaveOutlined/>}
                         onClick={onSaveEdit}
@@ -956,14 +957,14 @@ export function MediaEditorContent({
                 <Space
                     orientation="vertical"
                     style={{width: "100%", paddingTop: SPACING.sm}}
-                    size={SPACING.md}
+                    size={SPACING.sm}
                 >
                     <ProductNotePanel volumeId={volumeId}/>
                 </Space>
                 <Space
                     orientation="vertical"
                     style={{width: "100%", paddingTop: SPACING.sm}}
-                    size={SPACING.md}
+                    size={SPACING.sm}
                 >
                     {isEditing ? (
                         <>
