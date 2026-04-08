@@ -87,7 +87,7 @@ const ConfigPage: React.FC = () => {
 
     return (
         <Flex vertical gap={SPACING.lg}>
-            <Flex align="center" gap={8}>
+            <Flex align="center" gap={SPACING.sm}>
                 <SettingOutlined style={{fontSize: 24}}/>
                 <Typography.Title level={4} style={{margin: 0}}>配置</Typography.Title>
             </Flex>

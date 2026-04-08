@@ -156,8 +156,8 @@ export function useWorkEditor(onSave?: () => void): UseWorkEditorReturn {
 
 function WorkDetail({work}: { work: BangumiSubject }) {
     return (
-        <Card size="small" styles={{body: {padding: '8px 12px'}}}>
-            <Flex vertical gap={8}>
+        <Card size="small" styles={{body: {padding: `${SPACING.sm}px ${SPACING.md}px`}}}>
+            <Flex vertical gap={SPACING.sm}>
                 <Flex vertical gap={2}>
                     <Typography.Title level={5} style={{margin: 0}}>
                         {work.name_cn || work.name}
@@ -189,7 +189,7 @@ function WorkDetail({work}: { work: BangumiSubject }) {
                     ]}
                 />
 
-                <Flex wrap gap={6}>
+                <Flex wrap gap={SPACING.sm}>
                     <Tag>想看: {work.collection?.wish ?? 0}</Tag>
                     <Tag>看过: {work.collection?.collect ?? 0}</Tag>
                     <Tag>在看: {work.collection?.doing ?? 0}</Tag>
@@ -203,7 +203,7 @@ function WorkDetail({work}: { work: BangumiSubject }) {
 
 function WorkReadOnlyView({works, onEdit}: { works: BangumiSubject[]; onEdit: () => void }) {
     return (
-        <Flex vertical gap={8}>
+        <Flex vertical gap={SPACING.sm}>
             {works.map((work) => (
                 <React.Fragment key={work.id}>
                     <WorkDetail work={work}/>
@@ -283,7 +283,7 @@ function WorkEditView({
     }, [])
 
     return (
-        <Flex vertical gap={8}>
+        <Flex vertical gap={SPACING.sm}>
             <Select
                 ref={selectRef}
                 mode="multiple"
@@ -312,9 +312,9 @@ function WorkEditView({
 
             {tempWorks.length > 0 && (
                 <Card size="small">
-                    <Flex vertical gap={6}>
+                    <Flex vertical gap={SPACING.sm}>
                         {tempWorks.map(work => (
-                            <Flex key={work.id} justify="space-between" align="center" gap={8}>
+                            <Flex key={work.id} justify="space-between" align="center" gap={SPACING.sm}>
                                 <Flex vertical gap={2} style={{minWidth: 0, flex: 1}}>
                                     <Typography.Text strong ellipsis>{work.name_cn || work.name}</Typography.Text>
                                     <Typography.Text type="secondary">
@@ -332,7 +332,7 @@ function WorkEditView({
                 </Card>
             )}
 
-            <Flex gap={8}>
+            <Flex gap={SPACING.sm}>
                 {onCancel && (
                     <Button onClick={onCancel} disabled={saving}>
                         取消

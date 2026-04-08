@@ -162,14 +162,14 @@ const SiderContent: React.FC = () => {
         return {
             key: product.product_id || String(index),
             label: (
-                <Flex gap={12} align="center">
+                <Flex gap={SPACING.md} align="center">
                     {/* 缩略图 - 点击放大 */}
                     {thumbnailUrl ? (
                         <Image
                             src={thumbnailUrl}
                             alt={product.title}
-                            width={60}
-                            height={60}
+                            width={45}
+                            height={45}
                             style={{objectFit: 'cover', borderRadius: 4, flexShrink: 0}}
                         />
                     ) : (
@@ -177,8 +177,8 @@ const SiderContent: React.FC = () => {
                             align="center"
                             justify="center"
                             style={{
-                                width: 60,
-                                height: 60,
+                                width: 45,
+                                height: 45,
                                 flexShrink: 0,
                                 background: token.colorBgTextHover,
                             }}
@@ -190,8 +190,8 @@ const SiderContent: React.FC = () => {
                         <Text strong style={{wordBreak: 'break-word'}}>
                             {product.title}
                         </Text>
-                        <Flex gap={8} wrap align="center" justify="space-between">
-                            <Flex gap={8} wrap>
+                        <Flex gap={SPACING.sm} wrap align="center" justify="space-between">
+                            <Flex gap={SPACING.sm} wrap>
                                 {product.model_number && (
                                     <Tag>{product.model_number}</Tag>
                                 )}
@@ -214,7 +214,7 @@ const SiderContent: React.FC = () => {
                 </Flex>
             ),
             children: (
-                <Flex vertical gap={12}>
+                <Flex vertical gap={SPACING.md}>
                     {product.note_raw ? (
                         <div
                             style={{
@@ -222,8 +222,8 @@ const SiderContent: React.FC = () => {
                                 lineHeight: 1.5,
                                 color: token.colorText,
                                 background: token.colorBgTextHover,
-                                padding: 12,
-                                borderRadius: 6,
+                                padding: token.padding,
+                                borderRadius: token.borderRadiusLG,
                             }}
                             dangerouslySetInnerHTML={{__html: product.note_raw}}
                         />
@@ -251,7 +251,7 @@ const SiderContent: React.FC = () => {
             <Flex vertical ref={scrollContainerRef} style={{flex: 1, overflow: 'auto', minHeight: 0}}>
                 {searchResult ? (
                     (searchResult.products || []).length > 0 ? (
-                        <Flex vertical gap={8}>
+                        <Flex vertical gap={SPACING.sm}>
                             <Text type="secondary">
                                 共找到 {searchResult.total} 个结果
                                 {hasMore && '（滚动加载更多）'}

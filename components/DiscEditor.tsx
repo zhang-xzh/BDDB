@@ -556,7 +556,7 @@ function VolumeFormList({
 
     const rowProps = {volumeForms, onVolumeFormChange, onDeleteVolume, submitted}
     const actions = (onCancelEdit || onSaveEdit) ? (
-        <Flex gap={8}>
+        <Flex gap={SPACING.sm}>
             {onCancelEdit && (
                 <Button onClick={onCancelEdit} disabled={saving} size="small">取消</Button>
             )}
@@ -594,7 +594,7 @@ function VolumeFormList({
                     return (
                         <Flex key={wi} vertical>
                             <Typography.Text strong
-                                             style={{display: 'block', marginBottom: 8}}>作品 {wi}</Typography.Text>
+                                             style={{display: 'block', marginBottom: SPACING.sm}}>作品 {wi}</Typography.Text>
                             <Space orientation="vertical" style={{width: '100%', paddingLeft: SPACING.md}} size={SPACING.sm}>
                                 {vols.sort((a, b) => a - b).map(vn => {
                                     const enc = wi * 1000 + vn
@@ -634,7 +634,7 @@ function VolumeReadOnlyView({
                         ? `第${vol}卷`
                         : `作品 ${Math.floor(vol / 1000)} · 第${vol % 1000}卷`
                     return (
-                        <Space key={vol} style={{width: '100%'}} size={8}>
+                        <Space key={vol} style={{width: '100%'}} size={SPACING.sm}>
                             <Typography.Text strong>{label}</Typography.Text>
                             <Typography.Text>{form.catalog_no?.trim() ? form.catalog_no : '—'}</Typography.Text>
                             <Typography.Text type="secondary">{form.volume_name?.trim() ? form.volume_name : '—'}</Typography.Text>

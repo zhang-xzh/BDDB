@@ -793,7 +793,7 @@ function MediaFormList({
 
     const actions =
         onCancelEdit || onSaveEdit ? (
-            <Flex gap={8}>
+            <Flex gap={SPACING.sm}>
                 {onCancelEdit && (
                     <Button onClick={onCancelEdit} disabled={saving} size="small">
                         取消
@@ -858,7 +858,7 @@ function MediaReadOnlyView({
                         description: "",
                     };
                     return (
-                        <Space key={no} style={{width: "100%"}} size={8}>
+                        <Space key={no} style={{width: "100%"}} size={SPACING.sm}>
                             <Typography.Text strong>
                                 序号 {no} · {getMediaTypeLabel(form.media_type)}
                             </Typography.Text>
