@@ -238,14 +238,13 @@ const SiderContent: React.FC = () => {
     return (
         <Flex vertical gap={SPACING.md} style={{height: '100%'}}>
             <Input.Search
-                style={{position: 'sticky', top: 0, zIndex: 1, background: token.colorBgContainer}}
+                style={{position: 'sticky', top: 0, zIndex: 1}}
                 placeholder="搜索产品..."
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onSearch={handleSearch}
                 loading={loading}
-                enterButton
                 size="small"
             />
             <Flex vertical ref={scrollContainerRef} style={{flex: 1, overflow: 'auto', minHeight: 0}}>
