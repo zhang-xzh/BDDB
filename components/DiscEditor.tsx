@@ -570,12 +570,12 @@ function VolumeFormList({
 
     if (worksCount === 1) {
         return (
-            <Card size="small" title="卷信息" styles={{body: {padding: 12}}}>
-                <Space orientation="vertical" style={{width: '100%'}} size={12}>
-                    {selectedVolumes.map(vol => <VolumeRow key={vol} vol={vol} label={`第${vol}卷`} {...rowProps} />)}
-                    {actions}
-                </Space>
-            </Card>
+        <Card size="small" title="卷信息">
+            <Space orientation="vertical" style={{width: '100%'}} size={SPACING.md}>
+                {selectedVolumes.map(vol => <VolumeRow key={vol} vol={vol} label={`第${vol}卷`} {...rowProps} />)}
+                {actions}
+            </Space>
+        </Card>
         )
     }
 
@@ -587,7 +587,7 @@ function VolumeFormList({
     })
 
     return (
-        <Card size="small" title="卷信息" styles={{body: {padding: 12}}}>
+        <Card size="small" title="卷信息">
             <Space orientation="vertical" style={{width: '100%'}} size={SPACING.md}>
                 {Object.entries(groups).sort(([a], [b]) => Number(a) - Number(b)).map(([wiStr, vols]) => {
                     const wi = Number(wiStr)
@@ -626,8 +626,8 @@ function VolumeReadOnlyView({
     }
 
     return (
-        <Card size="small" title="卷信息" styles={{body: {padding: 12}}}>
-            <Space orientation="vertical" style={{width: '100%'}} size={12}>
+        <Card size="small" title="卷信息">
+            <Space orientation="vertical" style={{width: '100%'}} size={SPACING.md}>
                 {selectedVolumes.map(vol => {
                     const form = volumeForms[vol] || {catalog_no: '', volume_name: ''}
                     const label = worksCount === 1
@@ -641,7 +641,7 @@ function VolumeReadOnlyView({
                         </Space>
                     )
                 })}
-                <Button icon={<EditOutlined/>} onClick={onEdit}>
+                <Button icon={<EditOutlined/>} onClick={onEdit} size="small">
                     编辑卷信息
                 </Button>
             </Space>

@@ -815,8 +815,8 @@ function MediaFormList({
         ) : null;
 
     return (
-        <Card size="small" title="媒介信息" styles={{body: {padding: 12}}}>
-            <Space orientation="vertical" style={{width: "100%"}} size={12}>
+        <Card size="small" title="媒介信息">
+            <Space orientation="vertical" style={{width: "100%"}} size={SPACING.md}>
                 {selectedMedias.map((no) => (
                     <MediaRow
                         key={no}
@@ -849,8 +849,8 @@ function MediaReadOnlyView({
     }
 
     return (
-        <Card size="small" title="媒介信息" styles={{body: {padding: 12}}}>
-            <Space orientation="vertical" style={{width: "100%"}} size={12}>
+        <Card size="small" title="媒介信息">
+            <Space orientation="vertical" style={{width: "100%"}} size={SPACING.md}>
                 {selectedMedias.map((no) => {
                     const form = mediaForms[no] || {
                         media_type: "bd",
@@ -871,7 +871,7 @@ function MediaReadOnlyView({
                         </Space>
                     );
                 })}
-                <Button icon={<EditOutlined/>} onClick={onEdit}>
+                <Button icon={<EditOutlined/>} onClick={onEdit} size="small">
                     编辑媒介
                 </Button>
             </Space>

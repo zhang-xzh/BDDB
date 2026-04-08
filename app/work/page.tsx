@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import React, {useCallback, useEffect, useState} from "react";
 import {Card, Empty, Flex, Input, Select, Space, Spin, Switch, Tag, theme, Typography} from "antd";
 import {CheckCircleOutlined, CloseCircleOutlined} from "@ant-design/icons";
 import type {BddbWork, Volume} from "@/lib/mongodb";
@@ -95,7 +95,7 @@ const VolumeFiltersBar: React.FC<{
             <Select
                 allowClear
                 placeholder="是否处理"
-                style={{width: 160}}
+                style={{width: 150}}
                 value={filterHasWork}
                 onChange={onFilterHasWorkChange}
                 options={[
@@ -103,7 +103,7 @@ const VolumeFiltersBar: React.FC<{
                     {label: '未处理', value: false}
                 ]}
             />
-            <Typography.Text type="secondary" style={{color: token.colorTextSecondary}}>
+            <Typography.Text type="secondary">
                 共 {total} 条
             </Typography.Text>
         </Space>
@@ -111,7 +111,6 @@ const VolumeFiltersBar: React.FC<{
 }
 
 const VolumeRowLabel: React.FC<{ volume: VolumeWithWork; isExpanded: boolean }> = ({volume, isExpanded}) => {
-    const {token} = theme.useToken()
     const workCount = volume.workCount ?? volume.work_ids?.length ?? 0
     return (
         <ExpandBlocker isExpanded={isExpanded}>
@@ -121,7 +120,7 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithWork; isExpanded: boolean }> 
                         ? <Tag icon={<CheckCircleOutlined/>} style={{margin: 0}}>{workCount}</Tag>
                         : <Tag icon={<CloseCircleOutlined/>} style={{margin: 0, opacity: 0.35}}/>}
                 </Flex>
-                <Typography.Text style={{width: 120, flexShrink: 0, color: token.colorText, fontFamily: 'monospace'}}>
+                <Typography.Text style={{width: 120, flexShrink: 0, fontFamily: 'monospace'}}>
                     {formatCatalogNo(volume.catalog_no)}
                 </Typography.Text>
                 <Flex style={{
@@ -131,7 +130,7 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithWork; isExpanded: boolean }> 
                     whiteSpace: 'nowrap',
                     cursor: 'text',
                 }}>
-                    <Typography.Text style={{color: token.colorText, display: 'inline-block'}}>
+                    <Typography.Text style={{display: 'inline-block'}}>
                         {volume.volume_name || '无标题'}
                     </Typography.Text>
                 </Flex>

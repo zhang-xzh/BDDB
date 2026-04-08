@@ -179,16 +179,15 @@ const SiderContent: React.FC = () => {
                             style={{
                                 width: 60,
                                 height: 60,
-                                borderRadius: 4,
                                 flexShrink: 0,
                                 background: token.colorBgTextHover,
                             }}
                         >
-                            <Text type="secondary" style={{fontSize: 11}}>无图</Text>
+                            <Text type="secondary">无图</Text>
                         </Flex>
                     )}
                     <Flex vertical gap={4} style={{flex: 1, minWidth: 0}}>
-                        <Text strong style={{fontSize: 13, wordBreak: 'break-word'}}>
+                        <Text strong style={{wordBreak: 'break-word'}}>
                             {product.title}
                         </Text>
                         <Flex gap={8} wrap align="center" justify="space-between">
@@ -220,7 +219,6 @@ const SiderContent: React.FC = () => {
                         <div
                             style={{
                                 margin: 0,
-                                fontSize: 12,
                                 lineHeight: 1.5,
                                 color: token.colorText,
                                 background: token.colorBgTextHover,
@@ -254,7 +252,7 @@ const SiderContent: React.FC = () => {
                 {searchResult ? (
                     (searchResult.products || []).length > 0 ? (
                         <Flex vertical gap={8}>
-                            <Text type="secondary" style={{fontSize: 11}}>
+                            <Text type="secondary">
                                 共找到 {searchResult.total} 个结果
                                 {hasMore && '（滚动加载更多）'}
                             </Text>

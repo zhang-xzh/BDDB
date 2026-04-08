@@ -102,7 +102,7 @@ const VolumeFiltersBar: React.FC<{
                     {label: '未处理', value: false}
                 ]}
             />
-            <Typography.Text type="secondary" style={{color: token.colorTextSecondary}}>
+            <Typography.Text type="secondary">
                 共 {total} 条
             </Typography.Text>
         </Space>
@@ -110,7 +110,6 @@ const VolumeFiltersBar: React.FC<{
 }
 
 const VolumeRowLabel: React.FC<{ volume: VolumeWithMedia; isExpanded: boolean }> = ({volume, isExpanded}) => {
-    const {token} = theme.useToken()
     return (
         <ExpandBlocker isExpanded={isExpanded}>
             <>
@@ -119,7 +118,7 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithMedia; isExpanded: boolean }>
                         ? <Tag icon={<CheckCircleOutlined/>} style={{margin: 0}}>{volume.mediaCount}</Tag>
                         : <Tag icon={<CloseCircleOutlined/>} style={{margin: 0, opacity: 0.35}}/>}
                 </Flex>
-                <Typography.Text style={{width: 120, flexShrink: 0, color: token.colorText, fontFamily: 'monospace'}}>
+                <Typography.Text style={{width: 120, flexShrink: 0, fontFamily: 'monospace'}}>
                     {formatCatalogNo(volume.catalog_no)}
                 </Typography.Text>
                 <Flex style={{
@@ -129,7 +128,7 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithMedia; isExpanded: boolean }>
                     whiteSpace: 'nowrap',
                     cursor: 'text',
                 }}>
-                    <Typography.Text style={{color: token.colorText, display: 'inline-block'}}>
+                    <Typography.Text style={{display: 'inline-block'}}>
                         {volume.volume_name || '无标题'}
                     </Typography.Text>
                 </Flex>

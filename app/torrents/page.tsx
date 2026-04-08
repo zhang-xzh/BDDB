@@ -68,10 +68,7 @@ const TorrentFiltersBar: React.FC<{
             <Select allowClear placeholder="是否处理" style={{width: 150}} value={filterHasVolumes}
                     onChange={onHasVolumesChange}
                     options={[{label: '已处理', value: true}, {label: '未处理', value: false}]}/>
-            <Typography.Text
-                type="secondary"
-                style={{color: token.colorTextSecondary}}
-            >
+            <Typography.Text type="secondary">
                 共 {total} 条
             </Typography.Text>
         </Space>
@@ -79,7 +76,6 @@ const TorrentFiltersBar: React.FC<{
 }
 
 const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume; isExpanded: boolean }> = ({torrent, isExpanded}) => {
-    const {token} = theme.useToken()
     return (
         <ExpandBlocker isExpanded={isExpanded}>
             <>
@@ -95,7 +91,7 @@ const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume; isExpanded: boolea
                     whiteSpace: 'nowrap',
                     cursor: 'text',
                 }}>
-                    <Typography.Text style={{color: token.colorText, display: 'inline-block'}}>
+                    <Typography.Text style={{display: 'inline-block'}}>
                         {torrent.name}
                     </Typography.Text>
                 </Flex>

@@ -251,7 +251,7 @@ function WorkEditView({
                 <Flex vertical gap={2}>
                     <Typography.Text>{item.name_cn || item.name}</Typography.Text>
                     {item.name_cn && item.name !== item.name_cn && (
-                        <Typography.Text type="secondary" style={{fontSize: 12}}>{item.name}</Typography.Text>
+                        <Typography.Text type="secondary">{item.name}</Typography.Text>
                     )}
                 </Flex>
             ),
@@ -317,7 +317,7 @@ function WorkEditView({
                             <Flex key={work.id} justify="space-between" align="center" gap={8}>
                                 <Flex vertical gap={2} style={{minWidth: 0, flex: 1}}>
                                     <Typography.Text strong ellipsis>{work.name_cn || work.name}</Typography.Text>
-                                    <Typography.Text type="secondary" style={{fontSize: 12}}>
+                                    <Typography.Text type="secondary">
                                         {getTypeName(work.type)} {work.air_date ? `· ${formatDate(work.air_date)}` : ''}
                                     </Typography.Text>
                                 </Flex>

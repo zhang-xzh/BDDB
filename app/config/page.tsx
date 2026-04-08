@@ -98,8 +98,8 @@ const ConfigPage: React.FC = () => {
                     <Card title="数据管理" size="small" styles={{body: {padding: SPACING.md}}}>
                         <Space style={{width: '100%'}} size={SPACING.md} orientation="vertical">
                             <Flex vertical gap="small">
-                                <Typography.Text strong style={{fontSize: 13}}>同步 qBittorrent</Typography.Text>
-                                <Typography.Paragraph type="secondary" style={{fontSize: 12}}>
+                                <Typography.Text strong>同步 qBittorrent</Typography.Text>
+                                <Typography.Paragraph type="secondary">
                                     从 qBittorrent 获取最新的种子列表并更新到数据库。如果种子已存在则更新状态，否则添加新种子。
                                 </Typography.Paragraph>
                                 <Button
@@ -113,8 +113,8 @@ const ConfigPage: React.FC = () => {
                             </Flex>
 
                             <Flex vertical gap="small">
-                                <Typography.Text strong style={{fontSize: 13}}>关联产品</Typography.Text>
-                                <Typography.Paragraph type="secondary" style={{fontSize: 12, marginBottom: 0}}>
+                                <Typography.Text strong>关联产品</Typography.Text>
+                                <Typography.Paragraph type="secondary" style={{marginBottom: 0}}>
                                     根据 catalog_no 匹配 suruga_ya 产品库的型番，将匹配的产品 ID 填入卷的 product_ids 字段。
                                 </Typography.Paragraph>
                                 <Button
@@ -128,8 +128,8 @@ const ConfigPage: React.FC = () => {
                             </Flex>
 
                             <Flex vertical gap="small">
-                                <Typography.Text strong style={{fontSize: 13}}>重建 Bangumi 索引</Typography.Text>
-                                <Typography.Paragraph type="secondary" style={{fontSize: 12, marginBottom: 0}}>
+                                <Typography.Text strong>重建 Bangumi 索引</Typography.Text>
+                                <Typography.Paragraph type="secondary" style={{marginBottom: 0}}>
                                     执行 bangumi:rebuild 脚本：删除旧索引并从 MongoDB 全量重建 Bangumi 搜索索引。
                                 </Typography.Paragraph>
                                 <Button
@@ -143,8 +143,8 @@ const ConfigPage: React.FC = () => {
                             </Flex>
 
                             <Flex vertical gap="small">
-                                <Typography.Text strong style={{fontSize: 13}}>重建 suruga_ya 索引</Typography.Text>
-                                <Typography.Paragraph type="secondary" style={{fontSize: 12, marginBottom: 0}}>
+                                <Typography.Text strong>重建 suruga_ya 索引</Typography.Text>
+                                <Typography.Paragraph type="secondary" style={{marginBottom: 0}}>
                                     执行 meili:rebuild 脚本：删除旧索引并从 MongoDB 全量重建产品搜索索引。
                                 </Typography.Paragraph>
                                 <Button
