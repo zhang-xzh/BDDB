@@ -2,7 +2,7 @@
 
 import SiderContent from '@/components/SiderContent'
 import {SPACING} from '@/lib/utils'
-import {MoonOutlined, SunOutlined} from '@ant-design/icons'
+import {MoonOutlined, SearchOutlined, SunOutlined} from '@ant-design/icons'
 import {App, Button, ConfigProvider, Divider, Layout, Menu, theme, ThemeConfig, Typography} from 'antd'
 import Sider from "antd/es/layout/Sider"
 import zhCN from 'antd/locale/zh_CN'
@@ -20,6 +20,11 @@ const menuItems = [
     {key: '/config', label: '配置'},
 ]
 
+// 左侧活动栏菜单项
+const activityBarItems = [
+    {key: 'search', icon: <SearchOutlined/>},
+]
+
 function AppLayout({children, isDark, onToggle}: {
     children: React.ReactNode
     isDark: boolean
@@ -29,6 +34,22 @@ function AppLayout({children, isDark, onToggle}: {
     const pathname = usePathname()
     const router = useRouter()
     const selectedKey = menuItems.find(item => pathname?.startsWith(item.key))?.key ?? ''
+
+    // 控制侧边栏展开状态
+    const [siderCollapsed, setSiderCollapsed] = useState(true)
+    const [activePanel, setActivePanel] = useState<string>('search')
+
+    // 切换面板
+    const handleMenuSelect = ({key}: { key: string }) => {
+        if (activePanel === key && !siderCollapsed) {
+            // 如果点击的是当前激活的面板且侧边栏是展开的，则收起
+            setSiderCollapsed(true)
+        } else {
+            // 切换到新面板并展开
+            setActivePanel(key)
+            setSiderCollapsed(false)
+        }
+    }
 
     return (
         <App>
@@ -67,24 +88,35 @@ function AppLayout({children, isDark, onToggle}: {
                         onClick={onToggle}
                     />
                 </Header>
-                <Layout>
-                    <Sider width="25%" style={{
-                        margin: `${SPACING.lg}px ${SPACING.sm}px ${SPACING.md}px ${SPACING.lg}px`,
-                        padding: SPACING.lg,
-                        background: token.colorBgContainer,
-                        borderRadius: token.borderRadiusLG,
-                        position: 'sticky',
-                        maxHeight: 'var(--content-max-height)',
-                        overflow: 'auto',
-                    }}>
-                        <SiderContent/>
+                <Layout hasSider>
+                    <Menu
+                        mode="vertical"
+                        selectedKeys={siderCollapsed ? [] : [activePanel]}
+                        onClick={handleMenuSelect}
+                        items={activityBarItems}
+                        inlineCollapsed
+                        tooltip={false}
+                    />
+                    {/* 可展开的面板区域 */}
+                    <Sider
+                        width="25%"
+                        collapsed={siderCollapsed}
+                        collapsedWidth={0}
+                        trigger={null}
+                        style={{
+                            padding: siderCollapsed ? 0 : SPACING.lg,
+                            background: token.colorBgContainer,
+                            position: 'sticky',
+                            maxHeight: 'var(--content-max-height)',
+                            overflow: 'auto',
+                        }}
+                    >
+                        {activePanel === 'search' && <SiderContent/>}
                     </Sider>
                     <Content
                         style={{
-                            margin: `${SPACING.lg}px ${SPACING.lg}px ${SPACING.md}px ${SPACING.sm}px`,
                             padding: SPACING.lg,
                             background: token.colorBgContainer,
-                            borderRadius: token.borderRadiusLG,
                             position: 'sticky',
                             maxHeight: 'var(--content-max-height)',
                             overflow: 'auto',
