@@ -236,7 +236,7 @@ const SiderContent: React.FC = () => {
     })
 
     return (
-        <Flex vertical gap={SPACING.md}>
+        <Flex vertical gap={SPACING.md} style={{height: '100%'}}>
             <Input.Search
                 style={{position: 'sticky', top: 0, zIndex: 1}}
                 placeholder="搜索产品..."
@@ -247,7 +247,7 @@ const SiderContent: React.FC = () => {
                 loading={loading}
                 size="small"
             />
-            <Flex vertical ref={scrollContainerRef}>
+            <Flex vertical ref={scrollContainerRef} style={{flex: 1, overflow: 'auto', minHeight: 0}}>
                 {searchResult ? (
                     (searchResult.products || []).length > 0 ? (
                         <Flex vertical gap={SPACING.sm}>
