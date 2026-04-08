@@ -17,7 +17,7 @@ const menuItems = [
     {key: '/torrents', label: '种子管理'},
     {key: '/media', label: '媒介管理'},
     {key: '/work', label: '作品管理'},
-    {key: '/config', label: '配置'},
+    {key: '/config', label: '数据管理'},
 ]
 
 // 左侧活动栏菜单项

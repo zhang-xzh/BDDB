@@ -1,10 +1,9 @@
 'use client'
 
 import React, {useCallback, useState} from 'react'
-import {Button, Card, Col, Flex, message, Row, Space, Typography} from 'antd'
-import {LinkOutlined, SettingOutlined, SyncOutlined} from '@ant-design/icons'
+import {Button, Card, Flex, message, Space, Typography} from 'antd'
+import {LinkOutlined, SyncOutlined} from '@ant-design/icons'
 import {postApi} from '@/lib/api'
-import {SPACING} from '@/lib/utils'
 
 const ConfigPage: React.FC = () => {
     const [syncing, setSyncing] = useState(false)
@@ -86,81 +85,69 @@ const ConfigPage: React.FC = () => {
     }, [])
 
     return (
-        <Flex vertical gap="middle">
-            <Flex align="center" gap="middle">
-                <SettingOutlined style={{fontSize: 24}}/>
-                <Typography.Title level={4}>配置</Typography.Title>
-            </Flex>
+        <Card title="数据管理" size="small" style={{width: 600}}>
+            <Space size="middle" orientation="vertical">
+                <Flex vertical gap="middle">
+                    <Typography.Text strong>同步 qBittorrent</Typography.Text>
+                    <Typography.Paragraph type="secondary">
+                        从 qBittorrent 获取最新的种子列表并更新到数据库。如果种子已存在则更新状态，否则添加新种子。
+                    </Typography.Paragraph>
+                    <Button
+                        onClick={syncTorrents}
+                        loading={syncing}
+                        icon={<SyncOutlined spin={syncing}/>}
+                        block
+                    >
+                        {syncing ? '同步中...' : '开始同步'}
+                    </Button>
+                </Flex>
 
-            <Row gutter={[SPACING.md, SPACING.md]}>
-                {/* 数据管理 */}
-                <Col xs={24} md={12}>
-                    <Card title="数据管理" size="small" styles={{body: {padding: SPACING.md}}}>
-                        <Space style={{width: '100%'}} size="middle" orientation="vertical">
-                            <Flex vertical gap="middle">
-                                <Typography.Text strong>同步 qBittorrent</Typography.Text>
-                                <Typography.Paragraph type="secondary">
-                                    从 qBittorrent 获取最新的种子列表并更新到数据库。如果种子已存在则更新状态，否则添加新种子。
-                                </Typography.Paragraph>
-                                <Button
-                                    onClick={syncTorrents}
-                                    loading={syncing}
-                                    icon={<SyncOutlined spin={syncing}/>}
-                                    block
-                                >
-                                    {syncing ? '同步中...' : '开始同步'}
-                                </Button>
-                            </Flex>
+                <Flex vertical gap="middle">
+                    <Typography.Text strong>关联产品</Typography.Text>
+                    <Typography.Paragraph type="secondary">
+                        根据 catalog_no 匹配 suruga_ya 产品库的型番，将匹配的产品 ID 填入卷的 product_ids 字段。
+                    </Typography.Paragraph>
+                    <Button
+                        onClick={linkProducts}
+                        loading={linking}
+                        icon={<LinkOutlined/>}
+                        block
+                    >
+                        {linking ? '关联中...' : '开始关联'}
+                    </Button>
+                </Flex>
 
-                            <Flex vertical gap="middle">
-                                <Typography.Text strong>关联产品</Typography.Text>
-                                <Typography.Paragraph type="secondary">
-                                    根据 catalog_no 匹配 suruga_ya 产品库的型番，将匹配的产品 ID 填入卷的 product_ids 字段。
-                                </Typography.Paragraph>
-                                <Button
-                                    onClick={linkProducts}
-                                    loading={linking}
-                                    icon={<LinkOutlined/>}
-                                    block
-                                >
-                                    {linking ? '关联中...' : '开始关联'}
-                                </Button>
-                            </Flex>
+                <Flex vertical gap="middle">
+                    <Typography.Text strong>重建 Bangumi 索引</Typography.Text>
+                    <Typography.Paragraph type="secondary" style={{marginBottom: 0}}>
+                        执行 bangumi:rebuild 脚本：删除旧索引并从 MongoDB 全量重建 Bangumi 搜索索引。
+                    </Typography.Paragraph>
+                    <Button
+                        onClick={rebuildBangumi}
+                        loading={rebuildingBangumi}
+                        icon={<SyncOutlined spin={rebuildingBangumi}/>}
+                        block
+                    >
+                        {rebuildingBangumi ? '重建中...' : '开始重建'}
+                    </Button>
+                </Flex>
 
-                            <Flex vertical gap="middle">
-                                <Typography.Text strong>重建 Bangumi 索引</Typography.Text>
-                                <Typography.Paragraph type="secondary" style={{marginBottom: 0}}>
-                                    执行 bangumi:rebuild 脚本：删除旧索引并从 MongoDB 全量重建 Bangumi 搜索索引。
-                                </Typography.Paragraph>
-                                <Button
-                                    onClick={rebuildBangumi}
-                                    loading={rebuildingBangumi}
-                                    icon={<SyncOutlined spin={rebuildingBangumi}/>}
-                                    block
-                                >
-                                    {rebuildingBangumi ? '重建中...' : '开始重建'}
-                                </Button>
-                            </Flex>
-
-                            <Flex vertical gap="middle">
-                                <Typography.Text strong>重建 suruga_ya 索引</Typography.Text>
-                                <Typography.Paragraph type="secondary" style={{marginBottom: 0}}>
-                                    执行 meili:rebuild 脚本：删除旧索引并从 MongoDB 全量重建产品搜索索引。
-                                </Typography.Paragraph>
-                                <Button
-                                    onClick={rebuildMeili}
-                                    loading={rebuildingMeili}
-                                    icon={<SyncOutlined spin={rebuildingMeili}/>}
-                                    block
-                                >
-                                    {rebuildingMeili ? '重建中...' : '开始重建'}
-                                </Button>
-                            </Flex>
-                        </Space>
-                    </Card>
-                </Col>
-            </Row>
-        </Flex>
+                <Flex vertical gap="middle">
+                    <Typography.Text strong>重建 suruga_ya 索引</Typography.Text>
+                    <Typography.Paragraph type="secondary" style={{marginBottom: 0}}>
+                        执行 meili:rebuild 脚本：删除旧索引并从 MongoDB 全量重建产品搜索索引。
+                    </Typography.Paragraph>
+                    <Button
+                        onClick={rebuildMeili}
+                        loading={rebuildingMeili}
+                        icon={<SyncOutlined spin={rebuildingMeili}/>}
+                        block
+                    >
+                        {rebuildingMeili ? '重建中...' : '开始重建'}
+                    </Button>
+                </Flex>
+            </Space>
+        </Card>
     )
 }
 
