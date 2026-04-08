@@ -571,7 +571,7 @@ function VolumeFormList({
     if (worksCount === 1) {
         return (
         <Card size="small" title="卷信息">
-            <Space orientation="vertical" style={{width: '100%'}} size={SPACING.md}>
+            <Space orientation="vertical" size={SPACING.md}>
                 {selectedVolumes.map(vol => <VolumeRow key={vol} vol={vol} label={`第${vol}卷`} {...rowProps} />)}
                 {actions}
             </Space>
@@ -588,7 +588,7 @@ function VolumeFormList({
 
     return (
         <Card size="small" title="卷信息">
-            <Space orientation="vertical" style={{width: '100%'}} size={SPACING.md}>
+            <Space orientation="vertical" size={SPACING.md}>
                 {Object.entries(groups).sort(([a], [b]) => Number(a) - Number(b)).map(([wiStr, vols]) => {
                     const wi = Number(wiStr)
                     return (
@@ -627,14 +627,14 @@ function VolumeReadOnlyView({
 
     return (
         <Card size="small" title="卷信息">
-            <Space orientation="vertical" style={{width: '100%'}} size={SPACING.md}>
+            <Space orientation="vertical" size={SPACING.md}>
                 {selectedVolumes.map(vol => {
                     const form = volumeForms[vol] || {catalog_no: '', volume_name: ''}
                     const label = worksCount === 1
                         ? `第${vol}卷`
                         : `作品 ${Math.floor(vol / 1000)} · 第${vol % 1000}卷`
                     return (
-                        <Space key={vol} style={{width: '100%'}} size={SPACING.sm}>
+                        <Space key={vol} size={SPACING.sm}>
                             <Typography.Text strong>{label}</Typography.Text>
                             <Typography.Text>{form.catalog_no?.trim() ? form.catalog_no : '—'}</Typography.Text>
                             <Typography.Text type="secondary">{form.volume_name?.trim() ? form.volume_name : '—'}</Typography.Text>

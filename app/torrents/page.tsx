@@ -81,8 +81,8 @@ const TorrentRowLabel: React.FC<{ torrent: TorrentWithVolume; isExpanded: boolea
             <>
                 <Flex style={{width: 56, flexShrink: 0}}>
                     {torrent.hasVolumes
-                        ? <Tag icon={<CheckCircleOutlined/>} style={{margin: 0}}>{torrent.volumeCount}</Tag>
-                        : <Tag icon={<CloseCircleOutlined/>} style={{margin: 0, opacity: 0.35}}/>}
+                        ? <Tag icon={<CheckCircleOutlined/>}>{torrent.volumeCount}</Tag>
+                        : <Tag icon={<CloseCircleOutlined/>} style={{opacity: 0.35}}/>}
                 </Flex>
                 <Flex style={{
                     flex: 1,

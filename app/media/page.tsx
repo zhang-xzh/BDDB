@@ -115,8 +115,8 @@ const VolumeRowLabel: React.FC<{ volume: VolumeWithMedia; isExpanded: boolean }>
             <>
                 <Flex style={{width: 56, flexShrink: 0}}>
                     {volume.mediaCount && volume.mediaCount > 0
-                        ? <Tag icon={<CheckCircleOutlined/>} style={{margin: 0}}>{volume.mediaCount}</Tag>
-                        : <Tag icon={<CloseCircleOutlined/>} style={{margin: 0, opacity: 0.35}}/>}
+                        ? <Tag icon={<CheckCircleOutlined/>}>{volume.mediaCount}</Tag>
+                        : <Tag icon={<CloseCircleOutlined/>} style={{opacity: 0.35}}/>}
                 </Flex>
                 <Typography.Text style={{width: 120, flexShrink: 0, fontFamily: 'monospace'}}>
                     {formatCatalogNo(volume.catalog_no)}

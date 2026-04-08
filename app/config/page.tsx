@@ -89,7 +89,7 @@ const ConfigPage: React.FC = () => {
         <Flex vertical gap={SPACING.lg}>
             <Flex align="center" gap={SPACING.sm}>
                 <SettingOutlined style={{fontSize: 24}}/>
-                <Typography.Title level={4} style={{margin: 0}}>配置</Typography.Title>
+                <Typography.Title level={4}>配置</Typography.Title>
             </Flex>
 
             <Row gutter={[SPACING.md, SPACING.md]}>
@@ -114,7 +114,7 @@ const ConfigPage: React.FC = () => {
 
                             <Flex vertical gap="small">
                                 <Typography.Text strong>关联产品</Typography.Text>
-                                <Typography.Paragraph type="secondary" style={{marginBottom: 0}}>
+                                <Typography.Paragraph type="secondary" >
                                     根据 catalog_no 匹配 suruga_ya 产品库的型番，将匹配的产品 ID 填入卷的 product_ids 字段。
                                 </Typography.Paragraph>
                                 <Button
