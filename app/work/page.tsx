@@ -65,7 +65,6 @@ const VolumeFiltersBar: React.FC<{
             position: 'sticky',
             top: 0,
             zIndex: 1,
-            background: token.colorBgContainer,
         }}>
             <Input.Search
                 size="small"

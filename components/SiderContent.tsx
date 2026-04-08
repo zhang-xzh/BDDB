@@ -264,9 +264,6 @@ const SiderContent: React.FC = () => {
                                 size="small"
                                 collapsible="icon"
                                 expandIcon={() => null}
-                                style={{
-                                    background: token.colorBgContainer,
-                                }}
                             />
                             {loadingMore && (
                                 <Flex justify="center" style={{padding: `${SPACING.md}px 0`}}>

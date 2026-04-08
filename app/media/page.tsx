@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import React, {useCallback, useEffect, useState} from "react";
 import {Card, Empty, Flex, Input, Select, Space, Spin, Switch, Tag, theme, Typography} from "antd";
 import {CheckCircleOutlined, CloseCircleOutlined} from "@ant-design/icons";
 import type {Volume} from "@/lib/mongodb";
@@ -64,7 +64,6 @@ const VolumeFiltersBar: React.FC<{
             position: 'sticky',
             top: 0,
             zIndex: 1,
-            background: token.colorBgContainer,
         }}>
             <Input.Search
                 size="small"
