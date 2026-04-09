@@ -9,7 +9,7 @@ import {App, Button, Card, Descriptions, Empty, Flex, Select, Space, Spin, Tag, 
 import type {DefaultOptionType, RefSelectProps} from 'antd/es/select'
 import type {DataNode} from 'antd/es/tree'
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {ProductNotePanel} from "@/components/ProductNotePanel";
+import {ProductPanel} from "@/components/ProductPanel";
 
 type SearchResultItem = BangumiSearchResult['list'][number]
 type WorkCandidate = BangumiSubject | SearchResultItem
@@ -434,7 +434,7 @@ export function WorkEditorContent({
     return (
         <Spin spinning={loading || saving}>
             <Space orientation="vertical" style={{width: '100%'}} size="middle">
-                <ProductNotePanel volumeId={volumeInfo?.volumeId}/>
+                <ProductPanel volumeId={volumeInfo?.volumeId}/>
                 <WorkFormList selectedWorks={selectedWorks} onWorksChange={onWorksChange} saving={saving} onSubmit={onSubmit}/>
             </Space>
         </Spin>

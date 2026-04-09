@@ -2,13 +2,13 @@
 
 import {FileTreeCard, MediaTreeNodeContent} from "@/components/FileTreeCard";
 import {fetchApi, postApi} from "@/lib/api";
-import type {FileItem, Media, MediaForm, MediaType, NodeData,} from "@/lib/mongodb";
+import {FileItem, Media, MediaForm, MediaType, MongoProduct, NodeData,} from "@/lib/mongodb";
 import {buildTree, FlatTree, SPACING} from "@/lib/utils";
 import {DeleteOutlined, EditOutlined, SaveOutlined,} from "@ant-design/icons";
 import {Button, Card, Empty, Flex, Input, message, Select, Space, Spin, Typography} from "antd";
 import type {DataNode} from "antd/es/tree";
 import React, {useCallback, useEffect, useMemo, useRef, useState,} from "react";
-import {ProductNotePanel} from "@/components/ProductNotePanel";
+import {ProductPanel} from "@/components/ProductPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -18,10 +18,10 @@ interface MediaInfo {
     catalogNo?: string;
 }
 
-export interface ProductNoteData {
+export interface ProductData {
     product_id: string;
     title: string;
-    note: unknown;
+    product: MongoProduct;
 }
 
 export interface MediaEditorContentProps {
@@ -963,7 +963,7 @@ export function MediaEditorContent({
             >
                 {isEditing ? (
                     <>
-                        <ProductNotePanel volumeId={volumeId}/>
+                        <ProductPanel volumeId={volumeId}/>
                         <FileTreeCard files={files} treeData={treeData} defaultExpandedKeys={defaultExpandedKeys} titleRender={titleRender}/>
                         <MediaFormList
                             selectedMedias={selectedMedias} mediaForms={mediaForms} onMediaFormChange={updateMediaForm} onDeleteMedia={deleteMedia}

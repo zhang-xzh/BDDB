@@ -37,10 +37,7 @@ export async function GET(
 
         // 3. 从 suruga_ya.products 查询 note 字段
         const productsCollection = getProductsCollection();
-        const product = await productsCollection.findOne(
-            {_id: firstProductId},
-            {projection: {note: 1, title: 1, product_id: 1}}
-        ) as MongoProduct & { note?: unknown } | null;
+        const product = await productsCollection.findOne({_id: firstProductId}) as MongoProduct & { note?: unknown } | null;
 
         if (!product) {
             return NextResponse.json(
@@ -54,11 +51,11 @@ export async function GET(
             data: {
                 product_id: product.product_id,
                 title: product.title,
-                note: product.note ?? null,
+                product: product ?? null,
             },
         });
     } catch (error) {
-        console.error('[api/volumes/product-note] Error:', error);
+        console.error('[api/volumes/product] Error:', error);
         return NextResponse.json(
             {success: false, error: error instanceof Error ? error.message : 'Unknown error'},
             {status: 500}

@@ -2,7 +2,7 @@ import React, {useEffect, useMemo, useState} from "react";
 import {fetchApi} from "@/lib/api";
 import {Card, Empty, Flex, Skeleton, Space, Tree, Typography} from "antd";
 import {SPACING} from "@/lib/utils";
-import {ProductNoteData} from "@/components/MediaEditor";
+import {ProductData} from "@/components/MediaEditor";
 import {DataNode} from "antd/es/tree";
 
 interface JsonTreeProps {
@@ -42,18 +42,13 @@ function buildJsonTreeNodes(data: unknown, key: string = "root", title: string =
     }
 
     if (type !== "object") {
-        // 基本类型
-        const valueStr = String(data);
-
         return {
             key,
             title: (
                 <Flex gap="middle" style={{width: "100%"}} align="flex-start">
                     <Typography.Text strong>{title}</Typography.Text>
                     <Typography.Text type="secondary">: </Typography.Text>
-                    <Typography.Text style={{flex: 1}}>
-                        <span dangerouslySetInnerHTML={{__html: valueStr}}/>
-                    </Typography.Text>
+                    <Typography.Text style={{flex: 1}}>{data?.toString()}</Typography.Text>
                 </Flex>
             )
         };
@@ -115,18 +110,18 @@ export function JsonTree({data, title = "JSON 数据"}: JsonTreeProps) {
 }
 
 /**
- * 产品 Note 信息展示组件
+ * 产品信息展示组件
  * 从 bddb_volumes 的 product_ids 获取第一个 product_id
- * 查询 suruga_ya.products 的 note 字段并以树形展示
+ * 查询 suruga_ya.products 并以树形展示
  */
-export function ProductNotePanel({volumeId}: { volumeId?: string }) {
-    const [noteData, setNoteData] = useState<ProductNoteData | null>(null);
+export function ProductPanel({volumeId}: { volumeId?: string }) {
+    const [productData, setProductData] = useState<ProductData | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!volumeId) {
-            setNoteData(null);
+            setProductData(null);
             setError(null);
             return;
         }
@@ -137,16 +132,12 @@ export function ProductNotePanel({volumeId}: { volumeId?: string }) {
             setLoading(true);
             setError(null);
             try {
-                const result = await fetchApi<{
-                    product_id: string;
-                    title: string;
-                    note: unknown;
-                }>(`/api/volumes/${volumeId}/product-note`);
+                const result = await fetchApi<ProductData>(`/api/volumes/${volumeId}/product`);
 
                 if (cancelled) return;
 
                 if (result?.success && result.data) {
-                    setNoteData(result.data);
+                    setProductData(result.data);
                 } else {
                     setError(result?.error || "获取产品信息失败");
                 }
@@ -177,7 +168,7 @@ export function ProductNotePanel({volumeId}: { volumeId?: string }) {
         );
     }
 
-    if (error || !noteData) {
+    if (error || !productData) {
         return (
             <Card size="small" title="产品信息">
                 <Empty
@@ -195,7 +186,7 @@ export function ProductNotePanel({volumeId}: { volumeId?: string }) {
                 <Typography.Text strong>产品信息</Typography.Text>
             }
             styles={{body: {padding: SPACING.md}}}>
-            <JsonTree data={noteData.note} title="note" maxHeight={500}/>
+            <JsonTree data={productData.product} title="note" maxHeight={500}/>
         </Card>
     );
 }
