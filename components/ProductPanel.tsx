@@ -128,7 +128,7 @@ export function ProductPanel({volumeId}: { volumeId?: string }) {
 
         let cancelled = false;
 
-        async function loadProductNote() {
+        async function loadProduct() {
             setLoading(true);
             setError(null);
             try {
@@ -153,7 +153,7 @@ export function ProductPanel({volumeId}: { volumeId?: string }) {
             }
         }
 
-        void loadProductNote();
+        void loadProduct();
 
         return () => {
             cancelled = true;
