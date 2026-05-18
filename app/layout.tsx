@@ -53,7 +53,7 @@ function AppLayout({children, isDark, onToggle}: {
 
     return (
         <App>
-            <Layout style={{minHeight: '100vh'}}>
+            <Layout style={{height: '100vh'}}>
                 <Header style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -186,7 +186,7 @@ export default function RootLayout({children,}: Readonly<{ children: React.React
         <head>
             <title>BDDB</title>
         </head>
-        <body style={{margin: 0, padding: 0}}>
+        <body style={{margin: 0, padding: 0, overflow: 'hidden'}}>
         <ConfigProvider locale={zhCN} theme={desktopTheme(isDark)}>
             <AppLayout isDark={isDark} onToggle={onToggle}>
                 {children}
