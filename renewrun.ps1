@@ -4,20 +4,7 @@ if ($LASTEXITCODE -ne 0)
     exit $LASTEXITCODE
 }
 
-docker rm -f bddb
-if ($LASTEXITCODE -ne 0)
-{
-    exit $LASTEXITCODE
-}
-
-docker run -d `
-    --name bddb `
-    --restart unless-stopped `
-    -p 13000:3000 `
-    -e QB_HOST=host.docker.internal:18000 `
-    -e MONGO_HOST=host.docker.internal `
-    -e MEILI_HOST=http://host.docker.internal:17700 `
-    bddb:latest
+docker compose up -d bddb
 if ($LASTEXITCODE -ne 0)
 {
     exit $LASTEXITCODE

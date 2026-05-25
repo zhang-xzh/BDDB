@@ -1,0 +1,80 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-configdb:/data/configdb
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: mongosh --eval 'db.adminCommand("ping")'
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    container_name: meilisearch
+    ports:
+      - "17700:7700"
+    volumes:
+      - meilisearch-data:/meili_data
+    environment:
+      - MEILI_HTTP_ADDR=0.0.0.0:7700
+      - MEILI_SERVER_PROVIDER=docker
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bddb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: bddb:latest
+    container_name: bddb
+    ports:
+      - "13000:3000"
+    volumes:
+      - bddb-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_DB_PROD=bddb_prod
+      - MEILI_HOST=http://meilisearch:7700
+      - QB_HOST=host.docker.internal:18000
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    networks:
+      - app-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  mongodb-data:
+    external: true
+  mongodb-configdb:
+    external: true
+  meilisearch-data:
+    external: true
+  bddb-data:
+    external: true
+
+networks:
+  app-network:
+    driver: bridge
